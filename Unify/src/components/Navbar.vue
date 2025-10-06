@@ -1,50 +1,36 @@
 <template>
-  <nav
-    :class="[`navbar-${theme}`, `bg-${theme}`, 'navbar', 'navbar-expand-lg' ]"
-  >
-    <div class="container-fluid">
-      <a class="navbar-brand" href="#">My Vue</a>
-      <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-        <li v-for="(page,index) in pages" class="nav-item" :key="index">
-          <a
-            class="nav-link"
-            :class="{ active: activePage === index }"
-            aria-current="page"
-            :href="page.link.url"
-            :title="`This link goes to the ${page.link.text} page`"
-            @click.prevent="navLinkClick(index)"
-          >{{ page.link.text }}</a>
-          </li>
+  <nav class="navbar navbar-expand-lg navbar-light bg-light border-bottom">
+    <div class="container">
+      <RouterLink class="navbar-brand fw-bold" to="/">Wellbeing</RouterLink>
+
+      <button
+        class="navbar-toggler"
+        type="button"
+        data-bs-toggle="collapse"
+        data-bs-target="#mainNav"
+        aria-controls="mainNav"
+        aria-expanded="false"
+        aria-label="Toggle navigation"
+      >
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div id="mainNav" class="collapse navbar-collapse">
+        <ul class="navbar-nav ms-auto">
+          <li class="nav-item"><RouterLink class="nav-link" to="/journal">Journal</RouterLink></li>
+          <li class="nav-item"><RouterLink class="nav-link" to="/wellbeing">Wellbeing</RouterLink></li>
+          <li class="nav-item"><RouterLink class="nav-link" to="/study">Study</RouterLink></li>
+          <li class="nav-item"><RouterLink class="nav-link" to="/nutrition">Nutrition</RouterLink></li>
+          <li class="nav-item"><RouterLink class="nav-link" to="/calendar">Calendar</RouterLink></li>
+          <li class="nav-item"><RouterLink class="nav-link" to="/recommendations">AI Recs</RouterLink></li>
         </ul>
-        <form class="d-flex">
-          <button
-            class="btn btn-primary"
-            @click.prevent="changeTheme()"
-          >Toggle</button>
-        </form>
+      </div>
     </div>
   </nav>
 </template>
 
-<script>
-  export default {
-    props: ['pages', 'activePage', 'navLinkClick'],
-    data(){
-      return {
-        theme:'light',
-      }
-    },
-    methods: {
-      changeTheme() {
-        let theme= 'light';
-
-        if (this.theme == 'light'){
-          theme = 'dark';
-        }
-
-        this.theme = theme
-      }
-    }
-  }
+<script setup>
 </script>
 
+<style scoped>
+</style>

@@ -1,0 +1,169 @@
+<template>
+  <div class="min-vh-100 bg-light">
+    <header class="bg-white border-bottom">
+      <div class="container px-4 py-5">
+        <h1 class="display-6 fw-bold mb-2">Welcome back! 👋</h1>
+        <p class="fs-5 text-muted mb-0">
+          Your hub for academic success & wellbeing. Let’s make today productive and balanced.
+        </p>
+      </div>
+    </header>
+
+    <div class="container px-4 py-5">
+      <div class="row g-4 mb-4">
+        <div class="col-12 col-md-4">
+          <div class="card stat-card gradient-primary shadow-soft h-100">
+            <div class="card-body d-flex align-items-center">
+              <div class="icon-wrap me-3"><BookOpen :size="24" /></div>
+              <div>
+                <div class="text-uppercase small fw-semibold opacity-75">Study Sessions Today</div>
+                <div class="h3 mb-0">3</div>
+                <div class="small opacity-75">2 hours focused time</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-12 col-md-4">
+          <div class="card stat-card gradient-wellness shadow-soft h-100">
+            <div class="card-body d-flex align-items-center">
+              <div class="icon-wrap me-3"><Heart :size="24" /></div>
+              <div>
+                <div class="text-uppercase small fw-semibold opacity-75">Wellness Score</div>
+                <div class="h3 mb-0">85%</div>
+                <div class="small opacity-75">Great progress!</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-12 col-md-4">
+          <div class="card stat-card gradient-energy shadow-soft h-100">
+            <div class="card-body d-flex align-items-center">
+              <div class="icon-wrap me-3"><Dumbbell :size="24" /></div>
+              <div>
+                <div class="text-uppercase small fw-semibold opacity-75">Activity Minutes</div>
+                <div class="h3 mb-0">45</div>
+                <div class="small opacity-75">30 mins to goal</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row g-4 mb-4">
+        <div class="col-12 col-lg-6">
+          <div class="card shadow-soft h-100">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h2 class="h5 mb-0 d-flex align-items-center gap-2">
+                  <CheckCircle2 class="text-primary" :size="20" /> Today’s Tasks
+                </h2>
+                <button class="btn btn-sm btn-link text-decoration-none">View All</button>
+              </div>
+
+              <div class="d-flex flex-column gap-2">
+                <div v-for="(task, i) in tasks" :key="i" class="d-flex align-items-center gap-3 p-2 rounded-3 hover-bg">
+                  <div
+                    class="d-inline-flex align-items-center justify-content-center rounded-circle border"
+                    :class="task.completed ? 'bg-primary border-primary' : 'border-secondary-subtle'"
+                    style="width: 22px; height: 22px;"
+                  >
+                    <CheckCircle2 v-if="task.completed" :size="16" class="text-white" />
+                  </div>
+                  <div class="flex-grow-1">
+                    <div :class="['fw-medium', task.completed ? 'text-decoration-line-through text-secondary' : '']">
+                      {{ task.title }}
+                    </div>
+                    <div class="small text-secondary">{{ task.time }}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-12 col-lg-6">
+          <div class="card shadow-soft h-100">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h2 class="h5 mb-0 d-flex align-items-center gap-2">
+                  <TrendingUp class="text-success" :size="20" /> Module Progress
+                </h2>
+              </div>
+
+              <div class="d-flex flex-column gap-3">
+                <div v-for="m in modules" :key="m.name">
+                  <div class="d-flex justify-content-between mb-1">
+                    <span class="small fw-semibold">{{ m.name }}</span>
+                    <span class="small text-secondary">{{ m.progress }}%</span>
+                  </div>
+                  <div class="progress" style="height: 8px;">
+                    <div
+                      class="progress-bar"
+                      role="progressbar"
+                      :style="{ width: m.progress + '%' }"
+                      :aria-valuenow="m.progress" aria-valuemin="0" aria-valuemax="100"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card shadow-soft">
+        <div class="card-body">
+          <h2 class="h5 mb-3 d-flex align-items-center gap-2">
+            <Clock class="text-info" :size="20" /> Quick Actions
+          </h2>
+          <div class="d-flex flex-wrap gap-2">
+            <button class="btn btn-primary">Start Pomodoro</button>
+            <button class="btn btn-secondary">Log Sleep</button>
+            <button class="btn btn-info text-white">Track Meal</button>
+            <button class="btn btn-success">Add Deadline</button>
+            <button class="btn btn-outline-secondary">View Calendar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { BookOpen, Heart, Dumbbell, CheckCircle2, Clock, TrendingUp } from "lucide-vue-next";
+
+const tasks = [
+  { title: "Complete Data Structures Assignment", time: "Due: 6 PM", completed: false },
+  { title: "Review Calculus Notes", time: "30 mins", completed: true },
+  { title: "Pomodoro Session: Physics", time: "25 mins", completed: true },
+  { title: "Evening Workout", time: "5 PM", completed: false },
+];
+
+const modules = [
+  { name: "Data Structures", progress: 75 },
+  { name: "Calculus II", progress: 60 },
+  { name: "Physics", progress: 45 },
+  { name: "Web Development", progress: 90 },
+];
+</script>
+
+<style scoped>
+.shadow-soft { box-shadow: 0 8px 24px rgba(0,0,0,.06); }
+
+.hover-bg:hover { background: rgba(0,0,0,.03); }
+
+.icon-wrap {
+  width: 40px; height: 40px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 999px; background: rgba(0,0,0,.05);
+}
+
+.gradient-primary { background: linear-gradient(135deg, #e9f2ff 0%, #f5f9ff 100%); }
+.gradient-wellness { background: linear-gradient(135deg, #eafaf1 0%, #f4fff8 100%); }
+.gradient-energy { background: linear-gradient(135deg, #fff1e6 0%, #fff6ef 100%); }
+
+.stat-card { border: 0; }
+.stat-card .card-body { padding: 1rem 1.25rem; }
+</style>
