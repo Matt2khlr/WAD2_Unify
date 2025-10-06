@@ -14,78 +14,99 @@
                 padding-right: 1rem;
                 }
 
-                .nav-link {
+            .nav-link {
                 transition: color 0.3s ease;
                 }
 
-                .nav-link:hover {
+            .nav-link:hover {
                 color: #0d6efd; /* Bootstrap primary color */
                 }
 
-                #content {
+            #content {
                 margin-top: 2rem;
                 padding: 1.5rem;
-                background-color: #f8f9fa;
+                background-color: rgba(255, 255, 255, 0.8);
                 border-radius: 0.5rem;
+                height: 70vh;
+                width: 140vh;
                 }
 
-                button.btn-primary {
+            button.btn-primary {
                 margin-left: 1rem;
                 transition: background-color 0.3s ease;
                 }
 
-                button.btn-primary:hover {
+            button.btn-primary:hover {
                 background-color: #0056b3;
                 }
 
-body {
-  min-height: 100vh;
-  background: linear-gradient(120deg, #F7D6E0, #B2F7EF, #F2B5D4, #B2F7EF, #F7D6E0);
-  background-size: 400% 400%;
-  animation: gradientBG 10s ease-in-out infinite;
-}
+            body {
+                min-height: 100vh;
+                background: linear-gradient(120deg, #F7D6E0, #B2F7EF, #F2B5D4, #B2F7EF, #F7D6E0);
+                background-size: 400% 400%;
+                animation: gradientBG 10s ease-in-out infinite;
+                }
 
-@keyframes gradientBG {
-  0% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-  100% {
-    background-position: 0% 50%;
-  }
-}
+            @keyframes gradientBG {
+                0% {
+                    background-position: 0% 50%;
+            }
+                50% {
+                    background-position: 100% 50%;
+            }
+                100% {
+                    background-position: 0% 50%;
+            }
+            }
+
 
         </style>
     </head>
     <body>
-        <nav 
-        class="navbar navbar-expand-lg "
-        :class="{'navbar-light bg-light': !useDarkNavbar, 'navbar-dark bg-dark': useDarkNavbar}"
-   
-        >
-            <div class="container-fluid d-flex justify-content-center"> 
-                <a class="navbar-brand" href="#">Unify</a>              
-                <ul class="navbar-nav mb-2 mb-lg-0 mx-auto">
-                    <li v-for="(page, index) in pages" class="nav-item">
-                        <a
-                            class="nav-link"
-                            :class="{active: activePage === index}" 
-                            aria-current="page" 
-                            :href="page.link.url"
-                            :title="`This link goes to the ${page.link.text} page`"
-                            @click.prevent="activePage = index" 
-                        >{{ page.link.text }}</a> <!-- remove the .prevent to make it actually route-->
+        <nav
+            class="navbar navbar-expand-lg"
+            :class="{'navbar-light bg-light': !useDarkNavbar, 'navbar-dark bg-dark': useDarkNavbar}"
+            >
+            <div class="container-fluid">
+                <a class="navbar-brand" href="#">Unify</a>
+                <!-- Button that toggles collapse -->
+                <button
+                class="navbar-toggler"
+                type="button"
+                data-bs-toggle="collapse"
+                data-bs-target="#navbarNav"
+                aria-controls="navbarNav"
+                aria-expanded="false"
+                aria-label="Toggle navigation"
+                >
+                <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Collapsible part of the navbar -->
+                <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav mx-auto">
+                    <li v-for="(page, index) in pages" class="nav-item" :key="index">
+                    <a
+                        class="nav-link"
+                        :class="{active: activePage === index}"
+                        aria-current="page"
+                        :href="page.link.url"
+                        :title="`This link goes to the ${page.link.text} page`"
+                        @click.prevent="activePage = index"
+                    >
+                        {{ page.link.text }}
+                    </a>
                     </li>
-                    <form class="d-flex">
-                        <button class="btn btn-primary"
-                        @click.prevent="useDarkNavbar=!useDarkNavbar">
-                        Toggle Navbar
-                    </button>
-                    </form>
-                    
                 </ul>
+                <form class="d-flex">
+                    <button 
+                    class="btn btn-primary"
+                    @click.prevent="useDarkNavbar = !useDarkNavbar"
+                    >
+                    Toggle Navbar
+                    </button>
+                </form>
+                </div>
             </div>
         </nav>
         <div id="content" class="container">
@@ -146,5 +167,7 @@ body {
 
 
         </script>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+
     </body>
 </html>
