@@ -112,6 +112,7 @@
         <div id="content" class="container">
             <h1>{{ pages[activePage].pageTitle}}</h1>
             <p>{{ pages[activePage].content }}</p>
+            <p> Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
         </div>
         <script>
 
@@ -120,13 +121,13 @@
             Vue.createApp({
                 data() {
                     return {
-                        activePage: 0,
+                        activePage: 1,
                         useDarkNavbar: false,
                         pages: [
                             {
                                 link: {text:'Home', url:'index.html'},
                                 pageTitle: 'Home Page',
-                                content: 'This is the home content'
+                                content: 'This is the home content.'
                             },
                             {
                                 link: {text:'Study Journal', url:'journal.html'},

@@ -8,7 +8,7 @@
         <li v-for="(page,index) in pages" class="nav-item" :key="index">
           <a
             class="nav-link"
-            :class="{active: activePage === index }"
+            :class="{ active: activePage === index }"
             aria-current="page"
             :href="page.link.url"
             :title="`This link goes to the ${page.link.text} page`"
