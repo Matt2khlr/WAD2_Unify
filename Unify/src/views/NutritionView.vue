@@ -6,7 +6,7 @@
     <h3>Work in progress...</h3>
 </template>
 
-<style>
+<style scoped>
 h3 {
     text-align: center;
     margin-top: 50px;
