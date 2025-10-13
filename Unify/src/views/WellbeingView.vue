@@ -1,5 +1,6 @@
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
+import WordCloud from 'wordcloud';
 
 const sleepData = ref([
   { day: "Mon", hours: 7 },
@@ -45,6 +46,77 @@ function editSleep(dayObj) {
     }
   }
 }
+
+const stressLabel = computed(() => {
+  if (stressLevel.value < 30) return 'Low';
+  if (stressLevel.value < 70) return 'Moderate';
+  return 'High';
+});
+
+const stressColorClass = computed(() => {
+  if (stressLevel.value < 30) return 'text-success';  // Green
+  if (stressLevel.value < 70) return 'text-warning';  // Yellow-ish for Moderate
+  return 'text-danger';  // Red
+});
+
+const selectedFactors = ref([]);
+
+// Toggle selection of a stress factor
+function toggleFactor(factor) {
+  const idx = selectedFactors.value.indexOf(factor);
+  if (idx === -1) {
+    selectedFactors.value.push(factor);
+  } else {
+    selectedFactors.value.splice(idx, 1);
+  }
+}
+
+// Stress factors and values for word cloud
+const stressFactors = [
+  ['Deadlines', 12],
+  ['Homework', 9],
+  ['Exams', 15],
+  ['Sleep', 7],
+  ['Lack of support', 6],
+  ['Social', 8],
+  ['Fear of future', 10],
+  ['Health', 5],
+  ['Environment', 4]
+];
+
+const canvasRef = ref(null);
+
+onMounted(() => {
+  const canvas = canvasRef.value;
+  if (!canvas) return;
+
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+
+  // Set canvas buffer size with DPR scaling
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+
+  // Scale drawing context for crispness
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  WordCloud(canvas, {
+    list: stressFactors,
+    gridSize: 5,
+    weightFactor: 10,
+    minFontSize: 8,
+    maxFontSize:30,
+    fontFamily: 'Arial, sans-serif',
+    color: 'random-dark',
+    rotateRatio: 0.1,
+    ellipticity: 0.8,
+    backgroundColor: '#f0f0f0',
+    origin: [rect.width / 2, rect.height / 2], // Use rect width/height for origin coords
+  });
+});
+
+
 </script>
 
 <template>
@@ -145,14 +217,25 @@ function editSleep(dayObj) {
                 class="form-range"
                 aria-label="Stress level slider"
               />
-              <p class="text-center fs-3 fw-bold text-warning mb-0">Moderate</p>
+              <p :class="['text-center', 'fs-3', 'fw-bold', stressColorClass, 'mb-0']">{{ stressLabel }}</p>
             </div>
             <div class="bg-light rounded p-3 mb-3 flex-grow-1">
               <h4 class="fw-semibold mb-2">Stress Factors Today:</h4>
               <div class="d-flex flex-wrap gap-2">
-                <span v-for="factor in ['Deadlines', 'Exams', 'Sleep', 'Social']" :key="factor" class="badge bg-secondary">
-                  {{ factor }}
-                </span>
+              <span
+                v-for="([factor]) in stressFactors"
+                :key="factor"
+                @click="toggleFactor(factor)"
+                :class="[
+                  'badge',
+                  'badge-custom',
+                  selectedFactors.includes(factor) ? 'bg-danger' : '',
+                  'fw-semibold'
+                ]"
+                style="user-select: none;"
+              >
+                {{ factor }}
+              </span>
               </div>
             </div>
             <button class="btn btn-secondary w-100" @click="updateStress">Update Stress Level</button>
@@ -188,8 +271,26 @@ function editSleep(dayObj) {
               <p class="text-muted mb-0">Regular breaks improve focus and reduce mental fatigue.</p>
             </div>
           </div>
+          <div class="card shadow p-4 mt-4">
+            <h3 class="mb-3">Common Stress Factors this week</h3>
+          <canvas ref="canvasRef" width="600" height="300" style="width: 100%; height: 600px;"></canvas>
+        </div>
         </div>
       </div>
     </div>
   </div>
 </template>
+
+<style scoped>
+.badge-custom {
+  background-color: #6c757d;
+  color: white;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.badge-custom:hover {
+  background-color: blue; 
+  color: white;
+}
+</style>
