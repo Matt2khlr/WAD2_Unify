@@ -1,16 +1,16 @@
 <script setup>
-import { reactive, computed } from 'vue';
+import { ref, computed } from 'vue';
 
 // Status (add functionality)
-const currentStatus = reactive({
-  stress: 'Moderate',
-  freeTime: '3 hours',
-  upcomingDeadlines: 4,
-  sleepQuality: 'Good'
+const currentStatus = ref({
+    stress: 'Moderate',
+    freeTime: '3 hours',
+    upcomingDeadlines: 4,
+    sleepQuality: 'Good'
 });
 
 // Suggestions (add functionality)
-const suggestions = reactive([
+const suggestions = ref([
     {
         title: 'Focus Study Session',
         description: 'Start a 50-minute Pomodoro on Data Structures. You have an assignment due tomorrow.',
@@ -24,7 +24,6 @@ const suggestions = reactive([
         time: 'In 10 mins',
         priority: 'medium',
         type: 'breaktime'
-
     },
     {
         title: 'Quick Workout',
@@ -44,37 +43,37 @@ const suggestions = reactive([
 
 // Status list
 const statusList = computed(() => [
-    { key: 'stress', label: 'Stress Level', value: currentStatus.stress },
-    { key: 'freeTime', label: 'Free Time Today', value: currentStatus.freeTime },
-    { key: 'deadlines', label: 'Deadlines (7 days)', value: currentStatus.upcomingDeadlines },
-    { key: 'sleep', label: 'Sleep Quality', value: currentStatus.sleepQuality }
+    { key: 'stress', label: 'Stress Level', value: currentStatus.value.stress },
+    { key: 'freeTime', label: 'Free Time Today', value: currentStatus.value.freeTime },
+    { key: 'deadlines', label: 'Deadlines (7 days)', value: currentStatus.value.upcomingDeadlines },
+    { key: 'sleep', label: 'Sleep Quality', value: currentStatus.value.sleepQuality }
 ]);
 
 // For status cards
-const priorityClasses = computed(() => ({
-        high: { badge: 'bg-danger text-white', border: 'border-danger' },
-        medium: { badge: 'bg-warning text-dark', border: 'border-warning' },
-        low: { badge: 'bg-secondary', border: 'border-secondary' },
-        default: { badge: 'bg-light text-dark', border: 'border-light' }
-}));
+const priorityClasses = {
+    high: { badge: 'bg-danger text-white', border: 'border-danger' },
+    medium: { badge: 'bg-warning text-dark', border: 'border-warning' },
+    low: { badge: 'bg-secondary', border: 'border-secondary' },
+    default: { badge: 'bg-light text-dark', border: 'border-light' }
+};
 
 // Icons
-const iconByType = computed(() => ({
-    study: '📘', 
-    breaktime: '☕', 
-    workout: '🏋️', 
-    bedtime: '🌙', 
+const iconByType = {
+    study: '📘',
+    breaktime: '☕',
+    workout: '🏋️',
+    bedtime: '🌙',
     default: '✨'
-}));
+};
 
-function getPriorityClass(priority, type) {
-  const priorityClass = priorityClasses.value[priority] || priorityClasses.value.default;
-  return priorityClass[type];
+function getPriorityClass(suggestion) {
+    const priorityClass = priorityClasses[suggestion.priority] || priorityClasses.default;
+    return { border: priorityClass.border, badge: priorityClass.badge };
 }
 
 function iconForType(type) {
-  return iconByType.value[type] || iconByType.value.default
-} 
+    return iconByType[type] || iconByType.default;
+}
 </script>
 
 <template>
@@ -100,13 +99,12 @@ function iconForType(type) {
         <!-- Suggestions list -->
         <div class="row g-3">
             <div class="col-12 col-md-6 col-lg-4" v-for="suggestion in suggestions" :key="suggestion.title">
-                <div class="card h-100 border-2" :class="getPriorityClass(suggestion.priority, 'border')">
+                <div class="card h-100 border-2" :class="getPriorityClass(suggestion).border">
                     <div class="card-body d-flex flex-column">
                         <div class="d-flex align-items-center mb-2">
                             <div class="me-2 fs-5">{{ iconForType(suggestion.type) }}</div>
                             <h6 class="mb-0">{{ suggestion.title }}</h6>
-                            <span class="badge ms-auto" :class="getPriorityClass(suggestion.priority, 'badge')">{{ suggestion.priority
-                                }}</span>
+                            <span class="badge ms-auto" :class="getPriorityClass(suggestion).badge">{{ suggestion.priority }}</span>
                         </div>
                         <p class="mb-2 text-secondary">{{ suggestion.description }}</p>
                         <div class="d-flex align-items-center">
@@ -124,7 +122,8 @@ function iconForType(type) {
                 <div class="card-body">
                     <h6>Methodology of recommendations</h6>
                     <p class="mb-2">
-                        These suggestions adapt to your schedule, stress, and daily wellness patterns to help you stay balanced and productive.
+                        These suggestions adapt to your schedule, stress, and daily wellness patterns to help you stay
+                        balanced and productive.
                     </p>
                     <ul class="mb-0">
                         <li>Considers schedule, deadlines, and wellness metrics</li>
