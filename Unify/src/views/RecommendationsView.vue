@@ -12,32 +12,32 @@ const currentStatus = ref({
 // Suggestions (add functionality)
 const suggestions = ref([
     {
-        title: 'Focus Study Session',
-        description: 'Start a 50-minute Pomodoro on Data Structures. You have an assignment due tomorrow.',
-        time: 'Now',
-        priority: 'high',
-        type: 'study'
-    },
-    {
         title: 'Take a Break',
         description: "You've been working for 2 hours. Take a 15-minute break to refresh your mind.",
         time: 'In 10 mins',
+        priority: 'high',
+        type: 'break'
+    },
+    {
+        title: 'Focus Study Session',
+        description: 'Start a 50-minute Pomodoro session on Web Development. You have an assignment due this Friday.',
+        time: '3:00 PM',
         priority: 'medium',
-        type: 'breaktime'
+        type: 'study'
     },
     {
         title: 'Quick Workout',
-        description: 'You have 1 hour of free time at 5 PM. Perfect for a gym session or home workout.',
+        description: 'You have 1 hour of free time at 5 PM. Go for a gym session or home workout to keep up with exercise.',
         time: '5:00 PM',
         priority: 'medium',
-        type: 'workout'
+        type: 'exercise'
     },
     {
         title: 'Wind Down Routine',
         description: 'Your sleep quality is good! Maintain it by starting your bedtime routine at 10 PM.',
         time: '10:00 PM',
         priority: 'low',
-        type: 'bedtime'
+        type: 'sleep'
     }
 ]);
 
@@ -53,16 +53,16 @@ const statusList = computed(() => [
 const priorityClasses = {
     high: { badge: 'bg-danger text-white', border: 'border-danger' },
     medium: { badge: 'bg-warning text-dark', border: 'border-warning' },
-    low: { badge: 'bg-secondary', border: 'border-secondary' },
+    low: { badge: 'bg-success', border: 'border-success' },
     default: { badge: 'bg-light text-dark', border: 'border-light' }
 };
 
 // Icons
-const iconByType = {
+const icons = {
     study: '📘',
-    breaktime: '☕',
-    workout: '🏋️',
-    bedtime: '🌙',
+    break: '☕',
+    exercise: '🏋️',
+    sleep: '🌙',
     default: '✨'
 };
 
@@ -72,7 +72,7 @@ function getPriorityClass(suggestion) {
 }
 
 function iconForType(type) {
-    return iconByType[type] || iconByType.default;
+    return icons[type] || icons.default;
 }
 </script>
 
@@ -126,9 +126,8 @@ function iconForType(type) {
                         balanced and productive.
                     </p>
                     <ul class="mb-0">
-                        <li>Considers schedule, deadlines, and wellness metrics</li>
-                        <li>Adapts to usage patterns and preferences</li>
-                        <li>Updates across the day as context changes</li>
+                        <li>Thoughtful suggestions that balance work and play</li>
+                        <li>Updates dynamically as schedule and wellbeing change</li>
                     </ul>
                 </div>
             </div>
