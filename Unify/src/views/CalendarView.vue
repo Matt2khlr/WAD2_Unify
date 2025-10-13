@@ -15,7 +15,16 @@
                   prepend-icon="mdi-sync"
                   variant="elevated"
                 >
-                  SYNC GOOGLE CALENDAR
+                  Sync with Google Calendar
+                </v-btn>
+                &nbsp;
+                <v-btn 
+                  color="primary" 
+                  @click="addNewEvent"
+                  prepend-icon="mdi-calendar-plus"
+                  variant="elevated"
+                >
+                  Add New Event
                 </v-btn>
               </v-card-title>
               
