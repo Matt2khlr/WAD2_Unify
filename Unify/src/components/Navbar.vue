@@ -22,7 +22,7 @@
           <li class="nav-item"><RouterLink class="nav-link" to="/study">Study</RouterLink></li>
           <li class="nav-item"><RouterLink class="nav-link" to="/nutrition">Nutrition</RouterLink></li>
           <li class="nav-item"><RouterLink class="nav-link" to="/calendar">Calendar</RouterLink></li>
-          <li class="nav-item"><RouterLink class="nav-link" to="/recommendations">AI Recs</RouterLink></li>
+          <li class="nav-item"><RouterLink class="nav-link" to="/recommendations">Recommendations</RouterLink></li>
         </ul>
       </div>
     </div>
