@@ -1,12 +1,16 @@
-import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+import { initializeApp } from 'firebase/app';
+import { getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FB_API_KEY,
-  authDomain: import.meta.env.VITE_FB_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FB_PROJECT_ID,
-  appId: import.meta.env.VITE_FB_APP_ID,
+  apiKey: "AIzaSyDyg_B2fzJsgaDO8bjyyikjVeee4AM08kI",
+  authDomain: "unify-app-wad2.firebaseapp.com",
+  projectId: "unify-app-wad2",
+  storageBucket: "unify-app-wad2.firebasestorage.app",
+  messagingSenderId: "1071880442683",
+  appId: "1:1071880442683:web:aab32153d164fd2b515d1e"
 };
 
 const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
+const db = getFirestore(app);
+
+export { db };
