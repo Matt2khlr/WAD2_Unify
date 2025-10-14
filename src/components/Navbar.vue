@@ -1,7 +1,9 @@
 <template>
   <nav class="navbar navbar-expand-lg navbar-light bg-light border-bottom">
     <div class="container">
-      <RouterLink class="navbar-brand fw-bold" to="/">Wellbeing</RouterLink>
+      <RouterLink class="navbar-brand d-flex align-items-center" to="/">
+        <img src="../assets/logo.png" class="navbar-logo" alt="Logo" />
+      </RouterLink>
 
       <button
         class="navbar-toggler"
@@ -33,4 +35,14 @@
 </script>
 
 <style scoped>
+.navbar-logo {
+  width: 50px; /* Adjust the size of the logo */
+  height: auto; /* Maintain aspect ratio */
+  max-height: 100px; /* Set a max height to keep it from getting too large */
+}
+
+.navbar-brand {
+  display: flex;
+  align-items: center; /* Vertically align logo with any text */
+}
 </style>
