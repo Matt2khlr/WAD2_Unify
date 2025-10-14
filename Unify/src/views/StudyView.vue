@@ -1,7 +1,7 @@
 <template>
 	<div class="study-app">
 		<div class="container main-container">
-			<h1 class="text-center text-white mb-4">
+			<h1 class="text-center text-black mb-4">
 				<i class="fas fa-graduation-cap"></i> Study Tools
 			</h1>
 
@@ -582,7 +582,7 @@ export default {
 
 <style scoped>
 .study-app {
-	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+	background: white;
 	min-height: 100vh;
 	font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
@@ -598,7 +598,7 @@ export default {
 }
 
 .card-header {
-	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+	background: #667eea;
 	color: white;
 	border-radius: 15px 15px 0 0 !important;
 	padding: 1.5rem;
