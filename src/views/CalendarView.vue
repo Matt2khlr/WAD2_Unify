@@ -1,477 +1,1007 @@
 <template>
-  <v-app>
-    <v-main>
-      <v-container fluid class="pa-0 fill-height">
-        <v-row no-gutters style="height: 100vh;">
-          <!-- Calendar Section -->
-          <v-col cols="12" lg="9" class="d-flex flex-column">
-            <v-card flat class="flex-grow-1 d-flex flex-column" style="height: 100%;">
-              <v-card-title class="flex-shrink-0">
-                <span class="text-h5">Calendar</span>
-                <!-- Navigation Controls -->
-                <v-btn-group>
-                  <v-btn 
-                    icon="mdi-chevron-left" 
-                    size="small"
-                    @click="prev"
-                    title="Previous Month"
-                  ></v-btn>
-                  
-                  <v-btn 
-                    size="small"
-                    @click="setToday"
-                    title="Today"
+  <div class="container-fluid h-100">
+
+    <h2 class="my-3">Calendar</h2>
+    <div class="row h-100">
+
+      <!-- Calendar Section -->
+      <!-- <div class="col-lg-9 d-flex flex-column">
+        <div class="card h-100">
+          <div class="card-header">
+            <div class="d-flex align-items-center"> -->
+              
+              <!-- Navigation -->
+              <!-- <div class="btn-group ms-3">
+                <button class="btn btn-sm btn-outline-secondary" @click="prev">
+                  <i class="mdi mdi-chevron-left"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-secondary" @click="setToday">
+                  Today
+                </button>
+                <button class="btn btn-sm btn-outline-secondary" @click="next">
+                  <i class="mdi mdi-chevron-right"></i>
+                </button>
+              </div>
+              
+              <span class="ms-3 text-muted">{{ currentMonthYear }}</span>
+              
+              <div class="ms-auto d-flex align-items-center"> -->
+                <!-- Google Calendar Sync Toggle -->
+                <!-- <div class="form-check form-switch me-3">
+                  <input 
+                    class="form-check-input" 
+                    type="checkbox" 
+                    id="googleSync"
+                    v-model="syncEnabled"
+                    @change="toggleSync"
                   >
-                    Today
-                  </v-btn>
-                  
-                  <v-btn 
-                    icon="mdi-chevron-right" 
-                    size="small"
-                    @click="next"
-                    title="Next Month"
-                  ></v-btn>
-                </v-btn-group>
-                <span class="text-grey">{{ currentMonthYear }}</span>
+                  <label class="form-check-label" for="googleSync">
+                    <i class="mdi mdi-google"></i> Sync with Google
+                  </label>
+                </div> -->
                 
-
-                <!-- Buttons -->
-                <v-spacer></v-spacer>
-                <v-btn 
-                  color="primary" 
-                  @click="syncWithGoogleCalendar"
-                  prepend-icon="mdi-sync"
-                  variant="elevated"
+                <!-- Add Event Button -->
+                <!-- <button class="btn btn-primary" @click="openAddDialog">
+                  <i class="mdi mdi-calendar-plus"></i> Add Event
+                </button>
+              </div>
+            </div>
+          </div> -->
+          
+          <!-- <div class="card-body p-2">
+            <v-calendar
+              ref="calendar"
+              v-model="focus"
+              :events="allEvents"
+              type="month"
+              @click:date="openAddDialog"
+              style="height: 100%;"
+            >
+              <template v-slot:event="{ event }">
+                <div 
+                  @click.stop="showEventDetails(event)"
+                  class="event-item"
+                  :style="{ backgroundColor: event.color }"
                 >
-                  Sync with Google Calendar
-                </v-btn>
-                &nbsp;
-                <v-btn 
-                  color="primary" 
-                  @click="addNewEvent"
-                  prepend-icon="mdi-calendar-plus"
-                  variant="elevated"
+                  <strong>{{ event.name }}</strong>
+                  <i v-if="event.location" class="mdi mdi-map-marker"></i>
+                </div>
+              </template>
+            </v-calendar>
+          </div>
+        </div>
+      </div> -->
+
+      <!-- Calendar Section -->
+      <div class="col-lg-9 d-flex flex-column">
+        <div class="card h-100 shadow">
+          <div class="card-header">
+            <div class="d-flex align-items-center">
+              
+              <!-- View Type Selector -->
+              <div class="btn-group me-3">
+                <button 
+                  class="btn btn-sm"
+                  :class="calendarView === 'day' ? 'btn-primary' : 'btn-outline-primary'"
+                  @click="calendarView = 'day'"
                 >
-                  Add New Event
-                </v-btn>
-              </v-card-title>
-
-              <v-card-text class="flex-grow-1 pa-2" style="height: 100%;">
-                <v-sheet height="100%" class="d-flex flex-column">
-                  <v-calendar
-                    ref="calendar"
-                    v-model="focus"
-                    :events="allEvents"
-                    type="month"
-                    @click:date="addNewEvent"
-                    @change="updateRange"
-                    style="height: 100%;"
+                  Day
+                </button>
+                <button 
+                  class="btn btn-sm"
+                  :class="calendarView === 'week' ? 'btn-primary' : 'btn-outline-primary'"
+                  @click="calendarView = 'week'"
+                >
+                  Week
+                </button>
+                <button 
+                  class="btn btn-sm"
+                  :class="calendarView === 'month' ? 'btn-primary' : 'btn-outline-primary'"
+                  @click="calendarView = 'month'"
+                >
+                  Month
+                </button>
+              </div>
+              
+              <!-- Navigation -->
+              <div class="btn-group">
+                <button class="btn btn-sm btn-outline-secondary" @click="prev">
+                  <i class="mdi mdi-chevron-left"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-secondary" @click="setToday">
+                  Today
+                </button>
+                <button class="btn btn-sm btn-outline-secondary" @click="next">
+                  <i class="mdi mdi-chevron-right"></i>
+                </button>
+              </div>
+              
+              <span class="ms-3 text-muted">{{ currentPeriod }}</span>
+              
+              <div class="ms-auto d-flex align-items-center">
+                <!-- Google Calendar Sync Toggle -->
+                <div class="form-check form-switch me-3">
+                  <input 
+                    class="form-check-input" 
+                    type="checkbox" 
+                    id="googleSync"
+                    v-model="syncEnabled"
+                    @change="toggleSync"
                   >
-                    <template v-slot:event="{ event }">
-                      <div 
-                        @click.stop="showEventDetails(event)"
-                        class="event-item"
-                        :style="{ backgroundColor: event.color || event.colour }"
-                      >
-                        <strong>{{ event.title || event.name }}</strong>
-                        <v-icon 
-                          v-if="event.location" 
-                          size="x-small" 
-                          class="ml-1"
-                        >
-                          mdi-map-marker
-                        </v-icon>
-                      </div>
-                    </template>
-                  </v-calendar>
-                </v-sheet>
-              </v-card-text>
-            </v-card>
-          </v-col>
-
-          <!-- Event List Section -->
-          <v-col cols="12" lg="3" class="d-flex flex-column border-s">
-            <v-card flat class="flex-grow-1 d-flex flex-column" style="height: 100vh;">
-              <v-card-title class="text-h6 flex-shrink-0">
-                Upcoming Events
-              </v-card-title>
-              <v-divider></v-divider>
-              
-              <v-card-text class="flex-grow-1 pa-0" style="overflow-y: auto;">
-                <v-list lines="two">
-                  <template v-if="sortedEventList.length === 0">
-                    <v-list-item>
-                      <v-list-item-title class="text-center text-grey">
-                        No upcoming events
-                      </v-list-item-title>
-                    </v-list-item>
-                  </template>
-                  
-                  <v-list-item
-                    v-for="event in sortedEventList"
-                    :key="event.id"
-                    @click="showEventDetails(event)"
-                    class="border-b"
-                  >
-                    <template v-slot:prepend>
-                      <v-avatar 
-                        :color="event.colour || event.color" 
-                        size="12"
-                      ></v-avatar>
-                    </template>
-                    <v-list-item-title>
-                      {{ event.name }}
-                      <v-icon 
-                        v-if="event.location" 
-                        size="small" 
-                        class="ml-1"
-                        @click="openGoogleMaps"
-                      >
-                        mdi-map-marker
-                      </v-icon>
-                    </v-list-item-title>
-                    <v-list-item-subtitle>
-                      {{ formatDateTime(event.start) }}
-                    </v-list-item-subtitle>
-                  </v-list-item>
-                </v-list>
-              </v-card-text>
-            </v-card>
-          </v-col>
-        </v-row>
-
-        <!-- Event CRUD Dialog -->
-        <v-dialog v-model="dialog" max-width="700px">
-          <v-card>
-            <v-card-title>
-              {{ editMode ? 'Edit Event' : 'Create Event' }}
-            </v-card-title>
-            <v-card-text>
-              <v-text-field 
-                v-model="currentEvent.name" 
-                label="Event Name"
-                variant="outlined"
-                class="mb-3"
-              ></v-text-field>
-              
-              <v-textarea 
-                v-model="currentEvent.description" 
-                label="Description"
-                variant="outlined"
-                rows="3"
-                class="mb-3"
-              ></v-textarea>
-              
-              <v-text-field 
-                v-model="currentEvent.start" 
-                type="datetime-local" 
-                label="Start"
-                variant="outlined"
-                class="mb-3"
-              ></v-text-field>
-              
-              <v-text-field 
-                v-model="currentEvent.end" 
-                type="datetime-local" 
-                label="End"
-                variant="outlined"
-                class="mb-3"
-              ></v-text-field>
-
-               <!-- Location Field with PlaceAutocompleteElement -->
-                <div class="mb-3">
-                  <label class="text-subtitle-2 mb-2 d-block">Location</label>
-                  <div class="d-flex align-center gap-2">
-                    <div class="flex-grow-1" ref="placeAutocompleteContainer">
-                    </div>
-                    
-                    <v-btn
-                      v-if="currentEvent.location"
-                      icon="mdi-map-marker"
-                      size="small"
-                      color="primary"
-                      @click="openGoogleMaps"
-                      title="View on Google Maps"
-                    >
-                    </v-btn>
+                  <label class="form-check-label" for="googleSync">
+                    <i class="mdi mdi-google"></i> Sync with Google
+                  </label>
+                </div>
+                
+                <!-- Add Event Button -->
+                <button class="btn btn-primary" @click="openAddDialog">
+                  <i class="mdi mdi-calendar-plus"></i> Add Event
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          <div class="card-body p-2">
+            <v-calendar
+              ref="calendar"
+              v-model="focus"
+              :events="allEvents"
+              :type="calendarView"
+              style="height: 100%;"
+            >
+            <template v-slot:event="{ event, timed }">
+                <div 
+                  @click.stop="showEventDetails(event)"
+                  @mousedown.stop
+                  @touchstart.stop
+                  class="event-item"
+                  :class="{ 'event-timed': timed }"
+                  :style="{ backgroundColor: event.color, padding: '0px 5px' }"
+                >
+                  <!-- <strong v-if="calendarView === 'month'">{{ formatTime(event.start) }} &nbsp; {{ event.name }}</strong> -->
+                  <div v-if="calendarView === 'month'">{{ formatTime(event.start) }} &nbsp;
+                    <strong>{{ event.name }}</strong>
                   </div>
-                  <div v-if="currentEvent.location" class="text-caption text-grey mt-1">
-                    📍 {{ currentEvent.locationName }}
-                  </div>
-                  <div v-if="currentEvent.location" class="text-caption text-grey">
-                    {{ currentEvent.location.latitude.toFixed(6) }}, 
-                    {{ currentEvent.location.longitude.toFixed(6) }}
+                  <strong v-if="(calendarView === 'week' || calendarView === 'day')">{{ event.name }}</strong>
+                  <!--<i v-if="event.location" class="mdi mdi-map-marker"></i>-->
+                  <div v-if="timed && (calendarView === 'week' || calendarView === 'day')" class="text-xs">
+                    {{ formatTime(event.start) }} - {{ formatTime(event.end) }}
                   </div>
                 </div>
+              </template>
+            </v-calendar>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Event List -->
+      <div class="col-lg-3">
+        <div class="card h-100">
+          <div class="card-header">
+            <h6>Upcoming Events</h6>
+          </div>
+          <div class="card-body p-0" style="overflow-y: auto;">
+            <div class="list-group list-group-flush">
+              <div v-if="sortedEvents.length === 0" class="list-group-item text-center text-muted">
+                No Upcoming Events
+              </div>
               
-              <v-color-picker 
-                v-model="currentEvent.colour"
-                mode="hex"
-                class="mb-3"
-              ></v-color-picker>
-            </v-card-text>
+              <a 
+                v-for="event in sortedEvents" 
+                :key="event.id"
+                href="#"
+                class="list-group-item list-group-item-action"
+                @click.prevent="showEventDetails(event)"
+              >
+                <div class="d-flex w-100 justify-content-between">
+                  <div>
+                    <span 
+                      class="badge me-2" 
+                      :style="{ backgroundColor: event.colour }"
+                    ></span>
+                    <strong>{{ event.name }}</strong>
+                    <i 
+                      v-if="event.location" 
+                      class="mdi mdi-map-marker text-primary"
+                      @click.stop="openMap(event)"
+                    ></i>
+                  </div>
+                  <span 
+                    class="badge"
+                    :class="{
+                      'bg-danger': event.priority === 'High',
+                      'bg-warning': event.priority === 'Medium',
+                      'bg-success': event.priority === 'Low'
+                    }"
+                  >
+                    {{ event.priority }}
+                  </span>
+                </div>
+                <small class="text-muted">{{ formatDateTime(event.start) }}</small>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Event Dialog -->
+    <div 
+      class="modal fade" 
+      :class="{ show: createDialog, 'd-block': createDialog }"
+      tabindex="-1"
+      style="background-color: rgba(0,0,0,0.5);"
+    >
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Create Event</h5>
+            <button type="button" class="btn-close" @click="closeCreateDialog"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <label class="form-label">Event Name</label>
+              <input 
+                type="text" 
+                class="form-control" 
+                v-model="currentEvent.name"
+              >
+            </div>
             
-            <v-card-actions>
-              <v-btn 
-                v-if="editMode" 
-                color="error" 
-                @click="deleteEvent"
-                variant="elevated"
+            <div class="mb-3">
+              <label class="form-label">Description</label>
+              <textarea 
+                class="form-control" 
+                rows="3"
+                v-model="currentEvent.description"
+              ></textarea>
+            </div>
+            
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Start</label>
+                <input 
+                  type="datetime-local" 
+                  class="form-control"
+                  v-model="currentEvent.start"
+                >
+              </div>
+              
+              <div class="col-md-6 mb-3">
+                <label class="form-label">End</label>
+                <input 
+                  type="datetime-local" 
+                  class="form-control"
+                  v-model="currentEvent.end"
+                >
+              </div>
+            </div>
+            
+            <div class="mb-3">
+              <label class="form-label">Priority</label>
+              <select class="form-select" v-model="currentEvent.priority">
+                <option value="High">High</option>
+                <option value="Medium">Medium</option>
+                <option value="Low">Low</option>
+              </select>
+            </div>
+            
+            <div class="mb-3">
+              <label class="form-label">Event Location</label>
+              <div class="d-flex gap-2">
+                <div class="flex-grow-1">
+                  <input 
+                    v-if="currentEvent.locationName"
+                    type="text"
+                    class="form-control"
+                    v-model="currentEvent.locationName"
+                    @click="clearAndShowAutocomplete"
+                    readonly
+                  >
+                  <div v-else ref="placeAutocompleteContainer" class="form-control-wrapper"></div>
+                </div>
+                <button 
+                  v-if="currentEvent.locationName"
+                  class="btn btn-outline-secondary"
+                  @click="clearLocation"
+                  title="Clear location"
+                >
+                  <i class="mdi mdi-close"></i>
+                </button>
+              </div>
+            </div>
+            
+            <div class="mb-3">
+              <label class="form-label">Color</label>
+              <input 
+                type="color" 
+                class="form-control form-control-color"
+                v-model="currentEvent.colour"
               >
-                Delete
-              </v-btn>
-              <v-spacer></v-spacer>
-              <v-btn @click="dialog = false" variant="text">
-                Cancel
-              </v-btn>
-              <v-btn 
-                color="primary" 
-                @click="saveEvent"
-                variant="elevated"
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" @click="closeCreateDialog">Cancel</button>
+            <button class="btn btn-primary" @click="saveEvent">Create</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add Event Dialog -->
+    <!-- <div 
+      class="modal fade" 
+      :class="{ show: createDialog, 'd-block': createDialog }"
+      tabindex="-1"
+    >
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Create Event</h5>
+            <button type="button" class="btn-close" @click="closeCreateDialog"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <label class="form-label">Event Name</label>
+              <input 
+                type="text" 
+                class="form-control" 
+                v-model="currentEvent.name"
               >
-                {{ editMode ? 'Update' : 'Create' }}
-              </v-btn>
-            </v-card-actions>
-          </v-card>
-        </v-dialog>
-      </v-container>
-    </v-main>
-  </v-app>
+            </div>
+            
+            <div class="mb-3">
+              <label class="form-label">Event Description</label>
+              <textarea 
+                class="form-control" 
+                rows="3"
+                v-model="currentEvent.description"
+              ></textarea>
+            </div>
+            
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Event Start</label>
+                <input 
+                  type="datetime-local" 
+                  class="form-control"
+                  v-model="currentEvent.start"
+                >
+              </div>
+              
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Event End</label>
+                <input 
+                  type="datetime-local" 
+                  class="form-control"
+                  v-model="currentEvent.end"
+                >
+              </div>
+            </div>
+            
+            <div class="mb-3">
+              <label class="form-label">Event Priority</label>
+              <select class="form-select" v-model="currentEvent.priority">
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
+              </select>
+            </div>
+            
+            <div class="mb-3">
+              <label class="form-label">Event Location</label>
+              <div class="d-flex gap-2">
+                <div class="flex-grow-1" ref="placeAutocompleteContainer"></div>
+              </div>
+            </div>
+            
+            <div class="mb-3">
+              <label class="form-label">Event Colour</label>
+              <input 
+                type="color" 
+                class="form-control form-control-color"
+                v-model="currentEvent.colour"
+              >
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button class="btn btn-secondary" @click="closeCreateDialog">Cancel</button>
+            <button class="btn btn-primary" @click="saveEvent">Create</button>
+          </div>
+        </div>
+      </div>
+    </div> -->
+    
+    <!-- Event Dialog -->
+    <div 
+      class="modal fade" 
+      :class="{ show: eventDialog, 'd-block': eventDialog }"
+      tabindex="-1"
+      style="background-color: rgba(0,0,0,0.5);"
+    >
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">{{ editMode ? 'Update Event' : 'Event Details' }}</h5>
+            <button type="button" class="btn-close" @click="closeEventDialog"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <label class="form-label">Event Name</label>
+              <input
+                :disabled="!editMode" 
+                type="text" 
+                class="form-control" 
+                v-model="currentEvent.name"
+              >
+            </div>
+            
+            <div class="mb-3">
+              <label class="form-label">Event Description</label>
+              <textarea 
+                :disabled="!editMode" 
+                class="form-control" 
+                rows="3"
+                v-model="currentEvent.description"
+              ></textarea>
+            </div>
+            
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Event Start</label>
+                <input 
+                  :disabled="!editMode" 
+                  type="datetime-local" 
+                  class="form-control"
+                  v-model="currentEvent.start"
+                >
+              </div>
+              
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Event End</label>
+                <input 
+                  :disabled="!editMode" 
+                  type="datetime-local" 
+                  class="form-control"
+                  v-model="currentEvent.end"
+                >
+              </div>
+            </div>
+            
+            <div class="mb-3" v-if="!editMode">
+              <label class="form-label">Event Priority</label>
+              <input 
+                  :disabled="!editMode" 
+                  type="text" 
+                  class="form-control"
+                  v-model="currentEvent.priority"
+              >
+            </div>
+
+            <div class="mb-3" v-if="editMode">
+              <label class="form-label">Event Priority</label>
+              <select class="form-select" v-model="currentEvent.priority">
+                <option value="High">High</option>
+                <option value="Medium">Medium</option>
+                <option value="Low">Low</option>
+              </select>
+            </div>
+            
+            <div class="mb-3">
+              <label class="form-label">Event Location</label>
+              <div class="d-flex gap-2" v-if="editMode">
+                <div class="flex-grow-1">
+                  <input 
+                    v-if="currentEvent.locationName"
+                    type="text"
+                    class="form-control"
+                    v-model="currentEvent.locationName"
+                    @click="clearAndShowAutocomplete"
+                    readonly
+                  >
+                  <div v-else ref="placeAutocompleteContainer"></div>
+                </div>
+                <button 
+                  v-if="currentEvent.locationName"
+                  class="btn btn-outline-secondary"
+                  @click="clearLocation"
+                  title="Clear location"
+                >
+                  <i class="mdi mdi-close"></i>
+                </button>
+              </div>
+              <div v-if="!editMode">
+                <div v-if="currentEvent.location" class="text">
+                  📍 {{ currentEvent.locationName }}&nbsp;&nbsp;
+                  <button
+                    class="btn btn-primary"
+                    @click="openMap(currentEvent)"
+                  >
+                    <i class="mdi mdi-map-marker"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+            
+            <div class="mb-3" v-if="editMode">
+              <label class="form-label">Event Colour</label>
+              <input 
+                :disabled="!editMode"
+                type="color" 
+                class="form-control form-control-color"
+                v-model="currentEvent.colour"
+              >
+            </div>
+
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-danger" @click="deleteEvent">Delete</button>
+            <button class="btn btn-primary" @click="switchToUpdateMode" v-if="!editMode">Update</button>
+            <button class="btn btn-primary" @click="saveEvent" v-if="editMode">Save</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
 </template>
 
 <script>
-import { collection, addDoc, updateDoc, deleteDoc, doc, query, where, onSnapshot, GeoPoint } from 'firebase/firestore'
-import { db } from '@/firebase'
+import { collection, addDoc, updateDoc, deleteDoc, doc, setDoc, query, where, onSnapshot, GeoPoint } from 'firebase/firestore';
+import { db, auth } from '@/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
+import { useRouter } from 'vue-router';
 
 export default {
   data() {
     return {
       focus: new Date(),
-      dialog: false,
+      calendarView: 'month',
+      createDialog: false,
+      eventDialog: false,
       editMode: false,
-      firestoreEvents: [],
-      googleEvents: [],
+      events: [],
       currentEvent: {
         id: null,
         name: '',
         description: '',
         start: '',
         end: '',
-        colour: '#1976D2',
+        colour: '#FF7A17',
+        priority: 'Low',
         location: null,
         locationName: '',
-        source: null,
-        googleEventId: null
+        source: 'firestore'
       },
+      //userId: auth.currentUser?.uid || 'u1',
       userId: 'u1',
-      tokenClient: null,
+      syncEnabled: false,
       accessToken: null,
+      syncInterval: null,
       placeAutocomplete: null,
+      showAutocomplete: false
     }
   },
 
+  // setup() {
+  //   const router = useRouter()
+  //   return { router }
+  // },
+
   computed: {
+    // allEvents() {
+    //   return this.events.map(event => ({
+    //     ...event,
+    //     title: event.name,
+    //     color: event.colour
+    //   }))
+    // },
+
     allEvents() {
-      const merged = [...this.firestoreEvents, ...this.googleEvents]
-      const unique = this.removeDuplicates(merged)
-      
-      return unique.map(event => ({
-        ...event,
-        title: event.name,
-        color: event.colour
-      }))
-    },
-
-    sortedEventList() {
-      return this.allEvents
-        .sort((a, b) => new Date(a.start) - new Date(b.start))
-        .filter(e => new Date(e.start) >= new Date())
-    },
-
-    currentMonthYear() {
-      return new Date(this.focus).toLocaleDateString('en-US', {
-        month: 'long',
-        year: 'numeric'
+      return this.events.map(event => {
+        // Convert dates to proper format
+        const start = new Date(event.start)
+        const end = new Date(event.end)
+        
+        return {
+          ...event,
+          name: event.name,
+          start: start, // Keep as Date object
+          end: end,     // Keep as Date object
+          title: event.name,
+          color: event.colour,
+          timed: true   // IMPORTANT: This tells Vuetify the event has a specific time
+        }
       })
     },
 
+    sortedEvents() {
+      const now = new Date()
+      const priorityOrder = { 'high': 1, 'medium': 2, 'low': 3 }
+      
+      return this.events
+        .filter(event => new Date(event.start) >= now)
+        .sort((a, b) => {
+          // Sort Event Date
+          const dateCompare = new Date(a.start) - new Date(b.start);
+          if (dateCompare !== 0) {
+            return dateCompare;
+          };
+
+          // Sort Event Priority Level
+          return priorityOrder[a.priority] - priorityOrder[b.priority];
+        })
+    },
+
+    // currentMonthYear() {
+    //   return new Date(this.focus).toLocaleDateString('en-UK', {
+    //     month: 'long',
+    //     year: 'numeric'
+    //   })
+    // }
+        // NEW: Dynamic period display based on view type
+
+    currentPeriod() {
+      const date = new Date(this.focus)
+      
+      if (this.calendarView === 'day') {
+        return date.toLocaleDateString('en-UK', {
+          weekday: 'long',
+          month: 'long',
+          day: 'numeric',
+          year: 'numeric'
+        })
+      } else if (this.calendarView === 'week') {
+        // Calculate week start and end
+        const weekStart = new Date(date)
+        weekStart.setDate(date.getDate() - date.getDay())
+        
+        const weekEnd = new Date(weekStart)
+        weekEnd.setDate(weekStart.getDate() + 6)
+        
+        return `${weekStart.toLocaleDateString('en-UK', { month: 'short', day: 'numeric' })} - ${weekEnd.toLocaleDateString('en-UK', { month: 'short', day: 'numeric', year: 'numeric' })}`
+      } else {
+        return date.toLocaleDateString('en-UK', {
+          month: 'long',
+          year: 'numeric'
+        })
+      }
+    }
   },
 
   methods: {
+    // // Navigate to Today
+    // setToday() {
+    //   this.focus = new Date();
+    // },
+
+    // // Navigate to Previous Month
+    // prev() {
+    //   const date = new Date(this.focus);
+    //   date.setMonth(date.getMonth() - 1);
+    //   this.focus = date;
+    // },
+
+    // // Navigate to Following Month
+    // next() {
+    //   const date = new Date(this.focus);
+    //   date.setMonth(date.getMonth() + 1);
+    //   this.focus = date;
+    // },
+
+    // Navigate to Today
     setToday() {
       this.focus = new Date()
-      console.log('Calendar reset to today:', this.focus)
     },
 
-    // Navigate to previous month
+    // Navigate to Previous Period
     prev() {
-      const currentDate = new Date(this.focus)
-      currentDate.setMonth(currentDate.getMonth() - 1)
-      this.focus = currentDate
-      console.log('Navigated to previous month:', this.focus)
+      const date = new Date(this.focus)
+      
+      if (this.calendarView === 'day') {
+        date.setDate(date.getDate() - 1)
+      } else if (this.calendarView === 'week') {
+        date.setDate(date.getDate() - 7)
+      } else {
+        date.setMonth(date.getMonth() - 1)
+      }
+      
+      this.focus = date
     },
 
-    // Navigate to next month
+    // Navigate to Next Period
     next() {
-      const currentDate = new Date(this.focus)
-      currentDate.setMonth(currentDate.getMonth() + 1)
-      this.focus = currentDate
-      console.log('Navigated to next month:', this.focus)
+      const date = new Date(this.focus)
+      
+      if (this.calendarView === 'day') {
+        date.setDate(date.getDate() + 1)
+      } else if (this.calendarView === 'week') {
+        date.setDate(date.getDate() + 7)
+      } else {
+        date.setMonth(date.getMonth() + 1)
+      }
+      
+      this.focus = date
     },
 
-    // Initialise PlaceAutocompleteElement
-    async initPlacesAutocomplete() {
-      try {
-        // Wait for Google Maps to load
-        if (!window.google || !window.google.maps) {
-          console.log('Waiting for Google Maps to load...')
-          setTimeout(() => this.initPlacesAutocomplete(), 500)
-          return
-        }
+    // Google Calendar Toggle Handler
+    async toggleSync() {
+      if (this.syncEnabled) {
+        // Turn On Sync
+        await this.connectGoogle();
+      } else {
+        // Turn Off Sync
+        this.disconnectGoogle();
+      }
+    },
 
-        // Load Places library
-        const { PlaceAutocompleteElement } = await google.maps.importLibrary("places")
-        
-        // Clear existing autocomplete if any
-        if (this.placeAutocomplete) {
-          this.placeAutocomplete.remove()
-        }
+    // Connect to Google Account Login
+    async connectGoogle() {
+      if (!window.gapi || !window.google) {
+        alert('Error Connecting to Google Account Login. Please Try Again.');
+        this.syncEnabled = false;
+        return;
+      }
 
-        // Create new PlaceAutocompleteElement
-        this.placeAutocomplete = new PlaceAutocompleteElement()
+      // Check for Saved Google Account Token
+      const savedToken = sessionStorage.getItem('google_token')
+      if (savedToken) {
+        this.accessToken = savedToken;
+        await this.syncWithGoogle();
+        this.startAutoSync();
+        return;
+      }
 
-        // Append to container
-        const container = this.$refs.placeAutocompleteContainer
-        if (container) {
-          container.innerText = '' // Clear container
-          container.appendChild(this.placeAutocomplete)
-        }
-
-        this.placeAutocomplete.addEventListener('gmp-select', async (event) => {
-          console.log('Place selected event fired:', event)
-          
-          const { placePrediction } = event
-          
-          if (!placePrediction) {
-            console.error('No placePrediction in event')
+      // Generate New Google Account Token
+      const tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: '1071880442683-199adq7lhl4k4i867qffge4gfb9ca6a8.apps.googleusercontent.com',
+        scope: 'https://www.googleapis.com/auth/calendar',
+        callback: async (response) => {
+          if (response.error) {
+            console.log(response.error);
+            this.syncEnabled = false;
             return
           }
-
-          // Convert to Place object and fetch details
-          const place = placePrediction.toPlace()
           
-          await place.fetchFields({
-            fields: ['displayName', 'formattedAddress', 'location']
-          })
+          this.accessToken = response.access_token;
+          sessionStorage.setItem('google_token', this.accessToken);
+          
+          await this.syncWithGoogle();
+          this.startAutoSync();
+        }
+      })
+      
+      tokenClient.requestAccessToken()
+    },
 
-          console.log('Place details:', {
-            displayName: place.displayName,
-            formattedAddress: place.formattedAddress,
-            location: place.location
-          })
+    // Disconnect from Google Calendar
+    disconnectGoogle() {
+      if (this.syncInterval) {
+        clearInterval(this.syncInterval);
+      }
+      
+      sessionStorage.removeItem('google_token')
+      this.accessToken = null;
+      
+      // Remove Google Events
+      this.events = this.events.filter(event => event.source === 'firestore');
+    },
 
-          // Extract location data
-          if (place.location) {
-            const lat = place.location.lat()
-            const lng = place.location.lng()
-            
-            // Create GeoPoint
-            this.currentEvent.location = new GeoPoint(lat, lng)
-            this.currentEvent.locationName = place.formattedAddress || place.displayName
-            
-            console.log('Location saved to currentEvent:', {
-              name: this.currentEvent.locationName,
-              lat,
-              lng,
-              geopoint: this.currentEvent.location
-            })
+    // Auto Sync with Google Calendar (Every 2 Minutes)
+    startAutoSync() {
+      if (this.syncInterval) {
+        clearInterval(this.syncInterval);
+      }
+      
+      this.syncInterval = setInterval(() => {
+        this.syncWithGoogle()
+      }, 2 * 60 * 1000)
+    },
 
-            // Force Vue to update
-            this.$forceUpdate()
-          }
+    // Sync with Google Calendar
+    async syncWithGoogle() {
+      try {
+        // Pull from Google Calendar
+        const response = await gapi.client.calendar.events.list({
+          calendarId: 'primary',
+          timeMin: new Date().toISOString(),
+          showDeleted: false,
+          singleEvents: true,
+          maxResults: 100,
+          orderBy: 'startTime'
         })
 
-        console.log('PlaceAutocompleteElement initialised successfully')
+        const googleEvents = response.result.items || [];
+
+        // Add/Update in Firestore (Using Event ID as Document ID)
+        for (const item of googleEvents) {
+          const eventId = item.id;
+          
+          let location = null;
+          let locationName = '';
+          if (item.location) {
+            const parsed = await this.geocodeLocation(item.location)
+            if (parsed) {
+              location = parsed.geopoint;
+              locationName = parsed.name;
+            } else {
+              locationName = item.location;
+            }
+          }
+
+          const eventData = {
+            userId: this.userId,
+            name: item.summary || 'Untitled Event',
+            description: item.description || 'No Description Available',
+            start: new Date(item.start.dateTime || item.start.date),
+            end: new Date(item.end.dateTime || item.end.date),
+            colour: '#9FE1E7',
+            priority: 'Low',
+            location: location,
+            locationName: locationName,
+            source: 'google'
+          }
+
+          await setDoc(doc(db, 'events', eventId), eventData)
+        }
+
+        // Push Cloud Firestore Events to Google Calendar
+        const firestoreOnly = this.events.filter(event => event.source === 'firestore')
+        
+        for (const event of firestoreOnly) {
+          try {
+            const resource = {
+              id: event.id,
+              summary: event.name,
+              description: event.description,
+              start: {
+                dateTime: event.start.toISOString(),
+                timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
+              },
+              end: {
+                dateTime: event.end.toISOString(),
+                timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
+              }
+            }
+
+            if (event.locationName) {
+              resource.location = event.locationName
+            }
+
+            await gapi.client.calendar.events.insert({
+              calendarId: 'primary',
+              resource: resource
+            })
+          } catch (err) {
+            console.log('Error Adding to Google Calendar:', err)
+          }
+        }
       } catch (error) {
-        console.error('Error initialising PlaceAutocompleteElement:', error)
+        console.error('Synchronisation Error:', error)
       }
     },
 
-    // Open Google Maps with the location
-    openGoogleMaps() {
-      if (!this.currentEvent.location) {
-        console.log('No location to open in maps')
-        return
+    // Convert Location to Geopoint
+    async geocodeLocation(address) {
+      try {
+        const { Geocoder } = await google.maps.importLibrary("geocoding")
+        const geocoder = new Geocoder()
+        
+        return new Promise((resolve) => {
+          geocoder.geocode({ address: address }, (results, status) => {
+            if (status === 'OK' && results[0]) {
+              const loc = results[0].geometry.location
+              resolve({
+                geopoint: new GeoPoint(loc.lat(), loc.lng()),
+                name: results[0].formatted_address
+              })
+            } else {
+              resolve(null)
+            }
+          })
+        })
+      } catch (err) {
+        return null
       }
-      
-      const { latitude, longitude } = this.currentEvent.location
-      const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`
-      window.open(mapsUrl, '_blank')
     },
 
-    // Show event details for editing
-    showEventDetails(event) {
-      if (!event || !event.id) {
-        console.error('Invalid event:', event)
-        return
-      }
+    // Open Add Event Dialog
+    openAddDialog(data) {
 
-      console.log('Showing event details:', event)
-
-      this.editMode = true
-      this.currentEvent = {
-        id: event.id,
-        name: event.name || event.title,
-        description: event.description || '',
-        start: this.formatDateTimeInput(event.start),
-        end: this.formatDateTimeInput(event.end),
-        colour: event.colour || event.color || '#1976D2',
-        location: event.location || null,
-        locationName: event.locationName || '',
-        source: event.source,
-        googleEventId: event.googleEventId || null
-      }
-
-      console.log('Current event location:', this.currentEvent.location)
-      
-      this.dialog = true
-      
-      // Initialize autocomplete after dialog opens
-      this.$nextTick(() => {
-        this.initPlacesAutocomplete()
-      })
-    },
-
-    // Add new event from date click
-    addNewEvent(data) {
-      const date = data.date || data
+      const date = new Date().toISOString().split('T')[0]
       
       this.editMode = false
-      this.resetForm()
-      this.currentEvent.start = `${date}T09:00`
-      this.currentEvent.end = `${date}T10:00`
-      this.dialog = true
+      this.currentEvent = {
+        id: null,
+        name: '',
+        description: '',
+        start: `${date}T09:00`,
+        end: `${date}T10:00`,
+        colour: '#FF7A17',
+        priority: 'Low',
+        location: null,
+        locationName: null,
+        source: 'firestore'
+      }
+      this.createDialog = true
       
-      // Initialize autocomplete after dialog opens
       this.$nextTick(() => {
-        this.initPlacesAutocomplete()
+        this.setupPlacesAutocomplete();
       })
     },
 
-    // Close dialog and cleanup
-    closeDialog() {
-      this.dialog = false
-      // Clean up the autocomplete element
+    // Show Events Details in Event Dialog
+    // showEventDetails(event) {
+    //   this.currentEvent = {
+    //     id: event.id,
+    //     name: event.name,
+    //     description: event.description,
+    //     start: this.formatForInput(event.start),
+    //     end: this.formatForInput(event.end),
+    //     colour: event.colour,
+    //     priority: event.priority || 'low',
+    //     location: event.location,
+    //     locationName: event.locationName,
+    //     source: event.source
+    //   }
+    //   this.eventDialog = true;
+    // },
+
+    // Show Events Details in Event Dialog
+    showEventDetails(event) {
+      const fullEvent = this.events.find(e => e.id === event.id)
+      
+      if (!fullEvent) {
+        console.error('Event not found:', event.id)
+        return
+      }
+      
+      this.currentEvent = {
+        id: fullEvent.id,
+        name: fullEvent.name,
+        description: fullEvent.description,
+        start: this.formatForInput(fullEvent.start),
+        end: this.formatForInput(fullEvent.end),
+        colour: fullEvent.colour,
+        priority: fullEvent.priority || 'Low',
+        location: fullEvent.location,
+        locationName: fullEvent.locationName,
+        source: fullEvent.source
+      }
+      
+      this.eventDialog = true
+    },
+
+    // Switch to Update Mode in Event Dialog
+    switchToUpdateMode() {
+      this.editMode = true;
+      this.$nextTick(() => {
+        this.setupPlacesAutocomplete()
+      })
+    },
+
+    // Close Create Dialog
+    closeCreateDialog() {
+      this.createDialog = false;
       if (this.placeAutocomplete) {
-        this.placeAutocomplete.remove()
-        this.placeAutocomplete = null
+        this.placeAutocomplete.remove();
+        this.placeAutocomplete = null;
       }
     },
 
-    // Save event with location data
+    // Close Event Dialog
+    closeEventDialog() {
+      this.eventDialog = false;
+      this.editMode = false;
+      if (this.placeAutocomplete) {
+        this.placeAutocomplete.remove();
+        this.placeAutocomplete = null;
+      }
+    },
+
+    // Save Event
     async saveEvent() {
-      console.log('Saving event with location:', this.currentEvent.location)
-      
       const eventData = {
         userId: this.userId,
         name: this.currentEvent.name,
@@ -479,51 +1009,47 @@ export default {
         start: new Date(this.currentEvent.start),
         end: new Date(this.currentEvent.end),
         colour: this.currentEvent.colour,
+        priority: this.currentEvent.priority,
         location: this.currentEvent.location,
-        locationName: this.currentEvent.locationName || '',
-        syncedToGoogle: false,
-        googleEventId: null
+        locationName: this.currentEvent.locationName,
+        source: this.currentEvent.source
       }
 
-      console.log('Event data to save:', eventData)
-
       try {
-        if (this.editMode && this.currentEvent.source === 'google') {
-          console.log('Creating new Firestore document from Google Calendar event')
+        if (this.editMode) {
+          // Update Document in Cloud Firestore
+          await updateDoc(doc(db, 'events', this.currentEvent.id), eventData);
           
-          eventData.originalGoogleEventId = this.currentEvent.googleEventId
-          eventData.originalSource = 'google'
-          
-          const docRef = await addDoc(collection(db, 'events'), eventData)
-          console.log('New document created with ID:', docRef.id)
-          
-          await this.updateGoogleCalendarEvent(this.currentEvent.googleEventId, eventData)
-          
-        } else if (this.editMode && this.currentEvent.id) {
-          await updateDoc(doc(db, 'events', this.currentEvent.id), eventData)
-          console.log('Firestore document updated')
-          
+          // Update Event in Google Calendar (Syncing)
+          if (this.syncEnabled && this.accessToken) {
+            await this.updateInGoogle(this.currentEvent.id, eventData);
+          }
         } else {
-          const docRef = await addDoc(collection(db, 'events'), eventData)
-          console.log('New event created with ID:', docRef.id)
+          // Create Document in Cloud Firestore
+          const docRef = await addDoc(collection(db, 'events'), eventData);
+          
+          // Add Event to Google Calendar (Syncing)
+          if (this.syncEnabled && this.accessToken) {
+            await this.addToGoogle(docRef.id, eventData);
+          }
         }
         
-        this.closeDialog()
-        this.resetForm()
-      } catch (error) {
-        console.error('Error saving event:', error)
-        alert('Error saving event: ' + error.message)
+        if (this.editMode) {
+          this.closeEventDialog();
+        }
+        else {
+          this.closeCreateDialog();
+        }
+        this.editMode = false;
+      } 
+      catch (error) {
+        alert('Error Saving Event: ' + error.message);
       }
     },
 
-    // Update Google Calendar event with location
-    async updateGoogleCalendarEvent(googleEventId, eventData) {
+    // Update Event in Google Calendar
+    async updateInGoogle(eventId, eventData) {
       try {
-        if (!this.accessToken) {
-          console.log('No access token, skipping Google Calendar update')
-          return
-        }
-
         const resource = {
           summary: eventData.name,
           description: eventData.description,
@@ -541,334 +1067,287 @@ export default {
           resource.location = eventData.locationName
         }
 
-        await gapi.client.calendar.events.patch({
+        await gapi.client.calendar.events.update({
           calendarId: 'primary',
-          eventId: googleEventId,
-          resource
+          eventId: eventId,
+          resource: resource
         })
-        
-        console.log('Google Calendar event updated')
-      } catch (error) {
-        console.error('Error updating Google Calendar event:', error)
+      } 
+      catch (error) {
+        console.log('Error Updating Event in Google Calendar:', error);
       }
     },
 
-    // Parse Google Calendar location to GeoPoint using Geocoding
-    async parseGoogleLocationToGeoPoint(locationString) {
-      if (!locationString) return null
-
+    // Add Event to Google Calendar
+    async addToGoogle(eventId, eventData) {
       try {
-        const { Geocoder } = await google.maps.importLibrary("geocoding")
-        const geocoder = new Geocoder()
-        
-        return new Promise((resolve) => {
-          geocoder.geocode({ address: locationString }, (results, status) => {
-            if (status === 'OK' && results[0]) {
-              const location = results[0].geometry.location
-              resolve({
-                geopoint: new GeoPoint(location.lat(), location.lng()),
-                name: results[0].formatted_address
-              })
-            } else {
-              console.log('Geocoding failed:', status)
-              resolve(null)
-            }
-          })
-        })
-      } catch (error) {
-        console.error('Error geocoding location:', error)
-        return null
-      }
-    },
-
-    // Delete event
-    async deleteEvent() {
-      try {
-        if (this.currentEvent.source === 'google') {
-          alert('Cannot delete Google Calendar events from this app. Please delete from Google Calendar.')
-          return
+        const resource = {
+          id: eventId,
+          summary: eventData.name,
+          description: eventData.description,
+          start: {
+            dateTime: eventData.start.toISOString(),
+            timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
+          },
+          end: {
+            dateTime: eventData.end.toISOString(),
+            timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
+          }
         }
 
-        await deleteDoc(doc(db, 'events', this.currentEvent.id))
-        this.closeDialog()
-        this.resetForm()
+        if (eventData.locationName) {
+          resource.location = eventData.locationName
+        }
+
+        await gapi.client.calendar.events.insert({
+          calendarId: 'primary',
+          resource: resource
+        })
       } catch (error) {
-        console.error('Error deleting event:', error)
+        console.log('Error Adding Event to Google Calendar:', error);
       }
     },
 
-    // Reset form
-    resetForm() {
-      this.currentEvent = {
-        id: null,
-        name: '',
-        description: '',
-        start: '',
-        end: '',
-        colour: '#1976D2',
-        location: null,
-        locationName: '',
-        source: null,
-        googleEventId: null
+    // Delete Event
+    async deleteEvent() {
+      if (!confirm('Delete this event?')) return
+      
+      try {
+        await deleteDoc(doc(db, 'events', this.currentEvent.id));
+        
+        // Delete Event from Google Calendar (Syncing)
+        if (this.syncEnabled && this.accessToken) {
+          try {
+            await gapi.client.calendar.events.delete({
+              calendarId: 'primary',
+              eventId: this.currentEvent.id
+            })
+          } catch (error) {
+            console.log('Error Deleting from Google Calendar:', error);
+          }
+        }
+        
+        this.closeEventDialog()
+      } 
+      catch (error) {
+        alert('Error deleting: ' + error.message);
       }
-      this.editMode = false
     },
 
-    // Format functions
+    // Clear Current Event Location in Event Dialog
+    clearLocation() {
+      this.currentEvent.location = null
+      this.currentEvent.locationName = ''
+      this.showAutocomplete = true
+      
+      this.$nextTick(() => {
+        this.setupPlacesAutocomplete()
+      })
+    },
+
+    //Initialise Google Places API
+    async setupPlacesAutocomplete() {
+      if (!window.google?.maps || this.currentEvent.location) {
+        return
+      }
+
+      try {
+        const { PlaceAutocompleteElement } = await google.maps.importLibrary("places")
+        
+        if (this.placeAutocomplete) {
+          this.placeAutocomplete.remove()
+        }
+
+        this.placeAutocomplete = new PlaceAutocompleteElement()
+
+        const container = this.$refs.placeAutocompleteContainer
+        if (container) {
+          container.innerHTML = ''
+          container.appendChild(this.placeAutocomplete)
+        }
+
+        this.placeAutocomplete.addEventListener('gmp-select', async (event) => {
+          const place = event.placePrediction.toPlace()
+          
+          await place.fetchFields({
+            fields: ['displayName', 'formattedAddress', 'location']
+          })
+
+          if (place.location) {
+            this.currentEvent.location = new GeoPoint(
+              place.location.lat(),
+              place.location.lng()
+            )
+            this.currentEvent.locationName =  place.displayName + ", " + place.formattedAddress
+            this.showAutocomplete = false
+            
+            if (this.placeAutocomplete) {
+              this.placeAutocomplete.remove()
+              this.placeAutocomplete = null
+            }
+          }
+        })
+      } catch (err) {
+        console.error('Error Retrieving Places:', err)
+      }
+    },
+
+    // Open Google Maps
+    openMap(event) {
+      if (!event.location) return
+      
+      const lat = event.location.latitude
+      const lng = event.location.longitude
+      window.open(`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`, '_blank');
+    },
+
+    // Format Date for Display
     formatDateTime(date) {
       return new Date(date).toLocaleString('en-UK', {
         month: 'short',
         day: 'numeric',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    },
+
+    // Format Time for Display
+    formatTime(date) {
+      return new Date(date).toLocaleTimeString('en-UK', {
         hour: '2-digit',
         minute: '2-digit'
       })
     },
 
-    formatDateTimeInput(date) {
-      const d = new Date(date)
-      const year = d.getFullYear()
-      const month = String(d.getMonth() + 1).padStart(2, '0')
-      const day = String(d.getDate()).padStart(2, '0')
-      const hours = String(d.getHours()).padStart(2, '0')
-      const minutes = String(d.getMinutes()).padStart(2, '0')
-      return `${year}-${month}-${day}T${hours}:${minutes}`
+    // Format Date for Cloud Firestore
+    formatForInput(date) {
+      const d = new Date(date);
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      const hours = String(d.getHours()).padStart(2, '0');
+      const minutes = String(d.getMinutes()).padStart(2, '0');
+      return `${year}-${month}-${day}T${hours}:${minutes}`;
     },
 
-    updateRange({ start, end }) {
-      console.log('Calendar range updated:', start, end)
-    },
-
-    removeDuplicates(events) {
-      const seen = new Set()
-      return events.filter(event => {
-        const key = `${event.name}-${new Date(event.start).getTime()}`
-        if (seen.has(key)) return false
-        seen.add(key)
-        return true
-      })
-    },
-
-    // Subscribe to Firestore events
-    subscribeToEvents() {
-      const q = query(collection(db, 'events'), where('userId', '==', this.userId))
+    // Listen to Cloud Firestore and Get Events
+    listenToEvents() {
+      const q = query(collection(db, 'events'), where('userId', '==', this.userId));
       onSnapshot(q, (snapshot) => {
-        this.firestoreEvents = snapshot.docs.map(doc => {
-          const data = doc.data()
-          
-          console.log('Firestore event loaded:', doc.id, data)
-          
-          return {
-            id: doc.id,
-            ...data,
-            start: data.start.toDate(),
-            end: data.end.toDate(),
-            source: 'firestore',
-            // location is already a GeoPoint from Firestore
-            location: data.location || null,
-            locationName: data.locationName || ''
-          }
-        })
-        
-        console.log('All Firestore events:', this.firestoreEvents)
-      })
+        this.events = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+          start: doc.data().start.toDate(),
+          end: doc.data().end.toDate()
+        }))
+      });
     },
 
-    // Google Calendar Integration (rest of the methods remain the same)
-    async initGoogleCalendar() {
+    // Initialise Google Calendar API
+    async initGoogle() {
       await new Promise((resolve) => {
-        gapi.load('client', resolve)
+        gapi.load('client', resolve);
       })
 
       await gapi.client.init({
         apiKey: 'AIzaSyDyg_B2fzJsgaDO8bjyyikjVeee4AM08kI',
         discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest']
       })
-
-      this.tokenClient = google.accounts.oauth2.initTokenClient({
-        client_id: '1071880442683-199adq7lhl4k4i867qffge4gfb9ca6a8.apps.googleusercontent.com',
-        scope: 'https://www.googleapis.com/auth/calendar',
-        callback: (response) => {
-          if (response.error) {
-            console.error('Error getting token:', response)
-            return
-          }
-          this.accessToken = response.access_token
-          this.fetchGoogleCalendarEvents()
-        }
-      })
     },
 
-    async syncWithGoogleCalendar() {
-      this.tokenClient.requestAccessToken()
-    },
-
-    async fetchGoogleCalendarEvents() {
-      try {
-        const response = await gapi.client.calendar.events.list({
-          calendarId: 'primary',
-          timeMin: new Date().toISOString(),
-          showDeleted: false,
-          singleEvents: true,
-          maxResults: 100,
-          orderBy: 'startTime'
-        })
-
-        const processedEvents = await Promise.all(
-          response.result.items.map(async (item) => {
-            let location = null
-            let locationName = ''
-
-            if (item.location) {
-              const parsed = await this.parseGoogleLocationToGeoPoint(item.location)
-              if (parsed) {
-                location = parsed.geopoint
-                locationName = parsed.name
-              } else {
-                locationName = item.location
-              }
-            }
-
-            return {
-              id: item.id,
-              name: item.summary,
-              description: item.description || '',
-              start: new Date(item.start.dateTime || item.start.date),
-              end: new Date(item.end.dateTime || item.end.date),
-              colour: '#4285F4',
-              source: 'google',
-              googleEventId: item.id,
-              location,
-              locationName
-            }
-          })
-        )
-
-        this.googleEvents = processedEvents
-        await this.syncFirestoreToGoogle()
-      } catch (error) {
-        console.error('Error fetching Google Calendar events:', error)
-      }
-    },
-
-    async syncFirestoreToGoogle() {
-      const unsyncedEvents = this.firestoreEvents.filter(
-        e => !e.syncedToGoogle && e.source === 'firestore'
-      )
-
-      for (const event of unsyncedEvents) {
-        try {
-          const resource = {
-            summary: event.name,
-            description: event.description,
-            start: {
-              dateTime: event.start.toISOString(),
-              timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
-            },
-            end: {
-              dateTime: event.end.toISOString(),
-              timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
-            }
-          }
-
-          if (event.locationName) {
-            resource.location = event.locationName
-          }
-
-          const response = await gapi.client.calendar.events.insert({
-            calendarId: 'primary',
-            resource
-          })
-
-          await updateDoc(doc(db, 'events', event.id), {
-            syncedToGoogle: true,
-            googleEventId: response.result.id
-          })
-        } catch (error) {
-          console.error('Error adding event to Google Calendar:', error)
-        }
-      }
-    }
+    // Check Authentication Status
+    // checkAuth() {
+    //   onAuthStateChanged(auth, (user) => {
+    //     if (user) {
+    //       // User is signed in
+    //       this.userId = user.uid
+          
+    //       // Start listening to events after we have user ID
+    //       this.listenToEvents()
+    //     } else {
+    //       this.router.push('/register')
+    //     }
+    //   })
+    // },
   },
 
   mounted() {
-    this.subscribeToEvents()
-    this.initGoogleCalendar()
+
+    //this.checkAuth()
+    this.listenToEvents();
+    this.initGoogle();
+    
+    // Check for Saved Session
+    const savedToken = sessionStorage.getItem('google_token')
+    if (savedToken) {
+      this.syncEnabled = true;
+      this.accessToken = savedToken;
+      this.syncWithGoogle();
+      this.startAutoSync();
+    }
+  },
+
+  beforeUnmount() {
+    if (this.syncInterval) {
+      clearInterval(this.syncInterval);
+    }
   }
 }
 </script>
 
 <style scoped>
-/* Force full viewport usage */
-.v-application {
-  height: 100vh !important;
-}
-
-.v-main {
-  height: 100vh !important;
-}
-
-/* Remove default container constraints */
-.v-container {
-  max-width: 100% !important;
-  padding: 0 !important;
-}
-
-/* Make calendar cells taller */
-:deep(.v-calendar-weekly__day) {
-  min-height: 120px !important;
-}
-
-:deep(.v-calendar-monthly__day) {
-  min-height: 120px !important;
-}
-
-/* Increase spacing in calendar */
-:deep(.v-calendar-weekly__head) {
-  margin-bottom: 0 !important;
-}
-
-/* Event item styling */
-.event-item {
+/* .event-item {
   cursor: pointer;
-  padding: 0px 4px;
+  padding: 2px 0px;
   border-radius: 4px;
   color: white;
   font-size: 12px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  transition: all 0.2s;
-}
+} */
 
 .event-item:hover {
   opacity: 0.85;
-  transform: scale(1.02);
 }
 
-/* Ensure flexbox fills space */
-.flex-grow-1 {
-  flex-grow: 1 !important;
+.modal.show {
+  display: block !important;
 }
 
-.flex-shrink-0 {
-  flex-shrink: 0 !important;
+/* Month view */
+:deep(.v-calendar-monthly__day) {
+  min-height: 120px !important;
 }
 
-/* Custom scrollbar for event list */
-::-webkit-scrollbar {
-  width: 8px;
+/* Week view */
+:deep(.v-calendar-weekly__day) {
+  min-height: 100px !important;
 }
 
-::-webkit-scrollbar-track {
-  background: #f1f1f1;
+:deep(.v-calendar-weekly__head) {
+  margin-bottom: 0 !important;
 }
 
-::-webkit-scrollbar-thumb {
-  background: #888;
-  border-radius: 4px;
+/* Day view */
+:deep(.v-calendar-daily__day) {
+  min-height: 50px !important;
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: #555;
+/* Improve event visibility in week/day views */
+:deep(.v-calendar-weekly .event-item),
+:deep(.v-calendar-daily .event-item) {
+  padding: 4px 6px;
+  margin: 2px 0;
+  white-space: normal;
+  line-height: 1.3;
 }
+
+/* View type buttons */
+.btn-group .btn-sm {
+  padding: 0.25rem 0.75rem;
+  font-size: 0.875rem;
+}
+
 </style>
