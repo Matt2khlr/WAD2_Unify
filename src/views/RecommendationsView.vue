@@ -1,3 +1,5 @@
+<!-- deprecated (moved to HomeView.vue) -->
+
 <script setup>
 import { ref, computed } from 'vue';
 
@@ -58,22 +60,22 @@ const priorityClasses = {
 };
 
 // Icons
-// const icons = {
-//     study: '📘',
-//     break: '☕',
-//     exercise: '🏋️',
-//     sleep: '🌙',
-//     default: '✨'
-// };
+const icons = {
+    study: '📘',
+    break: '☕',
+    exercise: '🏋️',
+    sleep: '🌙',
+    default: '✨'
+};
 
 function getPriorityClass(suggestion) {
     const priorityClass = priorityClasses[suggestion.priority] || priorityClasses.default;
     return { border: priorityClass.border, badge: priorityClass.badge };
 }
 
-// function iconForType(type) {
-//     return icons[type] || icons.default;
-// }
+function iconForType(type) {
+    return icons[type] || icons.default;
+}
 </script>
 
 <template>
