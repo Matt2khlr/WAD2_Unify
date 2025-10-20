@@ -7,27 +7,33 @@ import { auth } from '@/firebase'
 const router = useRouter();
 const route = useRoute();
 
+// Sign in state
 const siEmail = ref('');
 const siPassword = ref('');
 const siLoading = ref(false);
 const siError = ref(null);
 
+// Sign up state
 const suEmail = ref('');
 const suPassword = ref('');
 const suConfirm = ref('');
 const suLoading = ref(false);
 const suError = ref(null);
 
+// Login mode
 const mode = ref('signin');
 
+// Check inputs for sign in
 const checkSignIn = computed(() =>
     siEmail.value && siPassword.value
 );
 
+// Check inputs for sign up
 const checkSignUp = computed(() =>
     suEmail.value && suPassword.value && suPassword.value === suConfirm.value
 );
 
+// Switch between sign in and sign up modes
 function switchMode(login) {
     mode.value = login;
     if (login === 'signin') {
@@ -37,6 +43,7 @@ function switchMode(login) {
     }
 }
 
+// Sign in validation
 async function onSignIn() {
     if (!checkSignIn.value) {
         siError.value = 'Please enter your email and password.';
@@ -60,6 +67,7 @@ async function onSignIn() {
     }
 }
 
+// Sign up validation
 async function onSignUp() {
     if (!checkSignUp.value) {
         suError.value = 'Please enter a valid email and matching passwords.';
@@ -92,6 +100,7 @@ async function onSignUp() {
     <div class="container py-4">
         <div class="row justify-content-center">
             <div class="col-12 col-md-8 col-lg-6">
+                <!-- Switch between sign in and sign up modes -->
                 <div class="btn-group w-100 mb-3">
                     <button type="button" class="btn" :class="mode === 'signin' ? 'btn-primary' : 'btn-outline-primary'"
                         @click="switchMode('signin')">
@@ -103,6 +112,7 @@ async function onSignUp() {
                     </button>
                 </div>
 
+                <!-- Sign in form -->
                 <div v-if="mode === 'signin'" class="card auth-card">
                     <div class="card-body p-4 d-flex flex-column">
                         <h2 class="mb-1">Welcome back!</h2>
@@ -131,12 +141,13 @@ async function onSignUp() {
                     </div>
                 </div>
 
+                <!-- Sign up form -->
                 <div v-else class="card auth-card">
                     <div class="card-body p-4 d-flex flex-column">
                         <h2 class="mb-1">Create your account</h2>
                         <p class="text-muted mb-3">Sign up with your email to get started</p>
 
-                        <form @submit.prevent="onSignUp()" novalidate>
+                        <form @submit.prevent="onSignUp()">
                             <div class="mb-3">
                                 <label for="su-email" class="form-label">Email</label>
                                 <input id="su-email" v-model="suEmail" type="email" class="form-control"
