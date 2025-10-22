@@ -19,7 +19,7 @@
 				<div class="card-body text-center">
 					<!-- Preset Timers -->
 					<div class="mb-4">
-						<h5>Quick Select:</h5>
+						<h5>Quick Select (minutes):</h5>
 						<button 
 							class="btn btn-outline-primary preset-btn" 
 							:class="{active: selectedPreset === 'pomodoro'}" 
@@ -111,7 +111,7 @@
 			</div>
 
 			<!-- Flashcards Section -->
-			<div class="card">
+			<div class="card mb-0">
 				<div class="card-header">
 					<i class="fas fa-brain"></i> Spaced Repetition Flashcards
 					<i 
@@ -226,7 +226,7 @@
 						</div>
 					</div>
 
-					<!-- Upcoming Reviews -->
+<!-- Upcoming Reviews -->
 					<div v-if="upcomingCards.length > 0" class="mt-4">
 						<h5 class="mb-3">
 							<span class="badge bg-info">{{ upcomingCards.length }}</span> Upcoming Reviews
@@ -238,19 +238,27 @@
 								class="list-group-item"
 							>
 								<div class="d-flex justify-content-between align-items-center">
-									<div>
+									<div class="flex-grow-1">
 										<strong>{{ card.question }}</strong>
 										<br>
 										<small class="text-muted">
 											Review in {{ daysUntil(card.nextReview) }} days
 										</small>
 									</div>
-									<span 
-										class="badge review-badge" 
-										:class="getBadgeClass(card.nextReview)"
-									>
-										{{ formatDate(card.nextReview) }}
-									</span>
+									<div class="d-flex align-items-center">
+										<span 
+											class="badge review-badge me-3" 
+											:class="getBadgeClass(card.nextReview)"
+										>
+											{{ formatDate(card.nextReview) }}
+										</span>
+										<button 
+											class="btn btn-danger" 
+											@click="deleteCard(card.id)"
+										>
+											<i class="fas fa-trash"></i> Delete
+										</button>
+									</div>
 								</div>
 							</div>
 						</div>
@@ -305,12 +313,26 @@
 					</div>
 				</div>
 			</div>
+        
 		</div>
 		<div 
 			class="modal-backdrop" 
 			:class="{show: showExamDateModal}" 
 			:style="{display: showExamDateModal ? 'block' : 'none'}"
-		></div>
+		>
+    </div>
+        <div class="text-center">
+						<button 
+							class="btn btn-danger" 
+							@click="clearAllFlashcards"
+							v-if="flashcards.length > 0"
+						>
+							<i class="fas fa-trash"></i> Clear All Cards
+						</button>
+						<span v-if="examDate" class="ms-3 badge bg-info">
+							Exam: {{ examDate }}
+						</span>
+					</div>
 	</div>
 </template>
 
@@ -561,6 +583,16 @@ export default {
 				this.flashcards = data.flashcards || [];
 				this.examDate = data.examDate || '';
 				this.cardIdCounter = data.cardIdCounter || 1;
+			}
+		},
+		clearAllFlashcards() {
+			if (confirm('Are you sure you want to delete ALL flashcards? This cannot be undone.')) {
+				this.flashcards = [];
+				this.cardIdCounter = 1;
+				this.reviewMode = false;
+				this.currentCardIndex = 0;
+				this.saveData();
+				alert('All flashcards have been cleared.');
 			}
 		}
 	},
