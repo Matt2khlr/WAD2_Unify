@@ -1,6 +1,9 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import WordCloud from 'wordcloud';
+import { db, auth } from '../firebase.js';
+import { collection, addDoc, getDocs, query, orderBy, limit } from "firebase/firestore";
+
 
 const sleepData = ref([
   { day: "Mon", hours: 7 },
@@ -47,6 +50,53 @@ function editSleep(dayObj) {
   }
 }
 
+async function logSleep() {
+  const user = auth.currentUser;
+  if (!user) {
+    alert('You must be logged in to log sleep.');
+    return;
+  }
+  await addDoc(
+  collection(db, "Users", user.uid, "sleepLogs"),
+  {
+    sleepData: sleepData.value,
+      date: new Date().toISOString()
+    }
+  );
+  alert('Sleep data logged!');
+}
+
+async function logMood() {
+  const user = auth.currentUser;
+  if (!user) {
+    alert('You must be logged in to log mood.');
+    return;
+  }
+  await addDoc(
+    collection(db, "Users", user.uid, "moodLogs"),
+    {
+      mood: stressLevel.value,
+      stressFactors: selectedFactors.value,
+      date: new Date().toISOString()
+    }
+  );
+  alert('Stress Level logged!');
+}
+
+async function fetchLatestSleepLog() {
+  const user = auth.currentUser;
+  if (!user) return;
+  const sleepLogsRef = collection(db, "Users", user.uid, "sleepLogs");
+  const sleepLogQuery = query(sleepLogsRef, orderBy("date", "desc"), limit(1));
+  const querySnapshot = await getDocs(sleepLogQuery);
+  if (!querySnapshot.empty) {
+    const latestLog = querySnapshot.docs[0].data();
+    if (latestLog.sleepData) {
+      sleepData.value = latestLog.sleepData;
+    }
+  }
+}
+
 const stressLabel = computed(() => {
   if (stressLevel.value < 30) return 'Low';
   if (stressLevel.value < 70) return 'Moderate';
@@ -87,6 +137,7 @@ const stressFactors = [
 const canvasRef = ref(null);
 
 onMounted(() => {
+  fetchLatestSleepLog();
   const canvas = canvasRef.value;
   if (!canvas) return;
 
@@ -125,7 +176,7 @@ onMounted(() => {
       <!-- Header -->
       <div class="mb-4">
         <h1 class="d-flex align-items-center gap-3 mb-2">
-          <span class="text-danger fs-1">❤️</span>
+          <!--<span class="text-danger fs-1">❤️</span>-->
           Wellness Tracker
         </h1>
         <p class="text-muted">Monitor your mental health and sleep patterns</p>
@@ -156,7 +207,7 @@ onMounted(() => {
           <div class="card shadow p-4 h-100">
             <div class="d-flex align-items-center justify-content-between mb-3">
               <h3 class="d-flex align-items-center gap-2 mb-0">
-                <span class="fs-5 text-info">🌙</span>
+                <!--<span class="fs-5 text-info">🌙</span>-->
                 Sleep Tracking
               </h3>
             </div>
@@ -192,7 +243,7 @@ onMounted(() => {
                 <div class="text-secondary" style="width: 45px;">{{ day.hours }}h</div>
               </div>
             </div>
-            <button class="btn btn-info w-100 mt-3">Log Sleep</button>
+            <button class="btn btn-info w-100 mt-3" @click="logSleep">Log Sleep</button>
           </div>
         </div>
 
@@ -200,7 +251,7 @@ onMounted(() => {
         <div class="col-12 col-lg-6">
           <div class="card shadow p-4 h-100 d-flex flex-column">
             <h3 class="mb-3 d-flex align-items-center gap-2">
-              <span class="fs-5 text-warning">✨</span>
+              <!--<span class="fs-5 text-warning">✨</span>-->
               Current Stress Level
             </h3>
             <div class="mb-3">
@@ -238,14 +289,14 @@ onMounted(() => {
               </span>
               </div>
             </div>
-            <button class="btn btn-secondary w-100" @click="updateStress">Update Stress Level</button>
+            <button class="btn btn-secondary w-100" @click="[updateStress(), logMood()]" >Update Stress Level</button>
           </div>
         </div>
       </div>
 
       <!-- Wellness Tips -->
       <div class="card shadow p-4 bg-gradient rounded">
-        <h3 class="mb-4">🧘 Wellness Recommendations</h3>
+        <h3 class="mb-4"><!--🧘 -->Wellness Recommendations</h3>
         <div class="row g-4">
           <div class="col-12 col-md-6">
             <div class="p-3 bg-white rounded shadow-sm">

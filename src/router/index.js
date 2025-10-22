@@ -15,7 +15,10 @@ const routes = [
   { path: "/study", name: "study", component: () => import("@/views/StudyView.vue"), meta: { title: "Study" } },
   { path: "/nutrition", name: "nutrition", component: () => import("@/views/NutritionView.vue"), meta: { title: "Nutrition" } },
   { path: "/calendar", name: "calendar", component: () => import("@/views/CalendarView.vue"), meta: { title: "Calendar" } },
+
+  // Old paths
   { path: "/recommendations", name: "recommendations", component: () => import("@/views/RecommendationsView.vue"), meta: { title: "Recommendations" } },
+  { path: "/calview", name: "calview", component: () => import("@/views/CalendarView (Old).vue"), meta: { title: "calview" } },
 
   // Optional auth/settings
   { path: "/login", name: "login", component: () => import("@/views/RegisterView.vue"), meta: { title: "Log in" } },

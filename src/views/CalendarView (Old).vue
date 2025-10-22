@@ -3,11 +3,39 @@
     <v-main>
       <v-container fluid class="pa-0 fill-height">
         <v-row no-gutters style="height: 100vh;">
-          <!-- Calendar Section (75%) -->
+          <!-- Calendar Section -->
           <v-col cols="12" lg="9" class="d-flex flex-column">
             <v-card flat class="flex-grow-1 d-flex flex-column" style="height: 100%;">
               <v-card-title class="flex-shrink-0">
                 <span class="text-h5">Calendar</span>
+                <!-- Navigation Controls -->
+                <v-btn-group>
+                  <v-btn 
+                    icon="mdi-chevron-left" 
+                    size="small"
+                    @click="prev"
+                    title="Previous Month"
+                  ></v-btn>
+                  
+                  <v-btn 
+                    size="small"
+                    @click="setToday"
+                    title="Today"
+                  >
+                    Today
+                  </v-btn>
+                  
+                  <v-btn 
+                    icon="mdi-chevron-right" 
+                    size="small"
+                    @click="next"
+                    title="Next Month"
+                  ></v-btn>
+                </v-btn-group>
+                <span class="text-grey">{{ currentMonthYear }}</span>
+                
+
+                <!-- Buttons -->
                 <v-spacer></v-spacer>
                 <v-btn 
                   color="primary" 
@@ -27,7 +55,7 @@
                   Add New Event
                 </v-btn>
               </v-card-title>
-              
+
               <v-card-text class="flex-grow-1 pa-2" style="height: 100%;">
                 <v-sheet height="100%" class="d-flex flex-column">
                   <v-calendar
@@ -61,7 +89,7 @@
             </v-card>
           </v-col>
 
-          <!-- Event List Section (25%) -->
+          <!-- Event List Section -->
           <v-col cols="12" lg="3" class="d-flex flex-column border-s">
             <v-card flat class="flex-grow-1 d-flex flex-column" style="height: 100vh;">
               <v-card-title class="text-h6 flex-shrink-0">
@@ -97,6 +125,7 @@
                         v-if="event.location" 
                         size="small" 
                         class="ml-1"
+                        @click="openGoogleMaps"
                       >
                         mdi-map-marker
                       </v-icon>
@@ -158,13 +187,12 @@
                     
                     <v-btn
                       v-if="currentEvent.location"
-                      icon
+                      icon="mdi-map-marker"
                       size="small"
                       color="primary"
                       @click="openGoogleMaps"
                       title="View on Google Maps"
                     >
-                      📍
                     </v-btn>
                   </div>
                   <div v-if="currentEvent.location" class="text-caption text-grey mt-1">
@@ -218,7 +246,7 @@ import { db } from '@/firebase'
 export default {
   data() {
     return {
-      focus: '',
+      focus: new Date(),
       dialog: false,
       editMode: false,
       firestoreEvents: [],
@@ -238,7 +266,7 @@ export default {
       userId: 'u1',
       tokenClient: null,
       accessToken: null,
-      placeAutocomplete: null
+      placeAutocomplete: null,
     }
   },
 
@@ -258,10 +286,39 @@ export default {
       return this.allEvents
         .sort((a, b) => new Date(a.start) - new Date(b.start))
         .filter(e => new Date(e.start) >= new Date())
-    }
+    },
+
+    currentMonthYear() {
+      return new Date(this.focus).toLocaleDateString('en-US', {
+        month: 'long',
+        year: 'numeric'
+      })
+    },
+
   },
 
   methods: {
+    setToday() {
+      this.focus = new Date()
+      console.log('Calendar reset to today:', this.focus)
+    },
+
+    // Navigate to previous month
+    prev() {
+      const currentDate = new Date(this.focus)
+      currentDate.setMonth(currentDate.getMonth() - 1)
+      this.focus = currentDate
+      console.log('Navigated to previous month:', this.focus)
+    },
+
+    // Navigate to next month
+    next() {
+      const currentDate = new Date(this.focus)
+      currentDate.setMonth(currentDate.getMonth() + 1)
+      this.focus = currentDate
+      console.log('Navigated to next month:', this.focus)
+    },
+
     // Initialise PlaceAutocompleteElement
     async initPlacesAutocomplete() {
       try {
@@ -559,7 +616,7 @@ export default {
 
     // Format functions
     formatDateTime(date) {
-      return new Date(date).toLocaleString('en-US', {
+      return new Date(date).toLocaleString('en-UK', {
         month: 'short',
         day: 'numeric',
         hour: '2-digit',
