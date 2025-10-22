@@ -5,76 +5,8 @@
     <div class="row h-100">
 
       <!-- Calendar Section -->
-      <!-- <div class="col-lg-9 d-flex flex-column">
-        <div class="card h-100">
-          <div class="card-header">
-            <div class="d-flex align-items-center"> -->
-              
-              <!-- Navigation -->
-              <!-- <div class="btn-group ms-3">
-                <button class="btn btn-sm btn-outline-secondary" @click="prev">
-                  <i class="mdi mdi-chevron-left"></i>
-                </button>
-                <button class="btn btn-sm btn-outline-secondary" @click="setToday">
-                  Today
-                </button>
-                <button class="btn btn-sm btn-outline-secondary" @click="next">
-                  <i class="mdi mdi-chevron-right"></i>
-                </button>
-              </div>
-              
-              <span class="ms-3 text-muted">{{ currentMonthYear }}</span>
-              
-              <div class="ms-auto d-flex align-items-center"> -->
-                <!-- Google Calendar Sync Toggle -->
-                <!-- <div class="form-check form-switch me-3">
-                  <input 
-                    class="form-check-input" 
-                    type="checkbox" 
-                    id="googleSync"
-                    v-model="syncEnabled"
-                    @change="toggleSync"
-                  >
-                  <label class="form-check-label" for="googleSync">
-                    <i class="mdi mdi-google"></i> Sync with Google
-                  </label>
-                </div> -->
-                
-                <!-- Add Event Button -->
-                <!-- <button class="btn btn-primary" @click="openAddDialog">
-                  <i class="mdi mdi-calendar-plus"></i> Add Event
-                </button>
-              </div>
-            </div>
-          </div> -->
-          
-          <!-- <div class="card-body p-2">
-            <v-calendar
-              ref="calendar"
-              v-model="focus"
-              :events="allEvents"
-              type="month"
-              @click:date="openAddDialog"
-              style="height: 100%;"
-            >
-              <template v-slot:event="{ event }">
-                <div 
-                  @click.stop="showEventDetails(event)"
-                  class="event-item"
-                  :style="{ backgroundColor: event.color }"
-                >
-                  <strong>{{ event.name }}</strong>
-                  <i v-if="event.location" class="mdi mdi-map-marker"></i>
-                </div>
-              </template>
-            </v-calendar>
-          </div>
-        </div>
-      </div> -->
-
-      <!-- Calendar Section -->
       <div class="col-lg-9 d-flex flex-column">
-        <div class="card h-100 shadow">
+        <div class="card h-100">
           <div class="card-header">
             <div class="d-flex align-items-center">
               
@@ -141,12 +73,15 @@
             </div>
           </div>
           
-          <div class="card-body p-2">
+          <div class="card-body p-2" style="height: 600px;">
             <v-calendar
               ref="calendar"
               v-model="focus"
               :events="allEvents"
               :type="calendarView"
+              @click:time="handleClick"
+              @click:day="handleClick"
+              @click:date="handleClick"
               style="height: 100%;"
             >
             <template v-slot:event="{ event, timed }">
@@ -175,9 +110,9 @@
       </div>
       
       <!-- Event List -->
-      <div class="col-lg-3">
-        <div class="card h-100">
-          <div class="card-header">
+      <div class="col-lg-3 mt-lg-0 mt-4 mb-lg-0 mb-4 ">
+        <div class="card h-100 mb-1">
+          <div class="card-header" style="padding-top: 18px;">
             <h6>Upcoming Events</h6>
           </div>
           <div class="card-body p-0" style="overflow-y: auto;">
@@ -225,7 +160,7 @@
       </div>
     </div>
 
-    <!-- Event Dialog -->
+    <!-- Create Event Dialog -->
     <div 
       class="modal fade" 
       :class="{ show: createDialog, 'd-block': createDialog }"
@@ -327,91 +262,6 @@
         </div>
       </div>
     </div>
-
-    <!-- Add Event Dialog -->
-    <!-- <div 
-      class="modal fade" 
-      :class="{ show: createDialog, 'd-block': createDialog }"
-      tabindex="-1"
-    >
-      <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">Create Event</h5>
-            <button type="button" class="btn-close" @click="closeCreateDialog"></button>
-          </div>
-          <div class="modal-body">
-            <div class="mb-3">
-              <label class="form-label">Event Name</label>
-              <input 
-                type="text" 
-                class="form-control" 
-                v-model="currentEvent.name"
-              >
-            </div>
-            
-            <div class="mb-3">
-              <label class="form-label">Event Description</label>
-              <textarea 
-                class="form-control" 
-                rows="3"
-                v-model="currentEvent.description"
-              ></textarea>
-            </div>
-            
-            <div class="row">
-              <div class="col-md-6 mb-3">
-                <label class="form-label">Event Start</label>
-                <input 
-                  type="datetime-local" 
-                  class="form-control"
-                  v-model="currentEvent.start"
-                >
-              </div>
-              
-              <div class="col-md-6 mb-3">
-                <label class="form-label">Event End</label>
-                <input 
-                  type="datetime-local" 
-                  class="form-control"
-                  v-model="currentEvent.end"
-                >
-              </div>
-            </div>
-            
-            <div class="mb-3">
-              <label class="form-label">Event Priority</label>
-              <select class="form-select" v-model="currentEvent.priority">
-                <option value="high">High</option>
-                <option value="medium">Medium</option>
-                <option value="low">Low</option>
-              </select>
-            </div>
-            
-            <div class="mb-3">
-              <label class="form-label">Event Location</label>
-              <div class="d-flex gap-2">
-                <div class="flex-grow-1" ref="placeAutocompleteContainer"></div>
-              </div>
-            </div>
-            
-            <div class="mb-3">
-              <label class="form-label">Event Colour</label>
-              <input 
-                type="color" 
-                class="form-control form-control-color"
-                v-model="currentEvent.colour"
-              >
-            </div>
-          </div>
-
-          <div class="modal-footer">
-            <button class="btn btn-secondary" @click="closeCreateDialog">Cancel</button>
-            <button class="btn btn-primary" @click="saveEvent">Create</button>
-          </div>
-        </div>
-      </div>
-    </div> -->
     
     <!-- Event Dialog -->
     <div 
@@ -489,7 +339,7 @@
             </div>
             
             <div class="mb-3">
-              <label class="form-label">Event Location</label>
+              <label class="form-label" v-if="editMode">Event Location</label>
               <div class="d-flex gap-2" v-if="editMode">
                 <div class="flex-grow-1">
                   <input 
@@ -512,6 +362,7 @@
                 </button>
               </div>
               <div v-if="!editMode">
+                <label class="form-label" v-if="currentEvent.location">Event Location</label>
                 <div v-if="currentEvent.location" class="text">
                   📍 {{ currentEvent.locationName }}&nbsp;&nbsp;
                   <button
@@ -572,9 +423,11 @@ export default {
         priority: 'Low',
         location: null,
         locationName: '',
-        source: 'firestore'
+        source: 'firestore',
+        synced: false,
+        gEventId: null
       },
-      //userId: auth.currentUser?.uid || 'u1',
+      //userId: auth.currentUser?.uid,
       userId: 'u1',
       syncEnabled: false,
       accessToken: null,
@@ -590,28 +443,19 @@ export default {
   // },
 
   computed: {
-    // allEvents() {
-    //   return this.events.map(event => ({
-    //     ...event,
-    //     title: event.name,
-    //     color: event.colour
-    //   }))
-    // },
-
     allEvents() {
       return this.events.map(event => {
-        // Convert dates to proper format
         const start = new Date(event.start)
         const end = new Date(event.end)
         
         return {
           ...event,
           name: event.name,
-          start: start, // Keep as Date object
-          end: end,     // Keep as Date object
+          start: start,
+          end: end,
           title: event.name,
           color: event.colour,
-          timed: true   // IMPORTANT: This tells Vuetify the event has a specific time
+          timed: true
         }
       })
     },
@@ -623,25 +467,17 @@ export default {
       return this.events
         .filter(event => new Date(event.start) >= now)
         .sort((a, b) => {
-          // Sort Event Date
+          // Sort by Event Date
           const dateCompare = new Date(a.start) - new Date(b.start);
           if (dateCompare !== 0) {
             return dateCompare;
           };
 
-          // Sort Event Priority Level
+          // Sort by Event Priority Level
           return priorityOrder[a.priority] - priorityOrder[b.priority];
         })
     },
-
-    // currentMonthYear() {
-    //   return new Date(this.focus).toLocaleDateString('en-UK', {
-    //     month: 'long',
-    //     year: 'numeric'
-    //   })
-    // }
-        // NEW: Dynamic period display based on view type
-
+        
     currentPeriod() {
       const date = new Date(this.focus)
       
@@ -653,7 +489,7 @@ export default {
           year: 'numeric'
         })
       } else if (this.calendarView === 'week') {
-        // Calculate week start and end
+        // Calculate Week Start and End
         const weekStart = new Date(date)
         weekStart.setDate(date.getDate() - date.getDay())
         
@@ -671,25 +507,6 @@ export default {
   },
 
   methods: {
-    // // Navigate to Today
-    // setToday() {
-    //   this.focus = new Date();
-    // },
-
-    // // Navigate to Previous Month
-    // prev() {
-    //   const date = new Date(this.focus);
-    //   date.setMonth(date.getMonth() - 1);
-    //   this.focus = date;
-    // },
-
-    // // Navigate to Following Month
-    // next() {
-    //   const date = new Date(this.focus);
-    //   date.setMonth(date.getMonth() + 1);
-    //   this.focus = date;
-    // },
-
     // Navigate to Today
     setToday() {
       this.focus = new Date()
@@ -748,6 +565,7 @@ export default {
       const savedToken = sessionStorage.getItem('google_token')
       if (savedToken) {
         this.accessToken = savedToken;
+        await this.waitForGoogleAPI();
         await this.syncWithGoogle();
         this.startAutoSync();
         return;
@@ -767,6 +585,7 @@ export default {
           this.accessToken = response.access_token;
           sessionStorage.setItem('google_token', this.accessToken);
           
+          await this.waitForGoogleAPI();
           await this.syncWithGoogle();
           this.startAutoSync();
         }
@@ -785,7 +604,7 @@ export default {
       this.accessToken = null;
       
       // Remove Google Events
-      this.events = this.events.filter(event => event.source === 'firestore');
+      // this.events = this.events.filter(event => event.source === 'firestore');
     },
 
     // Auto Sync with Google Calendar (Every 2 Minutes)
@@ -796,13 +615,40 @@ export default {
       
       this.syncInterval = setInterval(() => {
         this.syncWithGoogle()
-      }, 2 * 60 * 1000)
+      }, 1 * 60 * 1000)
     },
 
-    // Sync with Google Calendar
-    async syncWithGoogle() {
+      async initGoogle() {
       try {
-        // Pull from Google Calendar
+        // Load Google Calendar API Client
+        await new Promise((resolve) => {
+          gapi.load('client', resolve)
+        })
+
+        // Initialise Google Calendar Client
+        await gapi.client.init({
+          apiKey: 'AIzaSyDyg_B2fzJsgaDO8bjyyikjVeee4AM08kI',
+          discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest']
+        })
+
+        console.log('Google Calendar API Initialised')
+      } catch (error) {
+        console.error('Error Initialising Google Calendar API:', error)
+      }
+    },
+
+    async syncWithGoogle() {
+      if (!window.gapi?.client?.calendar) {
+        console.log('Google Calendar API not initialised yet.');
+        return;
+      }
+      if (!this.accessToken) {
+        console.log('No Access Token.');
+        return;
+      }
+
+      try {
+        // Pull Events from Google Calendar API
         const response = await gapi.client.calendar.events.list({
           calendarId: 'primary',
           timeMin: new Date().toISOString(),
@@ -810,22 +656,30 @@ export default {
           singleEvents: true,
           maxResults: 100,
           orderBy: 'startTime'
-        })
+        });
 
-        const googleEvents = response.result.items || [];
+        const googleApiEvents = response.result.items || [];
+        const googleEventIdsFromApi = new Set(googleApiEvents.map(item => item.id));
 
-        // Add/Update in Firestore (Using Event ID as Document ID)
-        for (const item of googleEvents) {
-          const eventId = item.id;
-          
+        const gEventIdToDocIdMap = new Map();
+        this.events
+          .filter(event => event.gEventId)
+          .forEach(event => {
+            gEventIdToDocIdMap.set(event.gEventId, event.id);
+          });
+
+        // Add/Update Pulled Events in Cloud Firestore
+        for (const item of googleApiEvents) {
           let location = null;
           let locationName = '';
+          
           if (item.location) {
-            const parsed = await this.geocodeLocation(item.location)
+            const parsed = await this.geocodeLocation(item.location);
             if (parsed) {
               location = parsed.geopoint;
               locationName = parsed.name;
-            } else {
+            } 
+            else {
               locationName = item.location;
             }
           }
@@ -833,53 +687,87 @@ export default {
           const eventData = {
             userId: this.userId,
             name: item.summary || 'Untitled Event',
-            description: item.description || 'No Description Available',
+            description: item.description || '',
             start: new Date(item.start.dateTime || item.start.date),
             end: new Date(item.end.dateTime || item.end.date),
-            colour: '#9FE1E7',
-            priority: 'Low',
-            location: location,
             locationName: locationName,
-            source: 'google'
-          }
+            location: location,
+            synced: true,
+            gEventId: item.id
+          };
 
-          await setDoc(doc(db, 'events', eventId), eventData)
+          if (gEventIdToDocIdMap.has(item.id)) {
+            const firestoreDocId = gEventIdToDocIdMap.get(item.id);
+            console.log(`Updating Firestore Event ${firestoreDocId} with Google Calendar Event ${item.id}`);
+            await updateDoc(doc(db, 'events', firestoreDocId), eventData);
+          } 
+          else {
+            eventData.colour = '#9FE1E7';
+            eventData.source = 'google';
+            eventData.priority = 'Low';
+            console.log(`Creating New Firestore Document for Google Calendar Event ${item.id}`);
+            await setDoc(doc(db, 'events', item.id), eventData);
+          }
         }
 
-        // Push Cloud Firestore Events to Google Calendar
-        const firestoreOnly = this.events.filter(event => event.source === 'firestore')
+        // Remove Deleted Google Calendar Events from Cloud Firestore
+        const localGoogleEvents = this.events.filter(event => event.source === 'google');
+        for (const localEvent of localGoogleEvents) {
+          if (!googleEventIdsFromApi.has(localEvent.id)) {
+            console.log(`Deleting Google Event from Cloud Firestore: ${localEvent.name} (${localEvent.id})`);
+            await deleteDoc(doc(db, 'events', localEvent.id));
+          }
+        }
+
+        // Add unsynched Cloud Firestore Events to Google Calendar
+        const eventsToPush = this.events.filter(event => event.source === 'firestore' && !event.synced);
         
-        for (const event of firestoreOnly) {
+        for (const event of eventsToPush) {
           try {
             const resource = {
-              id: event.id,
               summary: event.name,
               description: event.description,
-              start: {
-                dateTime: event.start.toISOString(),
-                timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
-              },
-              end: {
-                dateTime: event.end.toISOString(),
-                timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
-              }
-            }
+              start: { dateTime: new Date(event.start).toISOString() },
+              end: { dateTime: new Date(event.end).toISOString() },
+              location: event.locationName || ''
+            };
 
-            if (event.locationName) {
-              resource.location = event.locationName
-            }
-
-            await gapi.client.calendar.events.insert({
+            const insertResponse = await gapi.client.calendar.events.insert({
               calendarId: 'primary',
               resource: resource
-            })
+            });
+            
+            // Update Sync Status in Cloud Firestore
+            if (insertResponse.result) {
+              await updateDoc(doc(db, 'events', event.id), {
+                synced: true,
+                gEventId: insertResponse.result.id
+              });
+              console.log(`Synced Event "${event.name}" to Google Calendar.`);
+            }
           } catch (err) {
-            console.log('Error Adding to Google Calendar:', err)
+            console.error(`Error Adding Event "${event.name}" to Google Calendar:`, err);
           }
         }
       } catch (error) {
-        console.error('Synchronisation Error:', error)
+        console.error('Overall Synchronisation Error:', error);
       }
+    },
+
+    // Wait for Google API to be Ready
+    async waitForGoogleAPI() {
+      return new Promise((resolve) => {
+        const checkAPI = () => {
+          if (window.gapi && window.gapi.client && window.gapi.client.calendar) {
+            console.log('Google Calendar API is ready')
+            resolve()
+          } else {
+            console.log('Waiting for Google Calendar API...')
+            setTimeout(checkAPI, 500)
+          }
+        }
+        checkAPI()
+      })
     },
 
     // Convert Location to Geopoint
@@ -909,15 +797,21 @@ export default {
     // Open Add Event Dialog
     openAddDialog(data) {
 
-      const date = new Date().toISOString().split('T')[0]
+      const date = new Date();
+      date.setHours(date.getHours() + 8)
+      const startUnix = this.roundTime(date.getTime(), false);
+      const startTS = new Date(startUnix).toISOString().substring(0, 16);
+      date.setHours(date.getHours() + 1)
+      const endUnix = this.roundTime(date.getTime(), false);
+      const endTS = new Date(endUnix).toISOString().substring(0, 16);
       
       this.editMode = false
       this.currentEvent = {
         id: null,
         name: '',
         description: '',
-        start: `${date}T09:00`,
-        end: `${date}T10:00`,
+        start: `${startTS}`,
+        end: `${endTS}`,
         colour: '#FF7A17',
         priority: 'Low',
         location: null,
@@ -931,29 +825,80 @@ export default {
       })
     },
 
-    // Show Events Details in Event Dialog
-    // showEventDetails(event) {
-    //   this.currentEvent = {
-    //     id: event.id,
-    //     name: event.name,
-    //     description: event.description,
-    //     start: this.formatForInput(event.start),
-    //     end: this.formatForInput(event.end),
-    //     colour: event.colour,
-    //     priority: event.priority || 'low',
-    //     location: event.location,
-    //     locationName: event.locationName,
-    //     source: event.source
-    //   }
-    //   this.eventDialog = true;
-    // },
+    // Open Add Event Dialog
+    handleClick(data, tms) {
+
+      const date = new Date().toISOString().split('T')[0]
+      
+      this.editMode = false
+      if (this.calendarView === 'month') {
+        
+        const startTS = new Date(this.getStart(tms)).toISOString().substring(0, 10);
+        const endTS = new Date(this.getEnd(tms)).toISOString().substring(0, 10);
+
+        this.currentEvent = {
+        id: null,
+        name: '',
+        description: '',
+        start: `${startTS}T09:00`,
+        end: `${endTS}T10:00`,
+        colour: '#FF7A17',
+        priority: 'Low',
+        location: null,
+        locationName: null,
+        source: 'firestore'
+        }
+      }
+      else {
+
+        const startUnix = this.roundTime(this.getStart(tms), false);
+        const startTS = new Date(startUnix).toISOString().substring(0, 16);
+        const endUnix = this.roundTime(this.getEnd(tms), false);
+        const endTS = new Date(endUnix).toISOString().substring(0, 16);
+
+        this.currentEvent = {
+        id: null,
+        name: '',
+        description: '',
+        start: `${startTS}`,
+        end: `${endTS}`,
+        colour: '#FF7A17',
+        priority: 'Low',
+        location: null,
+        locationName: null,
+        source: 'firestore'
+        }
+      }
+      this.createDialog = true
+      
+      this.$nextTick(() => {
+        this.setupPlacesAutocomplete();
+      })
+    },
+
+    getStart (tms) {
+      return new Date(tms.year, tms.month - 1, tms.day, tms.hour + 8, tms.minute).getTime();
+    },
+
+    getEnd (tms) {
+      return new Date(tms.year, tms.month - 1, tms.day, tms.hour + 9, tms.minute).getTime();
+    },
+
+    roundTime (time, down = true) {
+      const roundTo = 15 // minutes
+      const roundDownTime = roundTo * 60 * 1000
+
+      return down
+        ? time - time % roundDownTime
+        : time + (roundDownTime - (time % roundDownTime))
+    },
 
     // Show Events Details in Event Dialog
     showEventDetails(event) {
       const fullEvent = this.events.find(e => e.id === event.id)
       
       if (!fullEvent) {
-        console.error('Event not found:', event.id)
+        console.error('Event Not Found:', event.id)
         return
       }
       
@@ -967,7 +912,9 @@ export default {
         priority: fullEvent.priority || 'Low',
         location: fullEvent.location,
         locationName: fullEvent.locationName,
-        source: fullEvent.source
+        source: fullEvent.source,
+        synced: fullEvent.synced,
+        gEventId: fullEvent.gEventId
       }
       
       this.eventDialog = true
@@ -1000,8 +947,16 @@ export default {
       }
     },
 
-    // Save Event
+    // Create or Update Event
     async saveEvent() {
+      const startDate = new Date(this.currentEvent.start).getTime()
+      const endDate = new Date(this.currentEvent.end).getTime()
+
+      if (startDate >= endDate) {
+        alert('End Date Earlier than Start Date')
+        return
+      }
+
       const eventData = {
         userId: this.userId,
         name: this.currentEvent.name,
@@ -1017,33 +972,40 @@ export default {
 
       try {
         if (this.editMode) {
-          // Update Document in Cloud Firestore
-          await updateDoc(doc(db, 'events', this.currentEvent.id), eventData);
+          // Update Event in Cloud Firestore
+          await updateDoc(doc(db, 'events', this.currentEvent.id), eventData)
           
           // Update Event in Google Calendar (Syncing)
-          if (this.syncEnabled && this.accessToken) {
-            await this.updateInGoogle(this.currentEvent.id, eventData);
+          if (this.syncEnabled && this.currentEvent.gEventId) {
+            await this.updateInGoogle(this.currentEvent.gEventId, eventData)
           }
         } else {
-          // Create Document in Cloud Firestore
-          const docRef = await addDoc(collection(db, 'events'), eventData);
+          // Create New Event in Cloud Firestore
+          eventData.synced = false
+          eventData.gEventId = null
           
-          // Add Event to Google Calendar (Syncing)
+          const docRef = await addDoc(collection(db, 'events'), eventData)
+          
+          // Create New Event in Google Calendar (Syncing)
           if (this.syncEnabled && this.accessToken) {
-            await this.addToGoogle(docRef.id, eventData);
+            const googleEventId = await this.addToGoogle(eventData)
+            if (googleEventId) {
+              await updateDoc(doc(db, 'events', docRef.id), {
+                synced: true,
+                gEventId: googleEventId
+              })
+            }
           }
         }
         
         if (this.editMode) {
-          this.closeEventDialog();
+          this.closeEventDialog()
+        } else {
+          this.closeCreateDialog()
         }
-        else {
-          this.closeCreateDialog();
-        }
-        this.editMode = false;
-      } 
-      catch (error) {
-        alert('Error Saving Event: ' + error.message);
+        this.editMode = false
+      } catch (error) {
+        alert('Error Saving Event: ' + error.message)
       }
     },
 
@@ -1079,18 +1041,20 @@ export default {
     },
 
     // Add Event to Google Calendar
-    async addToGoogle(eventId, eventData) {
+    async addToGoogle(eventData) {
       try {
+        const startDate = eventData.start instanceof Date ? eventData.start : new Date(eventData.start)
+        const endDate = eventData.end instanceof Date ? eventData.end : new Date(eventData.end)
+
         const resource = {
-          id: eventId,
           summary: eventData.name,
           description: eventData.description,
           start: {
-            dateTime: eventData.start.toISOString(),
+            dateTime: startDate.toISOString(),
             timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
           },
           end: {
-            dateTime: eventData.end.toISOString(),
+            dateTime: endDate.toISOString(),
             timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
           }
         }
@@ -1099,38 +1063,45 @@ export default {
           resource.location = eventData.locationName
         }
 
-        await gapi.client.calendar.events.insert({
+        const response = await gapi.client.calendar.events.insert({
           calendarId: 'primary',
           resource: resource
         })
-      } catch (error) {
-        console.log('Error Adding Event to Google Calendar:', error);
+
+        console.log('Event Added to Google Calendar:', response.result.id)
+        return response.result.id
+      } 
+      catch (error) {
+        console.error('Error Adding Event to Google Calendar:', error)
+        return null
       }
     },
 
     // Delete Event
     async deleteEvent() {
-      if (!confirm('Delete this event?')) return
+      if (!confirm('Are you sure you want to delete this Event?')) return;
       
       try {
-        await deleteDoc(doc(db, 'events', this.currentEvent.id));
-        
-        // Delete Event from Google Calendar (Syncing)
-        if (this.syncEnabled && this.accessToken) {
+        if (this.syncEnabled && this.currentEvent.gEventId) {
           try {
             await gapi.client.calendar.events.delete({
               calendarId: 'primary',
-              eventId: this.currentEvent.id
-            })
-          } catch (error) {
-            console.log('Error Deleting from Google Calendar:', error);
+              eventId: this.currentEvent.gEventId
+            });
+            console.log('Event Deleted from Google Calendar.');
+          } 
+          catch (error) {
+            console.log('Error Deleting Event from Google Calendar:', error);
           }
         }
         
-        this.closeEventDialog()
+        // Delete Event from Cloud Firestore
+        await deleteDoc(doc(db, 'events', this.currentEvent.id));
+        
+        this.closeEventDialog();
       } 
       catch (error) {
-        alert('Error deleting: ' + error.message);
+        alert('Error Deleting Event: ' + error.message);
       }
     },
 
@@ -1239,21 +1210,9 @@ export default {
           id: doc.id,
           ...doc.data(),
           start: doc.data().start.toDate(),
-          end: doc.data().end.toDate()
+          end: doc.data().end.toDate(),
         }))
       });
-    },
-
-    // Initialise Google Calendar API
-    async initGoogle() {
-      await new Promise((resolve) => {
-        gapi.load('client', resolve);
-      })
-
-      await gapi.client.init({
-        apiKey: 'AIzaSyDyg_B2fzJsgaDO8bjyyikjVeee4AM08kI',
-        discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest']
-      })
     },
 
     // Check Authentication Status
@@ -1272,19 +1231,21 @@ export default {
     // },
   },
 
-  mounted() {
+  async mounted() {
 
     //this.checkAuth()
     this.listenToEvents();
-    this.initGoogle();
+    await this.initGoogle();
     
     // Check for Saved Session
     const savedToken = sessionStorage.getItem('google_token')
     if (savedToken) {
       this.syncEnabled = true;
       this.accessToken = savedToken;
-      this.syncWithGoogle();
-      this.startAutoSync();
+      
+      await this.waitForGoogleAPI()
+      await this.syncWithGoogle()
+      this.startAutoSync()
     }
   },
 
@@ -1297,16 +1258,6 @@ export default {
 </script>
 
 <style scoped>
-/* .event-item {
-  cursor: pointer;
-  padding: 2px 0px;
-  border-radius: 4px;
-  color: white;
-  font-size: 12px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-} */
 
 .event-item:hover {
   opacity: 0.85;
@@ -1316,12 +1267,12 @@ export default {
   display: block !important;
 }
 
-/* Month view */
+/* Month View */
 :deep(.v-calendar-monthly__day) {
   min-height: 120px !important;
 }
 
-/* Week view */
+/* Week View */
 :deep(.v-calendar-weekly__day) {
   min-height: 100px !important;
 }
@@ -1330,12 +1281,11 @@ export default {
   margin-bottom: 0 !important;
 }
 
-/* Day view */
+/* Day View */
 :deep(.v-calendar-daily__day) {
   min-height: 50px !important;
 }
 
-/* Improve event visibility in week/day views */
 :deep(.v-calendar-weekly .event-item),
 :deep(.v-calendar-daily .event-item) {
   padding: 4px 6px;
@@ -1344,7 +1294,6 @@ export default {
   line-height: 1.3;
 }
 
-/* View type buttons */
 .btn-group .btn-sm {
   padding: 0.25rem 0.75rem;
   font-size: 0.875rem;
