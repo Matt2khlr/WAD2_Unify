@@ -1,6 +1,9 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import WordCloud from 'wordcloud';
+import { db, auth } from '../firebase.js';
+import { collection, addDoc, getDocs, query, orderBy, limit } from "firebase/firestore";
+
 
 const sleepData = ref([
   { day: "Mon", hours: 7 },
@@ -47,6 +50,53 @@ function editSleep(dayObj) {
   }
 }
 
+async function logSleep() {
+  const user = auth.currentUser;
+  if (!user) {
+    alert('You must be logged in to log sleep.');
+    return;
+  }
+  await addDoc(
+  collection(db, "Users", user.uid, "sleepLogs"),
+  {
+    sleepData: sleepData.value,
+      date: new Date().toISOString()
+    }
+  );
+  alert('Sleep data logged!');
+}
+
+async function logMood() {
+  const user = auth.currentUser;
+  if (!user) {
+    alert('You must be logged in to log mood.');
+    return;
+  }
+  await addDoc(
+    collection(db, "Users", user.uid, "moodLogs"),
+    {
+      mood: stressLevel.value,
+      stressFactors: selectedFactors.value,
+      date: new Date().toISOString()
+    }
+  );
+  alert('Stress Level logged!');
+}
+
+async function fetchLatestSleepLog() {
+  const user = auth.currentUser;
+  if (!user) return;
+  const sleepLogsRef = collection(db, "Users", user.uid, "sleepLogs");
+  const sleepLogQuery = query(sleepLogsRef, orderBy("date", "desc"), limit(1));
+  const querySnapshot = await getDocs(sleepLogQuery);
+  if (!querySnapshot.empty) {
+    const latestLog = querySnapshot.docs[0].data();
+    if (latestLog.sleepData) {
+      sleepData.value = latestLog.sleepData;
+    }
+  }
+}
+
 const stressLabel = computed(() => {
   if (stressLevel.value < 30) return 'Low';
   if (stressLevel.value < 70) return 'Moderate';
@@ -87,6 +137,7 @@ const stressFactors = [
 const canvasRef = ref(null);
 
 onMounted(() => {
+  fetchLatestSleepLog();
   const canvas = canvasRef.value;
   if (!canvas) return;
 
@@ -192,7 +243,7 @@ onMounted(() => {
                 <div class="text-secondary" style="width: 45px;">{{ day.hours }}h</div>
               </div>
             </div>
-            <button class="btn btn-info w-100 mt-3">Log Sleep</button>
+            <button class="btn btn-info w-100 mt-3" @click="logSleep">Log Sleep</button>
           </div>
         </div>
 
@@ -238,7 +289,7 @@ onMounted(() => {
               </span>
               </div>
             </div>
-            <button class="btn btn-secondary w-100" @click="updateStress">Update Stress Level</button>
+            <button class="btn btn-secondary w-100" @click="[updateStress(), logMood()]" >Update Stress Level</button>
           </div>
         </div>
       </div>
