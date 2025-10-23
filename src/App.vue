@@ -18,10 +18,4 @@ import Navbar from "./components/Navbar.vue";
   font-family: 'Outfit', sans-serif !important;
 }
 
-.v-btn,
-.v-card-title,
-.v-list-item-title,
-span {
-  font-family: 'Outfit', sans-serif !important;
-}
 </style>

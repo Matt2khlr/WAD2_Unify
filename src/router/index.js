@@ -18,7 +18,6 @@ const routes = [
 
   // Old paths
   { path: "/recommendations", name: "recommendations", component: () => import("@/views/RecommendationsView.vue"), meta: { title: "Recommendations" } },
-  { path: "/calview", name: "calview", component: () => import("@/views/CalendarView (Old).vue"), meta: { title: "calview" } },
 
   // Optional auth/settings
   { path: "/login", name: "login", component: () => import("@/views/RegisterView.vue"), meta: { title: "Log in" } },

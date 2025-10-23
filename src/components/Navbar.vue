@@ -1,5 +1,5 @@
 <template>
-  <nav class="navbar navbar-expand-lg navbar-light bg-light border-bottom">
+  <nav class="navbar navbar-expand-lg border-bottom">
     <div class="container">
       <RouterLink class="navbar-brand d-flex align-items-center" to="/">
         <img src="../assets/logo.png" class="navbar-logo" alt="Logo" />
@@ -24,7 +24,6 @@
           <li class="nav-item"><RouterLink class="nav-link" to="/study">Study</RouterLink></li>
           <li class="nav-item"><RouterLink class="nav-link" to="/nutrition">Nutrition</RouterLink></li>
           <li class="nav-item"><RouterLink class="nav-link" to="/calendar">Calendar</RouterLink></li>
-          <!-- <li class="nav-item"><RouterLink class="nav-link" to="/recommendations">Recommendations</RouterLink></li> -->
         </ul>
       </div>
     </div>
@@ -36,13 +35,34 @@
 
 <style scoped>
 .navbar-logo {
-  width: 50px; /* Adjust the size of the logo */
-  height: auto; /* Maintain aspect ratio */
-  max-height: 100px; /* Set a max height to keep it from getting too large */
+  width: 50px;
+  height: auto;
+  max-height: 100px;
 }
 
 .navbar-brand {
   display: flex;
-  align-items: center; /* Vertically align logo with any text */
+  align-items: center;
 }
+
+nav {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.navbar-nav .nav-link {
+  color: white;
+}
+
+.navbar-nav .nav-link:hover {
+  color: lightgray; 
+}
+
+.router-link-active {
+  color: #f39c12 !important;
+}
+
+/* .router-link-active:hover {
+  color: #f39c12;
+} */
+
 </style>
