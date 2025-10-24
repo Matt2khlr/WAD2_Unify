@@ -1,8 +1,10 @@
 <script setup>
 import { ref, onMounted } from 'vue';
-import { updatePassword, reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth';
+import { updatePassword, reauthenticateWithCredential, EmailAuthProvider, signOut } from 'firebase/auth';
 import { auth } from '@/firebase';
+import { useRouter } from 'vue-router';
 
+const router = useRouter();
 const user = ref(null);
 
 // Change password state
@@ -40,11 +42,8 @@ async function updatePasswordHandler() {
     passwordSuccess.value = false;
 
     try {
-        // Reauthenticate with current password
         const credential = EmailAuthProvider.credential(user.value.email, currentPassword.value);
         await reauthenticateWithCredential(user.value, credential);
-
-        // Update password
         await updatePassword(user.value, newPassword.value);
         passwordSuccess.value = true;
         currentPassword.value = '';
@@ -62,6 +61,16 @@ async function updatePasswordHandler() {
         }
     } finally {
         passwordLoading.value = false;
+    }
+}
+
+// Logout handler
+async function logout() {
+    try {
+        await signOut(auth);
+        router.push('/login');
+    } catch (e) {
+        console.error('Logout failed:', e);
     }
 }
 </script>
@@ -84,7 +93,7 @@ async function updatePasswordHandler() {
                 </div>
 
                 <!-- Change Password Section -->
-                <div class="card auth-card">
+                <div class="card auth-card mb-4">
                     <div class="card-body p-4 d-flex flex-column">
                         <h2 class="mb-1">Change Password</h2>
                         <p class="text-muted mb-3">Update your account password</p>
@@ -121,6 +130,16 @@ async function updatePasswordHandler() {
                         <div v-if="passwordError" class="alert alert-danger mt-3 mb-0">
                             {{ passwordError }}
                         </div>
+                    </div>
+                </div>
+
+                <!-- Logout Section -->
+                <div class="card auth-card">
+                    <div class="card-body p-4 d-flex flex-column">
+                        <button class="btn btn-outline-danger w-100" @click="logout" :disabled="logoutLoading">
+                            <span v-if="logoutLoading" class="spinner-border spinner-border-sm me-2"></span>
+                            Logout
+                        </button>
                     </div>
                 </div>
             </div>

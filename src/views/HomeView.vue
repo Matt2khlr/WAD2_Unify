@@ -251,21 +251,6 @@ function iconForType(type) {
                     </div>
                 </div>
             </div>
-
-            <div class="card shadow-soft">
-                <div class="card-body">
-                    <h2 class="h5 mb-3 d-flex align-items-center gap-2">
-                        <Clock class="text-info" :size="20" /> Quick Actions
-                    </h2>
-                    <div class="d-flex flex-wrap gap-2">
-                        <button class="btn btn-primary">Start Pomodoro</button>
-                        <button class="btn btn-secondary">Log Sleep</button>
-                        <button class="btn btn-info text-white">Track Meal</button>
-                        <button class="btn btn-success">Add Deadline</button>
-                        <button class="btn btn-outline-secondary">View Calendar</button>
-                    </div>
-                </div>
-            </div>
         </div>
     </div>
 </template>
