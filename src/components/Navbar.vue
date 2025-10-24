@@ -24,6 +24,7 @@
           <li class="nav-item"><RouterLink class="nav-link" to="/study">Study</RouterLink></li>
           <li class="nav-item"><RouterLink class="nav-link" to="/nutrition">Nutrition</RouterLink></li>
           <li class="nav-item"><RouterLink class="nav-link" to="/calendar">Calendar</RouterLink></li>
+          <li class="nav-item"><RouterLink class="nav-link" to="/settings">Settings</RouterLink></li>
         </ul>
       </div>
     </div>
@@ -46,7 +47,10 @@
 }
 
 nav {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    position: sticky;
+    top: 0;
+    z-index: 1;
 }
 
 .navbar-nav .nav-link {

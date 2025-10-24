@@ -21,7 +21,6 @@ const routes = [
 
   // Optional auth/settings
   { path: "/login", name: "login", component: () => import("@/views/RegisterView.vue"), meta: { title: "Log in" } },
-  { path: "/register", name: "register", component: () => import("@/views/RegisterView.vue"), meta: { title: "Register" } },
   { path: "/settings", name: "settings", component: () => import("@/views/SettingsView.vue"), meta: { title: "Settings" } },
 
   // 404
