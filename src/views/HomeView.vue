@@ -1,94 +1,111 @@
-<script setup>
+<script>
 import { BookOpen, Heart, Dumbbell, CheckCircle2, Clock, TrendingUp } from "lucide-vue-next";
-import { ref, computed } from 'vue';
 
-const tasks = [
-    { title: "Complete Data Structures Assignment", time: "Due: 6 PM", completed: false },
-    { title: "Review Calculus Notes", time: "30 mins", completed: true },
-    { title: "Pomodoro Session: Physics", time: "25 mins", completed: true },
-    { title: "Evening Workout", time: "5 PM", completed: false },
-];
-
-const modules = [
-    { name: "Data Structures", progress: 75 },
-    { name: "Calculus II", progress: 60 },
-    { name: "Physics", progress: 45 },
-    { name: "Web Development", progress: 90 },
-];
-
-// Status (add functionality)
-const currentStatus = ref({
-    stress: 'Moderate',
-    freeTime: '3 hours',
-    upcomingDeadlines: 4,
-    sleepQuality: 'Good'
-});
-
-// Suggestions (add functionality)
-const suggestions = ref([
-    {
-        title: 'Take a Break',
-        description: "You've been working for 2 hours. Take a 15-minute break to refresh your mind.",
-        time: 'In 10 mins',
-        priority: 'high',
-        type: 'break'
+export default {
+    name: 'YourComponentName',
+    
+    components: {
+        BookOpen,
+        Heart,
+        Dumbbell,
+        CheckCircle2,
+        Clock,
+        TrendingUp
     },
-    {
-        title: 'Focus Study Session',
-        description: 'Start a 50-minute Pomodoro session on Web Development. You have an assignment due this Friday.',
-        time: '3:00 PM',
-        priority: 'medium',
-        type: 'study'
+    
+    data() {
+        return {
+            tasks: [
+                { title: "Complete Data Structures Assignment", time: "Due: 6 PM", completed: false },
+                { title: "Review Calculus Notes", time: "30 mins", completed: true },
+                { title: "Pomodoro Session: Physics", time: "25 mins", completed: true },
+                { title: "Evening Workout", time: "5 PM", completed: false },
+            ],
+            
+            modules: [
+                { name: "Data Structures", progress: 75 },
+                { name: "Calculus II", progress: 60 },
+                { name: "Physics", progress: 45 },
+                { name: "Web Development", progress: 90 },
+            ],
+            
+            currentStatus: {
+                stress: 'Moderate',
+                freeTime: '3 hours',
+                upcomingDeadlines: 4,
+                sleepQuality: 'Good'
+            },
+            
+            suggestions: [
+                {
+                    title: 'Take a Break',
+                    description: "You've been working for 2 hours. Take a 15-minute break to refresh your mind.",
+                    time: 'In 10 mins',
+                    priority: 'high',
+                    type: 'break'
+                },
+                {
+                    title: 'Focus Study Session',
+                    description: 'Start a 50-minute Pomodoro session on Web Development. You have an assignment due this Friday.',
+                    time: '3:00 PM',
+                    priority: 'medium',
+                    type: 'study'
+                },
+                {
+                    title: 'Quick Workout',
+                    description: 'You have 1 hour of free time at 5 PM. Go for a gym session or home workout to keep up with exercise.',
+                    time: '5:00 PM',
+                    priority: 'medium',
+                    type: 'exercise'
+                },
+                {
+                    title: 'Wind Down Routine',
+                    description: 'Your sleep quality is good! Maintain it by starting your bedtime routine at 10 PM.',
+                    time: '10:00 PM',
+                    priority: 'low',
+                    type: 'sleep'
+                }
+            ],
+            
+            priorityClasses: {
+                high: { badge: 'bg-danger text-white', border: 'border-danger' },
+                medium: { badge: 'bg-warning text-dark', border: 'border-warning' },
+                low: { badge: 'bg-success', border: 'border-success' },
+                default: { badge: 'bg-light text-dark', border: 'border-light' }
+            },
+            
+            icons: {
+                study: '📘',
+                break: '☕',
+                exercise: '🏋️',
+                sleep: '🌙',
+                default: '✨'
+            }
+        };
     },
-    {
-        title: 'Quick Workout',
-        description: 'You have 1 hour of free time at 5 PM. Go for a gym session or home workout to keep up with exercise.',
-        time: '5:00 PM',
-        priority: 'medium',
-        type: 'exercise'
+    
+    computed: {
+        statusList() {
+            return [
+                { key: 'stress', label: 'Stress Level', value: this.currentStatus.stress },
+                { key: 'freeTime', label: 'Free Time Today', value: this.currentStatus.freeTime },
+                { key: 'deadlines', label: 'Deadlines (7 days)', value: this.currentStatus.upcomingDeadlines },
+                { key: 'sleep', label: 'Sleep Quality', value: this.currentStatus.sleepQuality }
+            ];
+        }
     },
-    {
-        title: 'Wind Down Routine',
-        description: 'Your sleep quality is good! Maintain it by starting your bedtime routine at 10 PM.',
-        time: '10:00 PM',
-        priority: 'low',
-        type: 'sleep'
+    
+    methods: {
+        getPriorityClass(suggestion) {
+            const priorityClass = this.priorityClasses[suggestion.priority] || this.priorityClasses.default;
+            return { border: priorityClass.border, badge: priorityClass.badge };
+        },
+        
+        iconForType(type) {
+            return this.icons[type] || this.icons.default;
+        }
     }
-]);
-
-// Status list
-const statusList = computed(() => [
-    { key: 'stress', label: 'Stress Level', value: currentStatus.value.stress },
-    { key: 'freeTime', label: 'Free Time Today', value: currentStatus.value.freeTime },
-    { key: 'deadlines', label: 'Deadlines (7 days)', value: currentStatus.value.upcomingDeadlines },
-    { key: 'sleep', label: 'Sleep Quality', value: currentStatus.value.sleepQuality }
-]);
-
-// For status cards
-const priorityClasses = {
-    high: { badge: 'bg-danger text-white', border: 'border-danger' },
-    medium: { badge: 'bg-warning text-dark', border: 'border-warning' },
-    low: { badge: 'bg-success', border: 'border-success' },
-    default: { badge: 'bg-light text-dark', border: 'border-light' }
 };
-
-// Icons
-const icons = {
-    study: '📘',
-    break: '☕',
-    exercise: '🏋️',
-    sleep: '🌙',
-    default: '✨'
-};
-
-function getPriorityClass(suggestion) {
-    const priorityClass = priorityClasses[suggestion.priority] || priorityClasses.default;
-    return { border: priorityClass.border, badge: priorityClass.badge };
-}
-
-function iconForType(type) {
-    return icons[type] || icons.default;
-}
 </script>
 
 <template>
