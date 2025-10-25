@@ -1,5 +1,5 @@
 <template>
-  <nav class="navbar navbar-expand-lg border-bottom">
+  <nav class="navbar navbar-dark navbar-expand-lg border-bottom">
     <div class="container">
       <RouterLink class="navbar-brand d-flex align-items-center" to="/">
         <img src="../assets/logo.png" class="navbar-logo" alt="Logo" />
@@ -24,7 +24,7 @@
           <li class="nav-item"><RouterLink class="nav-link" to="/study">Study</RouterLink></li>
           <li class="nav-item"><RouterLink class="nav-link" to="/nutrition">Nutrition</RouterLink></li>
           <li class="nav-item"><RouterLink class="nav-link" to="/calendar">Calendar</RouterLink></li>
-          <li class="nav-item"><RouterLink class="nav-link" to="/settings">Settings</RouterLink></li>
+          <li class="nav-item"><RouterLink class="nav-link" to="/settings">Profile</RouterLink></li>
         </ul>
       </div>
     </div>
@@ -35,8 +35,12 @@
 </script>
 
 <style scoped>
+.navbar-toggler {
+  border: none;
+}
+
 .navbar-logo {
-  width: 50px;
+  width: 125px;
   height: auto;
   max-height: 100px;
 }
@@ -47,7 +51,7 @@
 }
 
 nav {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
     position: sticky;
     top: 0;
     z-index: 1;
@@ -58,15 +62,10 @@ nav {
 }
 
 .navbar-nav .nav-link:hover {
-  color: lightgray; 
+  color: #bababa; 
 }
 
 .router-link-active {
-  color: #f39c12 !important;
+  color: wheat !important;
 }
-
-/* .router-link-active:hover {
-  color: #f39c12;
-} */
-
 </style>

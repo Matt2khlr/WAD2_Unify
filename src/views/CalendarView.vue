@@ -120,6 +120,8 @@
               <div v-if="sortedEvents.length === 0" class="list-group-item text-center text-muted">
                 No Upcoming Events
               </div>
+
+              <!-- :style="{backgroundColor: event.colour}" -->
               
               <a 
                 v-for="event in sortedEvents" 
