@@ -72,10 +72,10 @@ export default {
             ],
             
             priorityClasses: {
-                high: { badge: 'bg-danger text-white', border: 'border-danger' },
-                medium: { badge: 'bg-warning text-dark', border: 'border-warning' },
-                low: { badge: 'bg-success', border: 'border-success' },
-                default: { badge: 'bg-light text-dark', border: 'border-light' }
+                high: { badge: 'bg-danger text-white'},
+                medium: { badge: 'bg-warning text-dark'},
+                low: { badge: 'bg-success'},
+                default: { badge: 'bg-light text-dark'}
             },
             
             icons: {
@@ -192,7 +192,7 @@ export default {
     methods: {
         getPriorityClass(suggestion) {
             const priorityClass = this.priorityClasses[suggestion.priority] || this.priorityClasses.default;
-            return { border: priorityClass.border, badge: priorityClass.badge };
+            return { badge: priorityClass.badge };
         },
         
         iconForType(type) {
@@ -624,7 +624,7 @@ export default {
 <template>
     <div class="min-vh-100 bg-light">
         <header class="bg-white border-bottom">
-            <div class="container px-4 py-5">
+            <div class="container px-3 py-5">
                 <h1 class="display-6 fw-bold mb-2">Welcome back! 👋</h1>
                 <p class="fs-5 text-muted mb-0">
                     Your hub for academic success & wellbeing. Let's make today productive and balanced.
@@ -655,7 +655,7 @@ export default {
             <!-- Suggestions list -->
             <div class="row g-3">
                 <div class="col-12 col-md-6 col-lg-4" v-for="suggestion in suggestions" :key="suggestion.title">
-                    <div class="card h-100 border-2" :class="getPriorityClass(suggestion).border">
+                    <div class="card h-100">
                         <div class="card-body d-flex flex-column">
                             <div class="d-flex align-items-center mb-2">
                                 <div class="me-2 fs-5">{{ iconForType(suggestion.type) }}</div>
@@ -866,14 +866,14 @@ export default {
 <style scoped>
 /* Cards */
 .card {
-    border-radius: 1rem;
+    border-radius: 0.75rem;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
 }
 
-/* Card hover effect */
 .card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.05);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
 }
 
 /* Badge text */
@@ -881,24 +881,28 @@ export default {
     text-transform: capitalize;
 }
 
-.shadow-soft {
-    box-shadow: 0 8px 24px rgba(0, 0, 0, .06);
+/* Paragraph text */
+p {
+    color: black !important;
 }
 
-.hover-bg:hover {
-    background: rgba(0, 0, 0, .03);
-}
-
+/* Icon wrapper */
 .icon-wrap {
     width: 40px;
     height: 40px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    border-radius: 999px;
+    border-radius: 50%;
     background: rgba(0, 0, 0, .05);
 }
 
+/* Icon centering */
+.icon-wrap svg {
+    transform: translate(4px, 1px);
+}
+
+/* Gradient Backgrounds */
 .gradient-primary {
     background: linear-gradient(135deg, #e9f2ff 0%, #f5f9ff 100%);
 }
@@ -911,14 +915,17 @@ export default {
     background: linear-gradient(135deg, #fff1e6 0%, #fff6ef 100%);
 }
 
+/* Stat Cards */
 .stat-card {
     border: 0;
 }
 
+/* Stat Card Body */
 .stat-card .card-body {
     padding: 1rem 1.25rem;
 }
 
+/* Event Cards*/
 .event-card {
   background: #fafafa;
   transition: all 0.2s ease;
