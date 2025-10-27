@@ -4,7 +4,6 @@ import WordCloud from 'wordcloud';
 import { db, auth } from '../firebase.js';
 import { collection, addDoc, getDocs, query, orderBy, limit } from "firebase/firestore";
 
-
 const sleepData = ref([
   { day: "Mon", hours: 7 },
   { day: "Tue", hours: 6.5 },
@@ -57,9 +56,10 @@ async function logSleep() {
     return;
   }
   await addDoc(
-  collection(db, "Users", user.uid, "sleepLogs"),
-  {
-    sleepData: sleepData.value,
+    collection(db, "sleepLogs"), 
+    {
+      userId: user.uid, 
+      sleepData: sleepData.value,
       date: new Date().toISOString()
     }
   );
@@ -73,8 +73,9 @@ async function logMood() {
     return;
   }
   await addDoc(
-    collection(db, "Users", user.uid, "moodLogs"),
+    collection(db, "moodLogs"), 
     {
+      userId: user.uid,
       mood: stressLevel.value,
       stressFactors: selectedFactors.value,
       date: new Date().toISOString()
@@ -86,8 +87,12 @@ async function logMood() {
 async function fetchLatestSleepLog() {
   const user = auth.currentUser;
   if (!user) return;
-  const sleepLogsRef = collection(db, "Users", user.uid, "sleepLogs");
-  const sleepLogQuery = query(sleepLogsRef, orderBy("date", "desc"), limit(1));
+  const sleepLogQuery = query(
+    collection(db, "sleepLogs"),
+    where("userId", "==", user.uid),             
+    orderBy("date", "desc"),
+    limit(1)
+  );
   const querySnapshot = await getDocs(sleepLogQuery);
   if (!querySnapshot.empty) {
     const latestLog = querySnapshot.docs[0].data();
@@ -182,24 +187,6 @@ onMounted(() => {
         <p class="text-muted">Monitor your mental health and sleep patterns</p>
       </div>
 
-      <!-- Mental Health Check-in -->
-      <div class="card bg-primary text-white shadow mb-4 p-4">
-        <h2 class="mb-4">How are you feeling today?</h2>
-        <div class="d-flex justify-content-center gap-4 mb-3">
-          <button 
-            v-for="option in moodOptions" 
-            :key="option.label" 
-            :class="['d-flex flex-column align-items-center p-3 rounded', option.color, { 'opacity-75': selectedMood !== option.label }]"
-            style="width: 100px; transition: transform 0.3s;"
-            @click="selectMood(option.label)"
-            :style="{ transform: selectedMood === option.label ? 'scale(1.05)' : 'scale(1)' }"
-          >
-            <span class="fs-1">{{ option.icon }}</span>
-            <span class="mt-2 fw-semibold">{{ option.label }}</span>
-          </button>
-        </div>
-        <p class="text-center text-white-75">Track your mood daily to identify patterns and improve wellbeing</p>
-      </div>
 
       <div class="row mb-4 g-4">
         <!-- Sleep Tracker -->
@@ -223,23 +210,19 @@ onMounted(() => {
                 :key="day.day" 
                 class="d-flex align-items-center gap-3 mb-2"
               >
-                <!-- Clickable day name -->
-                <div 
-                  class="fw-medium" 
-                  style="width: 50px; cursor: pointer; text-decoration: underline;" 
-                  @click="editSleep(day)"
-                  title="Click to edit"
-                >{{ day.day }}</div>
-                <div class="progress flex-grow-1" style="height: 20px;">
-                  <div 
-                    class="progress-bar bg-info" 
-                    role="progressbar" 
-                    :style="{width: (day.hours / 10 * 100) + '%'}"
-                    :aria-valuenow="day.hours"
-                    aria-valuemin="0" 
-                    aria-valuemax="10"
-                  ></div>
+                <div class="fw-medium" style="width: 50px;">
+                  {{ day.day }}
                 </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="14"
+                  step="0.5"
+                  v-model.number="day.hours"
+                  class="flex-grow-1"
+                  style="max-width: 400px;"
+                  :aria-label="`Sleep hours for ${day.day}`"
+                />
                 <div class="text-secondary" style="width: 45px;">{{ day.hours }}h</div>
               </div>
             </div>
