@@ -1,6 +1,8 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import WordCloud from 'wordcloud';
+import { db, auth } from '../firebase.js';
+import { collection, addDoc, getDocs, query, orderBy, limit } from "firebase/firestore";
 
 const sleepData = ref([
   { day: "Mon", hours: 7 },
@@ -47,6 +49,59 @@ function editSleep(dayObj) {
   }
 }
 
+async function logSleep() {
+  const user = auth.currentUser;
+  if (!user) {
+    alert('You must be logged in to log sleep.');
+    return;
+  }
+  await addDoc(
+    collection(db, "sleepLogs"), 
+    {
+      userId: user.uid, 
+      sleepData: sleepData.value,
+      date: new Date().toISOString()
+    }
+  );
+  alert('Sleep data logged!');
+}
+
+async function logMood() {
+  const user = auth.currentUser;
+  if (!user) {
+    alert('You must be logged in to log mood.');
+    return;
+  }
+  await addDoc(
+    collection(db, "moodLogs"), 
+    {
+      userId: user.uid,
+      mood: stressLevel.value,
+      stressFactors: selectedFactors.value,
+      date: new Date().toISOString()
+    }
+  );
+  alert('Stress Level logged!');
+}
+
+async function fetchLatestSleepLog() {
+  const user = auth.currentUser;
+  if (!user) return;
+  const sleepLogQuery = query(
+    collection(db, "sleepLogs"),
+    where("userId", "==", user.uid),             
+    orderBy("date", "desc"),
+    limit(1)
+  );
+  const querySnapshot = await getDocs(sleepLogQuery);
+  if (!querySnapshot.empty) {
+    const latestLog = querySnapshot.docs[0].data();
+    if (latestLog.sleepData) {
+      sleepData.value = latestLog.sleepData;
+    }
+  }
+}
+
 const stressLabel = computed(() => {
   if (stressLevel.value < 30) return 'Low';
   if (stressLevel.value < 70) return 'Moderate';
@@ -87,6 +142,7 @@ const stressFactors = [
 const canvasRef = ref(null);
 
 onMounted(() => {
+  fetchLatestSleepLog();
   const canvas = canvasRef.value;
   if (!canvas) return;
 
@@ -125,30 +181,12 @@ onMounted(() => {
       <!-- Header -->
       <div class="mb-4">
         <h1 class="d-flex align-items-center gap-3 mb-2">
-          <span class="text-danger fs-1">❤️</span>
+          <!--<span class="text-danger fs-1">❤️</span>-->
           Wellness Tracker
         </h1>
         <p class="text-muted">Monitor your mental health and sleep patterns</p>
       </div>
 
-      <!-- Mental Health Check-in -->
-      <div class="card bg-primary text-white shadow mb-4 p-4">
-        <h2 class="mb-4">How are you feeling today?</h2>
-        <div class="d-flex justify-content-center gap-4 mb-3">
-          <button 
-            v-for="option in moodOptions" 
-            :key="option.label" 
-            :class="['d-flex flex-column align-items-center p-3 rounded', option.color, { 'opacity-75': selectedMood !== option.label }]"
-            style="width: 100px; transition: transform 0.3s;"
-            @click="selectMood(option.label)"
-            :style="{ transform: selectedMood === option.label ? 'scale(1.05)' : 'scale(1)' }"
-          >
-            <span class="fs-1">{{ option.icon }}</span>
-            <span class="mt-2 fw-semibold">{{ option.label }}</span>
-          </button>
-        </div>
-        <p class="text-center text-white-75">Track your mood daily to identify patterns and improve wellbeing</p>
-      </div>
 
       <div class="row mb-4 g-4">
         <!-- Sleep Tracker -->
@@ -156,7 +194,7 @@ onMounted(() => {
           <div class="card shadow p-4 h-100">
             <div class="d-flex align-items-center justify-content-between mb-3">
               <h3 class="d-flex align-items-center gap-2 mb-0">
-                <span class="fs-5 text-info">🌙</span>
+                <!--<span class="fs-5 text-info">🌙</span>-->
                 Sleep Tracking
               </h3>
             </div>
@@ -172,27 +210,23 @@ onMounted(() => {
                 :key="day.day" 
                 class="d-flex align-items-center gap-3 mb-2"
               >
-                <!-- Clickable day name -->
-                <div 
-                  class="fw-medium" 
-                  style="width: 50px; cursor: pointer; text-decoration: underline;" 
-                  @click="editSleep(day)"
-                  title="Click to edit"
-                >{{ day.day }}</div>
-                <div class="progress flex-grow-1" style="height: 20px;">
-                  <div 
-                    class="progress-bar bg-info" 
-                    role="progressbar" 
-                    :style="{width: (day.hours / 10 * 100) + '%'}"
-                    :aria-valuenow="day.hours"
-                    aria-valuemin="0" 
-                    aria-valuemax="10"
-                  ></div>
+                <div class="fw-medium" style="width: 50px;">
+                  {{ day.day }}
                 </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="14"
+                  step="0.5"
+                  v-model.number="day.hours"
+                  class="flex-grow-1"
+                  style="max-width: 400px;"
+                  :aria-label="`Sleep hours for ${day.day}`"
+                />
                 <div class="text-secondary" style="width: 45px;">{{ day.hours }}h</div>
               </div>
             </div>
-            <button class="btn btn-info w-100 mt-3">Log Sleep</button>
+            <button class="btn btn-info w-100 mt-3" @click="logSleep">Log Sleep</button>
           </div>
         </div>
 
@@ -200,7 +234,7 @@ onMounted(() => {
         <div class="col-12 col-lg-6">
           <div class="card shadow p-4 h-100 d-flex flex-column">
             <h3 class="mb-3 d-flex align-items-center gap-2">
-              <span class="fs-5 text-warning">✨</span>
+              <!--<span class="fs-5 text-warning">✨</span>-->
               Current Stress Level
             </h3>
             <div class="mb-3">
@@ -238,14 +272,14 @@ onMounted(() => {
               </span>
               </div>
             </div>
-            <button class="btn btn-secondary w-100" @click="updateStress">Update Stress Level</button>
+            <button class="btn btn-secondary w-100" @click="[updateStress(), logMood()]" >Update Stress Level</button>
           </div>
         </div>
       </div>
 
       <!-- Wellness Tips -->
       <div class="card shadow p-4 bg-gradient rounded">
-        <h3 class="mb-4">🧘 Wellness Recommendations</h3>
+        <h3 class="mb-4"><!--🧘 -->Wellness Recommendations</h3>
         <div class="row g-4">
           <div class="col-12 col-md-6">
             <div class="p-3 bg-white rounded shadow-sm">

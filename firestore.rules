@@ -1,0 +1,31 @@
+// firestore.rules
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() { return request.auth != null; }
+
+    // Only allow a user to access docs where userId == their UID.
+    // Prevent writing a different userId and prevent changing userId on update.
+    match /meals/{docId} {
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow read:    if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow update, delete:
+        if isSignedIn()
+        && resource.data.userId == request.auth.uid
+        && request.resource.data.userId == resource.data.userId;
+    }
+
+    match /workouts/{docId} {
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow read:    if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow update, delete:
+        if isSignedIn()
+        && resource.data.userId == request.auth.uid
+        && request.resource.data.userId == resource.data.userId;
+    }
+
+    // Everything else denied
+    match /{document=**} { allow read, write: if false; }
+  }
+}

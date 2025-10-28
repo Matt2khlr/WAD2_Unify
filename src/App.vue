@@ -1,11 +1,21 @@
+<script setup>
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
+import Navbar from "./components/Navbar.vue"
+
+const route = useRoute()
+
+// Hide navbar on these routes
+const hideNavbar = computed(() => {
+  const excludedRoutes = ['/login', '/register']
+  return excludedRoutes.includes(route.path)
+})
+</script>
+
 <template>
-  <Navbar />
+  <Navbar v-if="!hideNavbar" />
   <RouterView />
 </template>
-
-<script setup>
-import Navbar from "./components/Navbar.vue";
-</script>
 
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Urbanist:wght@100..900&display=swap');
@@ -18,7 +28,4 @@ import Navbar from "./components/Navbar.vue";
   font-family: 'Outfit', sans-serif !important;
 }
 
-.v-btn, .v-card-title, .v-list-item-title, span {
-  font-family: 'Outfit', sans-serif !important;
-}
 </style>

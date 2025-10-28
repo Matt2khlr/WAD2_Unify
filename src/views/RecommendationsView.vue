@@ -1,3 +1,5 @@
+<!-- deprecated (moved to HomeView.vue) -->
+
 <script setup>
 import { ref, computed } from 'vue';
 
@@ -102,13 +104,13 @@ function iconForType(type) {
                 <div class="card h-100 border-2" :class="getPriorityClass(suggestion).border">
                     <div class="card-body d-flex flex-column">
                         <div class="d-flex align-items-center mb-2">
-                            <div class="me-2 fs-5">{{ iconForType(suggestion.type) }}</div>
+                            <!-- <div class="me-2 fs-5">{{ iconForType(suggestion.type) }}</div> -->
                             <h6 class="mb-0">{{ suggestion.title }}</h6>
                             <span class="badge ms-auto" :class="getPriorityClass(suggestion).badge">{{ suggestion.priority }}</span>
                         </div>
                         <p class="mb-2 text-secondary">{{ suggestion.description }}</p>
                         <div class="d-flex align-items-center">
-                            <span class="me-2">⏰</span>
+                            <!-- <span class="me-2">⏰</span> -->
                             <small class="text-muted">{{ suggestion.time }}</small>
                         </div>
                     </div>
@@ -150,5 +152,9 @@ function iconForType(type) {
 /* Badge text */
 .badge {
     text-transform: capitalize;
+}
+
+p {
+    color: black !important;
 }
 </style>

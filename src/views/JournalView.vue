@@ -65,6 +65,7 @@ function subscribeToJournalEntries() {
     );
 
     onSnapshot(q, (snapshot) => {
+        // Map the Firestore documents to local reactive data
         const fetchedEntries = snapshot.docs.map(doc => {
             const data = doc.data();
             
@@ -94,10 +95,10 @@ async function saveEntry() {
     };
     
     const optimisticEntry = {
-        id: Date.now(), // Temporary local ID
+        id: Date.now(), 
         text: newEntryData.text,
-        date: newEntryData.date.toLocaleString(), // Use local time for instant display
-        isSaving: true // Flag to show it's a local, unsynced entry
+        date: newEntryData.date.toLocaleString(), 
+        isSaving: true 
     };
 
     journalHistory.value.unshift(optimisticEntry);

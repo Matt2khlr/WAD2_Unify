@@ -1,25 +1,159 @@
 <template>
 	<div class="study-app">
 		<div class="container main-container">
-			<h1 class="text-center text-white mb-4">
+			<h1 class="text-center text-black mb-4">
 				<i class="fas fa-graduation-cap"></i> Study Tools
 			</h1>
 
-			<!-- Pomodoro Timer Section -->
+			<!-- Topics Management Section -->
 			<div class="card">
 				<div class="card-header">
-					<i class="fas fa-clock"></i> Pomodoro Timer
-					<i 
-						class="fas fa-question-circle help-icon" 
-						data-bs-toggle="tooltip" 
-						data-bs-placement="right"
-						title="The Pomodoro Technique breaks study time into focused intervals (typically 25 minutes) followed by short breaks. This helps maintain concentration, prevent burnout, and improve productivity by working with your brain's natural attention span."
-					></i>
+					<i class="fas fa-list-check"></i> Study Topics
+				</div>
+				<div class="card-body">
+					<!-- Add New Topic Bar -->
+					<div class="add-topic-section mb-4">
+						<div class="row align-items-end">
+							<div class="col-md-3">
+								<label class="form-label">Module:</label>
+								<select class="form-select" v-model="newTopic.module">
+									<option value="">Select Module</option>
+									<option v-for="module in modules" :key="module" :value="module">
+										{{ module }}
+									</option>
+									<option value="custom">+ Add Custom Module</option>
+								</select>
+							</div>
+							<div class="col-md-3" v-if="newTopic.module === 'custom'">
+								<label class="form-label">Custom Module Name:</label>
+								<input 
+									type="text" 
+									class="form-control" 
+									v-model="customModuleName"
+									placeholder="Enter module name..."
+								>
+							</div>
+							<div class="col-md-5">
+								<label class="form-label">Topic:</label>
+								<input 
+									type="text" 
+									class="form-control" 
+									v-model="newTopic.name"
+									placeholder="Enter topic to study..."
+									@keyup.enter="addTopic"
+								>
+							</div>
+							<div class="col-md-2">
+								<button class="btn btn-primary w-100" @click="addTopic">
+									<i class="fas fa-plus"></i> Add Topic
+								</button>
+							</div>
+						</div>
+					</div>
+
+					<!-- Topic Checklist -->
+					<div v-if="topics.length > 0" class="topics-checklist">
+						<div class="d-flex justify-content-between align-items-center mb-3">
+							<h5 class="mb-0">Topic Checklist</h5>
+							<div>
+								<span class="badge bg-info me-2">
+									Progress: {{ completedTopicsCount }} / {{ topics.length }}
+								</span>
+								<button class="btn btn-sm btn-outline-danger" @click="clearAllTopics">
+									<i class="fas fa-trash"></i> Clear All
+								</button>
+							</div>
+						</div>
+
+						<!-- Progress Bar -->
+						<div class="progress mb-3" style="height: 25px;">
+							<div 
+								class="progress-bar bg-success" 
+								:style="{width: topicsProgress + '%'}"
+							>
+								{{ Math.round(topicsProgress) }}%
+							</div>
+						</div>
+
+						<!-- Topics grouped by module -->
+						<div v-for="module in topicsByModule" :key="module.name" class="module-group mb-3">
+							<h6 class="module-header">
+								<i class="fas fa-folder"></i> {{ module.name }}
+								<span class="badge bg-secondary ms-2">{{ module.topics.length }}</span>
+							</h6>
+							<div class="topic-list">
+								<div 
+									v-for="topic in module.topics" 
+									:key="topic.id"
+									class="topic-item"
+									:class="{ 'completed': topic.completed }"
+								>
+									<div class="form-check d-flex align-items-center">
+										<input 
+											class="form-check-input me-3" 
+											type="checkbox" 
+											:id="'topic-' + topic.id"
+											v-model="topic.completed"
+											@change="saveTopics"
+										>
+										<label 
+											class="form-check-label flex-grow-1" 
+											:for="'topic-' + topic.id"
+											:style="{ textDecoration: topic.completed ? 'line-through' : 'none' }"
+										>
+											{{ topic.name }}
+										</label>
+										<small class="text-muted me-3">
+											{{ formatTopicDate(topic.addedDate) }}
+										</small>
+										<button 
+											class="btn btn-danger delete-topic-btn"
+											@click="deleteTopic(topic.id, topic.name)"
+											title="Delete this topic"
+										>
+											<span class="delete-x">X</span>
+										</button>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<div v-else class="text-center text-muted py-4">
+						<i class="fas fa-clipboard-list fa-3x mb-3"></i>
+						<p>No topics yet. Add your first study topic to get started!</p>
+					</div>
+				</div>
+			</div>
+
+			<!-- Pomodoro Timer Section -->
+			<div class="card">
+				<div class="card-header d-flex justify-content-between align-items-center">
+					<div>
+						<i class="fas fa-clock"></i> Pomodoro Timer
+					</div>
+					<div class="feature-help-section">
+						<button class="help-button-header" @mouseover="showPomodoroHelp = true" @mouseleave="showPomodoroHelp = false">
+							<i class="fas fa-question-circle front-icon"></i>
+						</button>
+						<div v-if="showPomodoroHelp" class="help-tooltip-header">
+							<h6>🎯 How Pomodoro Helps You Study Better:</h6>
+							<ul class="text-start">
+								<li><strong>Fights Procrastination:</strong> Breaking work into 25-minute chunks makes starting less daunting</li>
+								<li><strong>Maintains Focus:</strong> Short bursts align with your brain's natural attention span</li>
+								<li><strong>Prevents Burnout:</strong> Regular breaks keep your mind fresh and prevent mental fatigue</li>
+								<li><strong>Improves Time Awareness:</strong> Helps you understand how long tasks actually take</li>
+								<li><strong>Reduces Distractions:</strong> Knowing you only need to focus for 25 minutes makes it easier to ignore interruptions</li>
+								<li><strong>Builds Momentum:</strong> Completing pomodoros gives a sense of achievement that motivates continued study</li>
+							</ul>
+							<p class="mb-0 mt-2"><em>Tip: Start with 2-3 pomodoros per study session and gradually increase!</em></p>
+						</div>
+					</div>
 				</div>
 				<div class="card-body text-center">
 					<!-- Preset Timers -->
 					<div class="mb-4">
-						<h5>Quick Select:</h5>
+						<h5>Quick Select (minutes):</h5>
 						<button 
 							class="btn btn-outline-primary preset-btn" 
 							:class="{active: selectedPreset === 'pomodoro'}" 
@@ -111,15 +245,28 @@
 			</div>
 
 			<!-- Flashcards Section -->
-			<div class="card">
-				<div class="card-header">
-					<i class="fas fa-brain"></i> Spaced Repetition Flashcards
-					<i 
-						class="fas fa-question-circle help-icon" 
-						data-bs-toggle="tooltip" 
-						data-bs-placement="right"
-						title="Spaced Repetition optimizes learning by scheduling reviews at increasing intervals. You review cards right before you'd forget them, strengthening long-term memory. Cards you find easy are shown less often, while difficult cards appear more frequently."
-					></i>
+			<div class="card mb-0">
+				<div class="card-header d-flex justify-content-between align-items-center">
+					<div>
+						<i class="fas fa-brain"></i> Spaced Repetition Flashcards
+					</div>
+					<div class="feature-help-section">
+						<button class="help-button-header" @mouseover="showSpacedRepHelp = true" @mouseleave="showSpacedRepHelp = false">
+							<i class="fas fa-question-circle front-icon"></i>
+						</button>
+						<div v-if="showSpacedRepHelp" class="help-tooltip-header">
+							<h6>🧠 How Spaced Repetition Boosts Memory:</h6>
+							<ul class="text-start">
+								<li><strong>Fights the Forgetting Curve:</strong> Reviews information right before you'd naturally forget it</li>
+								<li><strong>Strengthens Long-term Memory:</strong> Each review moves knowledge deeper into permanent memory</li>
+								<li><strong>Optimizes Study Time:</strong> Focus on difficult cards more often, easy ones less frequently</li>
+								<li><strong>Active Recall Practice:</strong> Testing yourself is proven more effective than re-reading notes</li>
+								<li><strong>Reduces Cramming:</strong> Spreads learning over time for better retention than last-minute studying</li>
+								<li><strong>Builds Confidence:</strong> Regular successful recalls boost your confidence for exams</li>
+							</ul>
+							<p class="mb-0 mt-2"><em>Research shows: Spaced repetition can improve retention by up to 200% compared to massed practice!</em></p>
+						</div>
+					</div>
 				</div>
 				<div class="card-body">
 					<!-- Add Flashcard Form -->
@@ -226,7 +373,7 @@
 						</div>
 					</div>
 
-					<!-- Upcoming Reviews -->
+<!-- Upcoming Reviews -->
 					<div v-if="upcomingCards.length > 0" class="mt-4">
 						<h5 class="mb-3">
 							<span class="badge bg-info">{{ upcomingCards.length }}</span> Upcoming Reviews
@@ -238,19 +385,27 @@
 								class="list-group-item"
 							>
 								<div class="d-flex justify-content-between align-items-center">
-									<div>
+									<div class="flex-grow-1">
 										<strong>{{ card.question }}</strong>
 										<br>
 										<small class="text-muted">
 											Review in {{ daysUntil(card.nextReview) }} days
 										</small>
 									</div>
-									<span 
-										class="badge review-badge" 
-										:class="getBadgeClass(card.nextReview)"
-									>
-										{{ formatDate(card.nextReview) }}
-									</span>
+									<div class="d-flex align-items-center">
+										<span 
+											class="badge review-badge me-3" 
+											:class="getBadgeClass(card.nextReview)"
+										>
+											{{ formatDate(card.nextReview) }}
+										</span>
+										<button 
+											class="btn btn-danger" 
+											@click="deleteCard(card.id)"
+										>
+											<i class="fas fa-trash"></i> Delete
+										</button>
+									</div>
 								</div>
 							</div>
 						</div>
@@ -282,10 +437,11 @@
 					</div>
 					<div class="modal-body">
 						<label class="form-label">Exam Date:</label>
-						<input type="date" class="form-control" v-model="examDate">
-						<p class="text-muted mt-2">
-							Cards will not be scheduled for review after this date.
-						</p>
+						<input 
+							type="date" 
+							class="form-control" 
+							v-model="examDate"
+						>
 					</div>
 					<div class="modal-footer">
 						<button 
@@ -293,87 +449,117 @@
 							class="btn btn-secondary" 
 							@click="showExamDateModal = false"
 						>
-							Close
+							Cancel
 						</button>
 						<button 
 							type="button" 
 							class="btn btn-primary" 
 							@click="saveExamDate"
 						>
-							Save
+							Save Exam Date
 						</button>
 					</div>
 				</div>
 			</div>
 		</div>
-		<div 
-			class="modal-backdrop" 
-			:class="{show: showExamDateModal}" 
-			:style="{display: showExamDateModal ? 'block' : 'none'}"
-		></div>
 	</div>
 </template>
 
 <script>
 export default {
-	name: 'StudyTools',
+	name: 'StudyApp',
 	data() {
 		return {
-			// Timer data
+			// Topics Management
+			topics: [],
+			topicIdCounter: 1,
+			newTopic: {
+				module: '',
+				name: ''
+			},
+			customModuleName: '',
+			modules: [
+				'Mathematics',
+				'Physics',
+				'Chemistry',
+				'Biology',
+				'Computer Science',
+				'History',
+				'Literature',
+				'Economics',
+				'Psychology',
+				'Engineering'
+			],
+			
+			// Help tooltips
+			showPomodoroHelp: false,
+			showSpacedRepHelp: false,
+			
+			// Pomodoro Timer
 			minutes: 25,
 			seconds: 0,
-			isRunning: false,
-			isBreak: false,
-			timerInterval: null,
-			selectedPreset: 'pomodoro',
 			studyTime: 25,
 			breakTime: 5,
+			isBreak: false,
+			isRunning: false,
+			timerInterval: null,
+			selectedPreset: 'pomodoro',
 			customStudy: 25,
 			customBreak: 5,
 			
-			// Flashcard data
+			// Flashcards
 			flashcards: [],
+			newCard: { question: '', answer: '' },
 			showAddCard: false,
-			newCard: {
-				question: '',
-				answer: ''
-			},
-			examDate: '',
-			showExamDateModal: false,
-			cardIdCounter: 1,
 			reviewMode: false,
-			currentCardIndex: 0
+			currentCardIndex: 0,
+			cardIdCounter: 1,
+			showExamDateModal: false,
+			examDate: ''
 		};
 	},
 	computed: {
-		formattedTime() {
-			const m = String(this.minutes).padStart(2, '0');
-			const s = String(this.seconds).padStart(2, '0');
-			return `${m}:${s}`;
+		// Topics computed properties
+		completedTopicsCount() {
+			return this.topics.filter(t => t.completed).length;
 		},
-		dueCards() {
-			const today = new Date();
-			today.setHours(0, 0, 0, 0);
-			return this.flashcards.filter(card => {
-				const reviewDate = new Date(card.nextReview);
-				reviewDate.setHours(0, 0, 0, 0);
-				return reviewDate <= today;
+		topicsProgress() {
+			if (this.topics.length === 0) return 0;
+			return (this.completedTopicsCount / this.topics.length) * 100;
+		},
+		topicsByModule() {
+			const grouped = {};
+			this.topics.forEach(topic => {
+				if (!grouped[topic.module]) {
+					grouped[topic.module] = {
+						name: topic.module,
+						topics: []
+					};
+				}
+				grouped[topic.module].topics.push(topic);
 			});
+			return Object.values(grouped).sort((a, b) => a.name.localeCompare(b.name));
+		},
+		
+		// Timer computed properties
+		formattedTime() {
+			const mins = this.minutes.toString().padStart(2, '0');
+			const secs = this.seconds.toString().padStart(2, '0');
+			return `${mins}:${secs}`;
+		},
+		
+		// Flashcard computed properties
+		dueCards() {
+			const today = new Date().toISOString().split('T')[0];
+			return this.flashcards.filter(card => card.nextReview <= today);
 		},
 		upcomingCards() {
-			const today = new Date();
-			today.setHours(0, 0, 0, 0);
-			return this.flashcards.filter(card => {
-				const reviewDate = new Date(card.nextReview);
-				reviewDate.setHours(0, 0, 0, 0);
-				return reviewDate > today;
-			}).sort((a, b) => new Date(a.nextReview) - new Date(b.nextReview));
+			const today = new Date().toISOString().split('T')[0];
+			return this.flashcards.filter(card => card.nextReview > today)
+				.sort((a, b) => new Date(a.nextReview) - new Date(b.nextReview));
 		},
 		currentCard() {
-			if (this.reviewMode && this.dueCards.length > 0) {
-				return this.dueCards[this.currentCardIndex];
-			}
-			return null;
+			return this.dueCards[this.currentCardIndex] || null;
 		},
 		reviewProgress() {
 			if (this.dueCards.length === 0) return 0;
@@ -381,22 +567,107 @@ export default {
 		}
 	},
 	methods: {
+		// Topics methods
+		addTopic() {
+			if (!this.newTopic.name.trim()) {
+				alert('Please enter a topic name');
+				return;
+			}
+			
+			let moduleName = this.newTopic.module;
+			
+			if (this.newTopic.module === 'custom') {
+				if (!this.customModuleName.trim()) {
+					alert('Please enter a custom module name');
+					return;
+				}
+				moduleName = this.customModuleName;
+				// Add custom module to the list if it's not already there
+				if (!this.modules.includes(moduleName)) {
+					this.modules.splice(this.modules.length, 0, moduleName);
+				}
+			} else if (!moduleName) {
+				alert('Please select a module');
+				return;
+			}
+			
+			const topic = {
+				id: this.topicIdCounter++,
+				module: moduleName,
+				name: this.newTopic.name,
+				completed: false,
+				addedDate: new Date().toISOString()
+			};
+			
+			this.topics.push(topic);
+			this.newTopic = { module: '', name: '' };
+			this.customModuleName = '';
+			this.saveTopics();
+		},
+		deleteTopic(id, topicName) {
+			if (confirm(`Are you sure you want to delete the topic "${topicName}"? This action cannot be undone.`)) {
+				this.topics = this.topics.filter(t => t.id !== id);
+				this.saveTopics();
+			}
+		},
+		clearAllTopics() {
+			if (confirm('Are you sure you want to clear all topics? This cannot be undone.')) {
+				this.topics = [];
+				this.topicIdCounter = 1;
+				this.saveTopics();
+			}
+		},
+		formatTopicDate(dateStr) {
+			const date = new Date(dateStr);
+			return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+		},
+		saveTopics() {
+			const data = {
+				topics: this.topics,
+				topicIdCounter: this.topicIdCounter,
+				customModules: this.modules.filter(m => 
+					!['Mathematics', 'Physics', 'Chemistry', 'Biology', 'Computer Science', 
+					 'History', 'Literature', 'Economics', 'Psychology', 'Engineering'].includes(m)
+				)
+			};
+			localStorage.setItem('studyTopicsData', JSON.stringify(data));
+		},
+		loadTopics() {
+			const saved = localStorage.getItem('studyTopicsData');
+			if (saved) {
+				const data = JSON.parse(saved);
+				this.topics = data.topics || [];
+				this.topicIdCounter = data.topicIdCounter || 1;
+				if (data.customModules) {
+					data.customModules.forEach(module => {
+						if (!this.modules.includes(module)) {
+							this.modules.push(module);
+						}
+					});
+				}
+			}
+		},
+		
 		// Timer methods
-		setPreset(preset) {
-			this.selectedPreset = preset;
-			if (preset === 'pomodoro') {
+		setPreset(type) {
+			this.selectedPreset = type;
+			if (type === 'pomodoro') {
 				this.studyTime = 25;
 				this.breakTime = 5;
-			} else if (preset === 'short') {
+			} else if (type === 'short') {
 				this.studyTime = 15;
 				this.breakTime = 3;
-			} else if (preset === 'long') {
+			} else if (type === 'long') {
 				this.studyTime = 50;
 				this.breakTime = 10;
 			}
 			this.resetTimer();
 		},
 		setCustomTimer() {
+			if (this.customStudy < 1 || this.customBreak < 1) {
+				alert('Please enter valid times');
+				return;
+			}
 			this.studyTime = this.customStudy;
 			this.breakTime = this.customBreak;
 			this.resetTimer();
@@ -560,10 +831,22 @@ export default {
 				this.examDate = data.examDate || '';
 				this.cardIdCounter = data.cardIdCounter || 1;
 			}
+		},
+		clearAllFlashcards() {
+			if (confirm('Are you sure you want to delete ALL flashcards? This cannot be undone.')) {
+				this.flashcards = [];
+				this.cardIdCounter = 1;
+				this.reviewMode = false;
+				this.currentCardIndex = 0;
+				this.saveData();
+				alert('All flashcards have been cleared.');
+			}
 		}
+
 	},
 	mounted() {
 		this.loadData();
+		this.loadTopics();
 		
 		// Initialize Bootstrap tooltips
 		this.$nextTick(() => {
@@ -582,7 +865,7 @@ export default {
 
 <style scoped>
 .study-app {
-	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+	background: white;
 	min-height: 100vh;
 	font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
@@ -595,10 +878,12 @@ export default {
 	border-radius: 15px;
 	box-shadow: 0 10px 30px rgba(0,0,0,0.2);
 	margin-bottom: 2rem;
+	overflow: visible;
+	position: relative;
 }
 
 .card-header {
-	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+	background: #667eea;
 	color: white;
 	border-radius: 15px 15px 0 0 !important;
 	padding: 1.5rem;
@@ -606,17 +891,88 @@ export default {
 	font-size: 1.3rem;
 }
 
-.help-icon {
-	cursor: help;
-	color: #ffd700;
-	margin-left: 0.5rem;
-	transition: transform 0.2s;
+/* Topics Styles */
+.add-topic-section {
+	background: #f8f9fa;
+	padding: 1.5rem;
+	border-radius: 10px;
 }
 
-.help-icon:hover {
-	transform: scale(1.2);
+.module-group {
+	background: #f8f9fa;
+	padding: 1rem;
+	border-radius: 10px;
 }
 
+.module-header {
+	color: #667eea;
+	font-weight: 600;
+	margin-bottom: 1rem;
+	padding-bottom: 0.5rem;
+	border-bottom: 2px solid #dee2e6;
+}
+
+.topic-list {
+	padding-left: 1rem;
+}
+
+.topic-item {
+	background: white;
+	padding: 0.75rem;
+	margin-bottom: 0.5rem;
+	border-radius: 8px;
+	transition: all 0.3s;
+}
+
+.topic-item:hover {
+	box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.topic-item.completed {
+	background: #e8f5e9;
+}
+
+.form-check-input {
+	width: 1.25rem;
+	height: 1.25rem;
+	cursor: pointer;
+}
+
+.form-check-input:checked {
+	background-color: #28a745;
+	border-color: #28a745;
+}
+
+/* Delete Topic Button */
+.delete-topic-btn {
+	width: 36px;
+	height: 36px;
+	padding: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 5px;
+	transition: all 0.3s;
+	font-size: 20px;
+	font-weight: bold;
+	color: white !important;
+}
+
+.delete-topic-btn:hover {
+	transform: scale(1.1);
+	box-shadow: 0 2px 8px rgba(220, 53, 69, 0.4);
+	background-color: #c82333;
+	border-color: #bd2130;
+}
+
+.delete-x {
+	color: white !important;
+	font-size: 20px;
+	font-weight: bold;
+	line-height: 1;
+}
+
+/* Timer Styles */
 .timer-display {
 	font-size: 4rem;
 	font-weight: 700;
@@ -649,6 +1005,7 @@ export default {
 	color: white;
 }
 
+/* Flashcard Styles */
 .flashcard {
 	min-height: 200px;
 	background: white;
@@ -687,5 +1044,140 @@ export default {
 
 .modal-backdrop.show {
 	opacity: 0.5;
+}
+
+/* Help Button and Tooltip Styles */
+.feature-help-section {
+	position: relative;
+	display: inline-block;
+}
+
+.help-button-header {
+	color: #667eea;
+	border: 2px solid #ffd700;
+	width: 32px;
+	height: 32px;
+	border-radius: 50%;
+	font-size: 18px;
+	font-weight: bold;
+	cursor: help;
+	transition: all 0.3s;
+	padding: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.front-icon{
+  z-index: 9999;
+  font-size: 28px;
+  cursor: pointer;
+}
+
+.help-button-header:hover {
+	background: #ffd700;
+	transform: scale(1.1);
+	color: #667eea;
+}
+
+.help-button-header i {
+	color: #667eea !important;
+	font-size: 18px;
+}
+
+.help-tooltip-header {
+	position: absolute;
+	top: calc(100% + 10px);
+	right: -10px;
+	background: white;
+	border: 2px solid #667eea;
+	border-radius: 15px;
+	padding: 20px;
+	width: 450px;
+	max-width: calc(100vw - 40px);
+	box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+	z-index: 1000;
+	animation: fadeIn 0.3s;
+}
+
+@media (max-width: 768px) {
+	.help-tooltip-header {
+		right: auto;
+		left: 50%;
+		transform: translateX(-50%);
+		width: 90vw;
+	}
+}
+
+.help-tooltip-header::before {
+	content: '';
+	position: absolute;
+	top: -10px;
+	right: 20px;
+	width: 0;
+	height: 0;
+	border-left: 10px solid transparent;
+	border-right: 10px solid transparent;
+	border-bottom: 10px solid #667eea;
+}
+
+.help-tooltip-header h6 {
+	color: #667eea;
+	margin-bottom: 15px;
+	font-weight: 700;
+}
+
+.help-tooltip-header ul {
+	margin-bottom: 0;
+}
+
+.help-tooltip-header li {
+	margin-bottom: 8px;
+	color: #333;
+	font-size: 14px;
+}
+
+.help-tooltip-header li strong {
+	color: #667eea;
+}
+
+.help-tooltip-header em {
+	color: #28a745;
+	font-weight: 600;
+}
+
+@keyframes fadeIn {
+	from {
+		opacity: 0;
+		transform: translateY(-5px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+@media (max-width: 768px) {
+	@keyframes fadeIn {
+		from {
+			opacity: 0;
+			transform: translateX(-50%) translateY(-5px);
+		}
+		to {
+			opacity: 1;
+			transform: translateX(-50%) translateY(0);
+		}
+	}
+}
+
+/* Progress Bar Styles */
+.progress {
+	background-color: #e9ecef;
+	border-radius: 10px;
+}
+
+.progress-bar {
+	font-weight: 600;
+	transition: width 0.6s ease;
 }
 </style>

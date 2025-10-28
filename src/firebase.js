@@ -1,5 +1,10 @@
-import { initializeApp } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
+import { initializeApp, getApps, getApp } from "firebase/app";
+import { getAuth, setPersistence, browserLocalPersistence } from "firebase/auth";
+import {
+  getFirestore,
+  initializeFirestore,
+  memoryLocalCache,
+} from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDyg_B2fzJsgaDO8bjyyikjVeee4AM08kI",
@@ -7,10 +12,19 @@ const firebaseConfig = {
   projectId: "unify-app-wad2",
   storageBucket: "unify-app-wad2.firebasestorage.app",
   messagingSenderId: "1071880442683",
-  appId: "1:1071880442683:web:aab32153d164fd2b515d1e"
+  appId: "1:1071880442683:web:aab32153d164fd2b515d1e",
 };
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
-export { db };
+let db;
+try {
+  db = getFirestore(app);
+} catch {
+  db = initializeFirestore(app, { localCache: memoryLocalCache() });
+}
+
+const auth = getAuth(app);
+setPersistence(auth, browserLocalPersistence).catch(() => {});
+
+export { app, db, auth };
