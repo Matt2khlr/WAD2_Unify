@@ -1,6 +1,6 @@
 <script>
 import { BookOpen, Heart, Dumbbell, CheckCircle2, Clock, TrendingUp, Wheat } from "lucide-vue-next";
-import { collection, addDoc, updateDoc, deleteDoc, doc, setDoc, query, where, onSnapshot, GeoPoint } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, deleteDoc, doc, setDoc, query, where, onSnapshot, GeoPoint, getDocs } from 'firebase/firestore';
 import { db, auth } from '@/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { useRouter } from 'vue-router';
@@ -26,12 +26,7 @@ export default {
                 { title: "Evening Workout", time: "5 PM", completed: false },
             ],
             
-            modules: [
-                { name: "Data Structures", progress: 75 },
-                { name: "Calculus II", progress: 60 },
-                { name: "Physics", progress: 45 },
-                { name: "Web Development", progress: 90 },
-            ],
+            modules: [],
             
             currentStatus: {
                 stress: 'Moderate',
@@ -86,8 +81,7 @@ export default {
                 default: '✨'
             },
 
-            //userId: auth.currentUser?.uid,
-            userId: 'u1',
+            userId: null,
             syncEnabled: false,
             accessToken: null,
             syncInterval: null,
@@ -190,11 +184,63 @@ export default {
     },
     
     methods: {
+        async loadModuleProgress() {
+            if (!this.userId) {
+                console.log('No user authenticated, skipping module progress load');
+                return;
+            }
+
+            try {
+                // Load topics from Firebase
+                const q = query(collection(db, 'studydata'), where('userId', '==', this.userId));
+                const querySnapshot = await getDocs(q);
+
+                // Group topics by module and calculate progress
+                const moduleStats = {};
+
+                querySnapshot.forEach((docSnap) => {
+                    const data = docSnap.data();
+                    const moduleName = data.module;
+
+                    if (!moduleStats[moduleName]) {
+                        moduleStats[moduleName] = {
+                            total: 0,
+                            completed: 0
+                        };
+                    }
+
+                    moduleStats[moduleName].total++;
+                    if (data.completed) {
+                        moduleStats[moduleName].completed++;
+                    }
+                });
+
+                // Convert to array and calculate percentages
+                this.modules = Object.keys(moduleStats).map(moduleName => {
+                    const stats = moduleStats[moduleName];
+                    const progress = stats.total > 0
+                        ? Math.round((stats.completed / stats.total) * 100)
+                        : 0;
+
+                    return {
+                        name: moduleName,
+                        progress: progress,
+                        completed: stats.completed,
+                        total: stats.total
+                    };
+                }).sort((a, b) => a.name.localeCompare(b.name));
+
+                console.log('Module progress loaded:', this.modules);
+            } catch (error) {
+                console.error('Error loading module progress:', error);
+            }
+        },
+
         getPriorityClass(suggestion) {
             const priorityClass = this.priorityClasses[suggestion.priority] || this.priorityClasses.default;
             return { badge: priorityClass.badge };
         },
-        
+
         iconForType(type) {
             return this.icons[type] || this.icons.default;
         },
@@ -596,16 +642,30 @@ export default {
     },
 
     async mounted() {
-        //this.checkAuth()
+        // Set up authentication listener
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                this.userId = user.uid;
+                console.log('User authenticated:', this.userId);
+
+                // Load module progress from Firebase
+                await this.loadModuleProgress();
+            } else {
+                this.userId = null;
+                this.modules = [];
+                console.log('No user authenticated');
+            }
+        });
+
         this.listenToEvents();
         await this.initGoogle();
-        
+
         // Check for Saved Session
         const savedToken = sessionStorage.getItem('google_token')
         if (savedToken) {
             this.syncEnabled = true;
             this.accessToken = savedToken;
-            
+
             await this.waitForGoogleAPI()
             await this.syncWithGoogle()
             this.startAutoSync()
@@ -843,11 +903,11 @@ export default {
                                 </h2>
                             </div>
 
-                            <div class="d-flex flex-column gap-3">
+                            <div v-if="modules.length > 0" class="d-flex flex-column gap-3">
                                 <div v-for="m in modules" :key="m.name">
                                     <div class="d-flex justify-content-between mb-1">
                                         <span class="small fw-semibold">{{ m.name }}</span>
-                                        <span class="small text-secondary">{{ m.progress }}%</span>
+                                        <span class="small text-secondary">{{ m.progress }}% ({{ m.completed }}/{{ m.total }})</span>
                                     </div>
                                     <div class="progress" style="height: 8px;">
                                         <div class="progress-bar" role="progressbar"
@@ -855,6 +915,11 @@ export default {
                                             aria-valuemin="0" aria-valuemax="100" />
                                     </div>
                                 </div>
+                            </div>
+                            <div v-else class="text-center text-muted py-4">
+                                <i class="mdi mdi-school-outline" style="font-size: 3rem;"></i>
+                                <p class="mb-0 mt-2">No study topics yet</p>
+                                <small>Add topics in the Study Tools page to track your progress</small>
                             </div>
                         </div>
                     </div>

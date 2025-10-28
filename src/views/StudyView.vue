@@ -51,6 +51,73 @@
 						</div>
 					</div>
 
+					<!-- Module Management Section -->
+					<div v-if="modules.length > 0" class="module-management mb-4">
+						<div class="d-flex justify-content-between align-items-center mb-2">
+							<h6 class="mb-0"><i class="fas fa-cog"></i> Manage Modules</h6>
+							<button
+								class="btn btn-sm btn-outline-secondary"
+								@click="showModuleList = !showModuleList"
+							>
+								{{ showModuleList ? 'Hide' : 'Show' }}
+							</button>
+						</div>
+						<div v-if="showModuleList" class="module-list-container p-3 border rounded">
+							<div
+								v-for="module in modules"
+								:key="module"
+								class="module-item d-flex justify-content-between align-items-center mb-2 p-2"
+							>
+								<span class="module-name">
+									<i class="fas fa-folder me-2"></i>{{ module }}
+								</span>
+								<button
+									class="btn btn-danger delete-module-btn"
+									@click="deleteModule(module)"
+									title="Delete this module"
+								>
+									<span class="delete-x">X</span>
+								</button>
+							</div>
+						</div>
+					</div>
+
+					<!-- Exam Dates Section -->
+					<div class="exam-management mb-4">
+						<div class="d-flex justify-content-between align-items-center mb-3">
+							<h6 class="mb-0"><i class="fas fa-calendar-alt"></i> Exam Dates</h6>
+							<button class="btn btn-sm btn-primary" @click="showExamModal = true">
+								<i class="fas fa-plus"></i> Add Exam
+							</button>
+						</div>
+						<div v-if="exams.length > 0" class="exams-list">
+							<div
+								v-for="exam in exams"
+								:key="exam.id"
+								class="exam-item d-flex justify-content-between align-items-center mb-2 p-3 border rounded"
+							>
+								<div>
+									<h6 class="mb-1">{{ exam.module }}</h6>
+									<small class="text-muted">
+										<i class="fas fa-calendar me-1"></i>
+										{{ formatExamDate(exam.date) }} at {{ exam.time }}
+									</small>
+								</div>
+								<button
+									class="btn btn-danger delete-module-btn"
+									@click="deleteExam(exam.id)"
+									title="Delete this exam"
+								>
+									<span class="delete-x">X</span>
+								</button>
+							</div>
+						</div>
+						<div v-else class="text-center text-muted py-3">
+							<i class="fas fa-calendar-times fa-2x mb-2"></i>
+							<p>No exam dates scheduled yet.</p>
+						</div>
+					</div>
+
 					<!-- Topic Checklist -->
 					<div v-if="topics.length > 0" class="topics-checklist">
 						<div class="d-flex justify-content-between align-items-center mb-3">
@@ -89,12 +156,12 @@
 									:class="{ 'completed': topic.completed }"
 								>
 									<div class="form-check d-flex align-items-center">
-										<input 
-											class="form-check-input me-3" 
-											type="checkbox" 
+										<input
+											class="form-check-input me-3"
+											type="checkbox"
 											:id="'topic-' + topic.id"
 											v-model="topic.completed"
-											@change="saveTopics"
+											@change="updateTopicCompletion(topic)"
 										>
 										<label 
 											class="form-check-label flex-grow-1" 
@@ -274,12 +341,6 @@
 						<button class="btn btn-primary" @click="showAddCard = !showAddCard">
 							<i class="fas fa-plus"></i> Add New Flashcard
 						</button>
-						<button class="btn btn-secondary ms-2" @click="showExamDateModal = true">
-							<i class="fas fa-calendar"></i> Set Exam Date
-						</button>
-						<span v-if="examDate" class="ms-3 badge bg-info">
-							Exam: {{ examDate }}
-						</span>
 					</div>
 
 					<div v-if="showAddCard" class="mb-4 p-3 border rounded">
@@ -419,44 +480,63 @@
 			</div>
 		</div>
 
-		<!-- Exam Date Modal -->
-		<div 
-			class="modal" 
-			:class="{show: showExamDateModal}" 
-			:style="{display: showExamDateModal ? 'block' : 'none'}"
+		<!-- Add Exam Modal -->
+		<div
+			class="modal"
+			:class="{show: showExamModal}"
+			:style="{display: showExamModal ? 'block' : 'none'}"
 		>
 			<div class="modal-dialog">
 				<div class="modal-content">
 					<div class="modal-header">
-						<h5 class="modal-title">Set Exam Date</h5>
-						<button 
-							type="button" 
-							class="btn-close" 
-							@click="showExamDateModal = false"
+						<h5 class="modal-title">Add Exam Date</h5>
+						<button
+							type="button"
+							class="btn-close"
+							@click="closeExamModal"
 						></button>
 					</div>
 					<div class="modal-body">
-						<label class="form-label">Exam Date:</label>
-						<input 
-							type="date" 
-							class="form-control" 
-							v-model="examDate"
-						>
+						<div class="mb-3">
+							<label class="form-label">Module:</label>
+							<select class="form-select" v-model="newExam.module">
+								<option value="">Select Module</option>
+								<option v-for="module in modules" :key="module" :value="module">
+									{{ module }}
+								</option>
+							</select>
+						</div>
+						<div class="mb-3">
+							<label class="form-label">Exam Date:</label>
+							<input
+								type="date"
+								class="form-control"
+								v-model="newExam.date"
+							>
+						</div>
+						<div class="mb-3">
+							<label class="form-label">Exam Time:</label>
+							<input
+								type="time"
+								class="form-control"
+								v-model="newExam.time"
+							>
+						</div>
 					</div>
 					<div class="modal-footer">
-						<button 
-							type="button" 
-							class="btn btn-secondary" 
-							@click="showExamDateModal = false"
+						<button
+							type="button"
+							class="btn btn-secondary"
+							@click="closeExamModal"
 						>
 							Cancel
 						</button>
-						<button 
-							type="button" 
-							class="btn btn-primary" 
-							@click="saveExamDate"
+						<button
+							type="button"
+							class="btn btn-primary"
+							@click="addExam"
 						>
-							Save Exam Date
+							Add Exam
 						</button>
 					</div>
 				</div>
@@ -466,10 +546,18 @@
 </template>
 
 <script>
+import { db, auth } from '../firebase';
+import { collection, doc, addDoc, getDocs, updateDoc, deleteDoc, query, where, onSnapshot, Timestamp } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
+
 export default {
 	name: 'StudyApp',
 	data() {
 		return {
+			// User authentication
+			userId: null,
+			unsubscribeTopics: null,
+
 			// Topics Management
 			topics: [],
 			topicIdCounter: 1,
@@ -478,18 +566,18 @@ export default {
 				name: ''
 			},
 			customModuleName: '',
-			modules: [
-				'Mathematics',
-				'Physics',
-				'Chemistry',
-				'Biology',
-				'Computer Science',
-				'History',
-				'Literature',
-				'Economics',
-				'Psychology',
-				'Engineering'
-			],
+			modules: ['IS216'],
+			showModuleList: false,
+
+			// Exam Management
+			exams: [],
+			examIdCounter: 1,
+			showExamModal: false,
+			newExam: {
+				module: '',
+				date: '',
+				time: ''
+			},
 			
 			// Help tooltips
 			showPomodoroHelp: false,
@@ -506,6 +594,7 @@ export default {
 			selectedPreset: 'pomodoro',
 			customStudy: 25,
 			customBreak: 5,
+			studySessionStartTime: null,
 			
 			// Flashcards
 			flashcards: [],
@@ -568,14 +657,14 @@ export default {
 	},
 	methods: {
 		// Topics methods
-		addTopic() {
+		async addTopic() {
 			if (!this.newTopic.name.trim()) {
 				alert('Please enter a topic name');
 				return;
 			}
-			
+
 			let moduleName = this.newTopic.module;
-			
+
 			if (this.newTopic.module === 'custom') {
 				if (!this.customModuleName.trim()) {
 					alert('Please enter a custom module name');
@@ -590,49 +679,186 @@ export default {
 				alert('Please select a module');
 				return;
 			}
-			
-			const topic = {
-				id: this.topicIdCounter++,
-				module: moduleName,
-				name: this.newTopic.name,
-				completed: false,
-				addedDate: new Date().toISOString()
-			};
-			
-			this.topics.push(topic);
+
+			// Save to Firebase if user is authenticated
+			if (this.userId) {
+				try {
+					const studyDataRef = collection(db, 'studydata');
+					await addDoc(studyDataRef, {
+						userId: this.userId,
+						module: moduleName,
+						topic: this.newTopic.name,
+						completed: false,
+						addedDate: new Date().toISOString()
+					});
+					console.log('Topic saved to Firebase');
+					// The real-time listener will automatically add it to this.topics
+				} catch (error) {
+					console.error('Error saving topic to Firebase:', error);
+					alert('Error saving topic. Please try again.');
+					return;
+				}
+			} else {
+				// If not authenticated, add locally
+				const topic = {
+					id: this.topicIdCounter++,
+					module: moduleName,
+					name: this.newTopic.name,
+					completed: false,
+					addedDate: new Date().toISOString()
+				};
+				this.topics.push(topic);
+				this.saveTopicsToLocalStorage();
+			}
+
 			this.newTopic = { module: '', name: '' };
 			this.customModuleName = '';
-			this.saveTopics();
 		},
-		deleteTopic(id, topicName) {
+		async deleteTopic(id, topicName) {
 			if (confirm(`Are you sure you want to delete the topic "${topicName}"? This action cannot be undone.`)) {
+				// Find the topic to get its Firebase document ID
+				const topicToDelete = this.topics.find(t => t.id === id);
+
+				// Remove from local array
 				this.topics = this.topics.filter(t => t.id !== id);
-				this.saveTopics();
+
+				// Delete from Firebase if user is authenticated and topic has firebaseId
+				if (this.userId && topicToDelete && topicToDelete.firebaseId) {
+					try {
+						const docRef = doc(db, 'studydata', topicToDelete.firebaseId);
+						await deleteDoc(docRef);
+						console.log('Topic deleted from Firebase');
+					} catch (error) {
+						console.error('Error deleting topic from Firebase:', error);
+					}
+				}
+
+				this.saveTopicsToLocalStorage();
 			}
 		},
-		clearAllTopics() {
+		async clearAllTopics() {
 			if (confirm('Are you sure you want to clear all topics? This cannot be undone.')) {
+				// Delete all topics from Firebase if user is authenticated
+				if (this.userId) {
+					try {
+						const q = query(collection(db, 'studydata'), where('userId', '==', this.userId));
+						const querySnapshot = await getDocs(q);
+						const deletePromises = querySnapshot.docs.map(docSnap => deleteDoc(docSnap.ref));
+						await Promise.all(deletePromises);
+						console.log('All topics deleted from Firebase');
+					} catch (error) {
+						console.error('Error deleting topics from Firebase:', error);
+					}
+				}
+
 				this.topics = [];
 				this.topicIdCounter = 1;
-				this.saveTopics();
+				this.saveTopicsToLocalStorage();
 			}
 		},
 		formatTopicDate(dateStr) {
 			const date = new Date(dateStr);
 			return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 		},
-		saveTopics() {
+		async deleteModule(moduleName) {
+			// Check if there are any topics using this module
+			const topicsUsingModule = this.topics.filter(t => t.module === moduleName);
+
+			if (topicsUsingModule.length > 0) {
+				const confirmDelete = confirm(
+					`This module has ${topicsUsingModule.length} topic(s). Deleting this module will also delete all associated topics. Are you sure?`
+				);
+				if (!confirmDelete) {
+					return;
+				}
+
+				// Delete all topics associated with this module from Firebase
+				if (this.userId) {
+					try {
+						const deletePromises = topicsUsingModule
+							.filter(t => t.firebaseId)
+							.map(t => deleteDoc(doc(db, 'studydata', t.firebaseId)));
+						await Promise.all(deletePromises);
+						console.log(`Deleted ${deletePromises.length} topics from Firebase for module: ${moduleName}`);
+					} catch (error) {
+						console.error('Error deleting topics from Firebase:', error);
+					}
+				}
+
+				// Remove topics from local array
+				this.topics = this.topics.filter(t => t.module !== moduleName);
+			} else {
+				const confirmDelete = confirm(`Are you sure you want to delete the module "${moduleName}"?`);
+				if (!confirmDelete) {
+					return;
+				}
+			}
+
+			// Remove the module from the list
+			this.modules = this.modules.filter(m => m !== moduleName);
+			this.saveTopicsToLocalStorage();
+
+			console.log(`Module "${moduleName}" deleted`);
+		},
+		async updateTopicCompletion(topic) {
+			// Update in Firebase if user is authenticated and topic has firebaseId
+			if (this.userId && topic.firebaseId) {
+				try {
+					const docRef = doc(db, 'studydata', topic.firebaseId);
+					await updateDoc(docRef, {
+						completed: topic.completed
+					});
+					console.log('Topic completion status updated in Firebase');
+				} catch (error) {
+					console.error('Error updating topic in Firebase:', error);
+				}
+			}
+			// Always save to localStorage as backup
+			this.saveTopicsToLocalStorage();
+		},
+		saveTopicsToLocalStorage() {
+			// Save to localStorage as backup
 			const data = {
 				topics: this.topics,
 				topicIdCounter: this.topicIdCounter,
-				customModules: this.modules.filter(m => 
-					!['Mathematics', 'Physics', 'Chemistry', 'Biology', 'Computer Science', 
-					 'History', 'Literature', 'Economics', 'Psychology', 'Engineering'].includes(m)
-				)
+				customModules: this.modules.filter(m => m !== 'IS216')
 			};
 			localStorage.setItem('studyTopicsData', JSON.stringify(data));
 		},
-		loadTopics() {
+		async loadTopics() {
+			// First try to load from Firebase if user is authenticated
+			if (this.userId) {
+				try {
+					const q = query(collection(db, 'studydata'), where('userId', '==', this.userId));
+					const querySnapshot = await getDocs(q);
+
+					this.topics = [];
+					querySnapshot.forEach((docSnap) => {
+						const data = docSnap.data();
+						this.topics.push({
+							id: this.topicIdCounter++,
+							firebaseId: docSnap.id,
+							module: data.module,
+							name: data.topic,
+							completed: data.completed || false,
+							addedDate: data.addedDate || new Date().toISOString()
+						});
+
+						// Add custom modules
+						if (!this.modules.includes(data.module)) {
+							this.modules.push(data.module);
+						}
+					});
+
+					console.log('Topics loaded from Firebase:', this.topics.length);
+					this.saveTopicsToLocalStorage();
+					return;
+				} catch (error) {
+					console.error('Error loading topics from Firebase:', error);
+				}
+			}
+
+			// Fallback to localStorage
 			const saved = localStorage.getItem('studyTopicsData');
 			if (saved) {
 				const data = JSON.parse(saved);
@@ -645,6 +871,37 @@ export default {
 						}
 					});
 				}
+			}
+		},
+		setupTopicsListener() {
+			if (this.userId) {
+				const q = query(collection(db, 'studydata'), where('userId', '==', this.userId));
+				this.unsubscribeTopics = onSnapshot(q, (querySnapshot) => {
+					this.topics = [];
+					this.topicIdCounter = 1;
+
+					querySnapshot.forEach((docSnap) => {
+						const data = docSnap.data();
+						this.topics.push({
+							id: this.topicIdCounter++,
+							firebaseId: docSnap.id,
+							module: data.module,
+							name: data.topic,
+							completed: data.completed || false,
+							addedDate: data.addedDate || new Date().toISOString()
+						});
+
+						// Add custom modules
+						if (!this.modules.includes(data.module)) {
+							this.modules.push(data.module);
+						}
+					});
+
+					console.log('Topics updated from Firebase realtime listener:', this.topics.length);
+					this.saveTopicsToLocalStorage();
+				}, (error) => {
+					console.error('Error listening to topics:', error);
+				});
 			}
 		},
 		
@@ -674,6 +931,13 @@ export default {
 		},
 		startTimer() {
 			this.isRunning = true;
+
+			// Record start time when starting a study session (not a break)
+			if (!this.isBreak) {
+				this.studySessionStartTime = new Date();
+				console.log('Study session started at:', this.studySessionStartTime);
+			}
+
 			this.timerInterval = setInterval(() => {
 				if (this.seconds === 0) {
 					if (this.minutes === 0) {
@@ -690,22 +954,60 @@ export default {
 		pauseTimer() {
 			this.isRunning = false;
 			clearInterval(this.timerInterval);
+			// Note: We don't clear studySessionStartTime here, so it persists through pauses
 		},
 		resetTimer() {
 			this.pauseTimer();
 			this.minutes = this.isBreak ? this.breakTime : this.studyTime;
 			this.seconds = 0;
+			// Clear start time if resetting during a study session
+			if (!this.isBreak) {
+				this.studySessionStartTime = null;
+			}
 		},
-		timerComplete() {
+		async timerComplete() {
 			this.pauseTimer();
+
+			// If completing a study session (not a break), save to Firebase
+			if (!this.isBreak && this.studySessionStartTime) {
+				await this.saveStudySession();
+			}
+
 			this.isBreak = !this.isBreak;
 			this.minutes = this.isBreak ? this.breakTime : this.studyTime;
 			this.seconds = 0;
-			
-			const message = this.isBreak ? 
-				'Great work! Time for a break ☕' : 
+
+			const message = this.isBreak ?
+				'Great work! Time for a break ☕' :
 				'Break is over! Ready to study? 📚';
 			alert(message);
+		},
+		async saveStudySession() {
+			if (!this.userId || !this.studySessionStartTime) {
+				console.log('No user authenticated or no start time recorded');
+				return;
+			}
+
+			try {
+				const endTime = new Date();
+				const studyTimesRef = collection(db, 'studytimes');
+
+				await addDoc(studyTimesRef, {
+					userId: this.userId,
+					starttime: Timestamp.fromDate(this.studySessionStartTime),
+					endtime: Timestamp.fromDate(endTime)
+				});
+
+				console.log('Study session saved to Firebase:', {
+					start: this.studySessionStartTime,
+					end: endTime
+				});
+
+				// Clear the start time after saving
+				this.studySessionStartTime = null;
+			} catch (error) {
+				console.error('Error saving study session to Firebase:', error);
+			}
 		},
 		
 		// Flashcard methods
@@ -811,9 +1113,201 @@ export default {
 			if (days <= 3) return 'bg-warning';
 			return 'bg-success';
 		},
-		saveExamDate() {
-			this.showExamDateModal = false;
-			this.saveData();
+		// Exam Management Methods
+		async addExam() {
+			if (!this.newExam.module || !this.newExam.date || !this.newExam.time) {
+				alert('Please fill in all fields');
+				return;
+			}
+
+			// Save to Firebase if user is authenticated
+			if (this.userId) {
+				try {
+					console.log('Saving exam to Firebase...', {
+						userId: this.userId,
+						module: this.newExam.module,
+						date: this.newExam.date,
+						time: this.newExam.time
+					});
+
+					const examsRef = collection(db, 'exams');
+					const docRef = await addDoc(examsRef, {
+						userId: this.userId,
+						module: this.newExam.module,
+						date: this.newExam.date,
+						time: this.newExam.time,
+						createdAt: new Date().toISOString()
+					});
+
+					console.log('Exam saved to Firebase with ID:', docRef.id);
+
+					// Create exam object with Firebase ID
+					const exam = {
+						id: this.examIdCounter++,
+						firebaseId: docRef.id,
+						module: this.newExam.module,
+						date: this.newExam.date,
+						time: this.newExam.time,
+						userId: this.userId
+					};
+
+					// Add to local array
+					this.exams.push(exam);
+
+					// Add to calendar
+					await this.addExamToCalendar(exam);
+
+					this.closeExamModal();
+					this.saveExamsToLocalStorage();
+				} catch (error) {
+					console.error('Error saving exam to Firebase:', error);
+					alert('Error saving exam: ' + error.message);
+					return;
+				}
+			} else {
+				// If not authenticated, add locally
+				const exam = {
+					id: this.examIdCounter++,
+					module: this.newExam.module,
+					date: this.newExam.date,
+					time: this.newExam.time,
+					userId: null
+				};
+				this.exams.push(exam);
+				this.closeExamModal();
+				this.saveExamsToLocalStorage();
+			}
+		},
+		async deleteExam(examId) {
+			const exam = this.exams.find(e => e.id === examId);
+			if (!exam) return;
+
+			if (!confirm(`Are you sure you want to delete the exam for ${exam.module}?`)) {
+				return;
+			}
+
+			// Delete from Firebase
+			if (this.userId && exam.firebaseId) {
+				try {
+					await deleteDoc(doc(db, 'exams', exam.firebaseId));
+					console.log('Exam deleted from Firebase');
+
+					// Remove from calendar if it was added
+					await this.removeExamFromCalendar(exam);
+				} catch (error) {
+					console.error('Error deleting exam from Firebase:', error);
+				}
+			}
+
+			// Remove from local array
+			this.exams = this.exams.filter(e => e.id !== examId);
+			this.saveExamsToLocalStorage();
+		},
+		closeExamModal() {
+			this.showExamModal = false;
+			this.newExam = { module: '', date: '', time: '' };
+		},
+		formatExamDate(dateStr) {
+			const date = new Date(dateStr);
+			return date.toLocaleDateString('en-US', {
+				weekday: 'short',
+				year: 'numeric',
+				month: 'short',
+				day: 'numeric'
+			});
+		},
+		async loadExams() {
+			// Load from Firebase if user is authenticated
+			if (this.userId) {
+				try {
+					const q = query(collection(db, 'exams'), where('userId', '==', this.userId));
+					const querySnapshot = await getDocs(q);
+
+					this.exams = [];
+					querySnapshot.forEach((docSnap) => {
+						const data = docSnap.data();
+						this.exams.push({
+							id: this.examIdCounter++,
+							firebaseId: docSnap.id,
+							module: data.module,
+							date: data.date,
+							time: data.time,
+							userId: data.userId
+						});
+					});
+
+					console.log('Exams loaded from Firebase:', this.exams.length);
+					this.saveExamsToLocalStorage();
+					return;
+				} catch (error) {
+					console.error('Error loading exams from Firebase:', error);
+				}
+			}
+
+			// Fallback to localStorage
+			const saved = localStorage.getItem('examsData');
+			if (saved) {
+				const data = JSON.parse(saved);
+				this.exams = data.exams || [];
+				this.examIdCounter = data.examIdCounter || 1;
+			}
+		},
+		saveExamsToLocalStorage() {
+			const data = {
+				exams: this.exams,
+				examIdCounter: this.examIdCounter
+			};
+			localStorage.setItem('examsData', JSON.stringify(data));
+		},
+		async addExamToCalendar(exam) {
+			// Add the exam to the calendar events collection
+			// Using the exact format as CalendarView
+			try {
+				const eventsRef = collection(db, 'events');
+
+				// Create Date object from exam date and time
+				const [year, month, day] = exam.date.split('-').map(Number);
+				const [hours, minutes] = exam.time.split(':').map(Number);
+
+				const startDateTime = new Date(year, month - 1, day, hours, minutes, 0);
+				// End time is 2 hours after start (typical exam duration)
+				const endDateTime = new Date(year, month - 1, day, hours + 2, minutes, 0);
+
+				await addDoc(eventsRef, {
+					userId: this.userId,
+					name: `${exam.module} Exam`,
+					description: `Exam for ${exam.module}`,
+					start: Timestamp.fromDate(startDateTime),
+					end: Timestamp.fromDate(endDateTime),
+					colour: '#dc3545', // Red color for exams
+					priority: 'High',
+					source: 'firestore',
+					synced: false,
+					examId: exam.firebaseId, // Reference to the exam document
+					location: null,
+					locationName: '',
+					gEventId: ''
+				});
+				console.log('Exam added to calendar');
+			} catch (error) {
+				console.error('Error adding exam to calendar:', error);
+			}
+		},
+		async removeExamFromCalendar(exam) {
+			// Remove the exam event from calendar
+			try {
+				const q = query(
+					collection(db, 'events'),
+					where('userId', '==', this.userId),
+					where('examId', '==', exam.firebaseId)
+				);
+				const querySnapshot = await getDocs(q);
+				const deletePromises = querySnapshot.docs.map(docSnap => deleteDoc(docSnap.ref));
+				await Promise.all(deletePromises);
+				console.log('Exam removed from calendar');
+			} catch (error) {
+				console.error('Error removing exam from calendar:', error);
+			}
 		},
 		saveData() {
 			const data = {
@@ -845,9 +1339,32 @@ export default {
 
 	},
 	mounted() {
+		// Set up authentication listener
+		onAuthStateChanged(auth, (user) => {
+			if (user) {
+				this.userId = user.uid;
+				console.log('User authenticated:', this.userId);
+
+				// Load topics from Firebase
+				this.loadTopics();
+
+				// Load exams from Firebase
+				this.loadExams();
+
+				// Set up real-time listener for topics
+				this.setupTopicsListener();
+			} else {
+				this.userId = null;
+				console.log('No user authenticated, using localStorage');
+
+				// Load from localStorage if no user
+				this.loadTopics();
+				this.loadExams();
+			}
+		});
+
 		this.loadData();
-		this.loadTopics();
-		
+
 		// Initialize Bootstrap tooltips
 		this.$nextTick(() => {
 			const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
@@ -858,6 +1375,11 @@ export default {
 		// Clean up timer interval
 		if (this.timerInterval) {
 			clearInterval(this.timerInterval);
+		}
+
+		// Clean up Firebase listeners
+		if (this.unsubscribeTopics) {
+			this.unsubscribeTopics();
 		}
 	}
 };
@@ -872,6 +1394,7 @@ export default {
 
 .main-container {
 	padding: 2rem 0;
+	padding-bottom: 20rem;
 }
 
 .card {
@@ -896,6 +1419,84 @@ export default {
 	background: #f8f9fa;
 	padding: 1.5rem;
 	border-radius: 10px;
+}
+
+/* Module Management Styles */
+.module-management {
+	background: #f8f9fa;
+	padding: 1rem;
+	border-radius: 10px;
+}
+
+.module-list-container {
+	background: white;
+	max-height: 300px;
+	overflow-y: auto;
+}
+
+.module-item {
+	background: #f8f9fa;
+	border-radius: 5px;
+	transition: all 0.3s;
+}
+
+.module-item:hover {
+	background: #e9ecef;
+	box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.module-name {
+	color: #667eea;
+	font-weight: 500;
+}
+
+/* Delete Module Button (matches topic delete style) */
+.delete-module-btn {
+	width: 36px;
+	height: 36px;
+	padding: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 5px;
+	transition: all 0.3s;
+	font-size: 20px;
+	font-weight: bold;
+	color: white !important;
+}
+
+.delete-module-btn:hover {
+	transform: scale(1.1);
+	box-shadow: 0 2px 8px rgba(220, 53, 69, 0.4);
+	background-color: #c82333;
+	border-color: #bd2130;
+}
+
+/* Exam Management Styles */
+.exam-management {
+	background: #f8f9fa;
+	padding: 1rem;
+	border-radius: 10px;
+}
+
+.exams-list {
+	max-height: 400px;
+	overflow-y: auto;
+}
+
+.exam-item {
+	background: white;
+	transition: all 0.3s;
+}
+
+.exam-item:hover {
+	box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.exam-item h6 {
+	color: #667eea;
+	font-weight: 600;
+	margin-bottom: 0.25rem;
 }
 
 .module-group {
@@ -1069,9 +1670,9 @@ export default {
 }
 
 .front-icon{
-  z-index: 9999;
-  font-size: 28px;
-  cursor: pointer;
+    z-index: 9999;
+    font-size: 28px;
+    cursor: pointer;
 }
 
 .help-button-header:hover {

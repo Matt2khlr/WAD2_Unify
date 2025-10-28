@@ -36,7 +36,7 @@ router.afterEach((to) => {
 });
 
 // Auth guard (Firebase Auth)
-const requireAuth = (to, from, next) => {
+const requireAuth = (to, __from, next) => {
     const stop = auth.onAuthStateChanged((user) => {
         stop();
         if (user) next();
