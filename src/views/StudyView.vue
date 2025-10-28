@@ -9,12 +9,6 @@
 			<div class="card">
 				<div class="card-header">
 					<i class="fas fa-list-check"></i> Study Topics
-					<i 
-						class="fas fa-question-circle help-icon" 
-						data-bs-toggle="tooltip" 
-						data-bs-placement="right"
-						title="Organize your study topics by module and track your progress. Add topics you need to cover and check them off as you complete them."
-					></i>
 				</div>
 				<div class="card-body">
 					<!-- Add New Topic Bar -->
@@ -134,22 +128,15 @@
 
 			<!-- Pomodoro Timer Section -->
 			<div class="card">
-				<div class="card-header">
-					<i class="fas fa-clock"></i> Pomodoro Timer
-					<i 
-						class="fas fa-question-circle help-icon" 
-						data-bs-toggle="tooltip" 
-						data-bs-placement="right"
-						title="The Pomodoro Technique breaks study time into focused intervals (typically 25 minutes) followed by short breaks. This helps maintain concentration, prevent burnout, and improve productivity by working with your brain's natural attention span."
-					></i>
-				</div>
-				<div class="card-body text-center">
-					<!-- Pomodoro Explanation Help -->
-					<div class="feature-help-section mb-4">
-						<button class="help-button" @mouseover="showPomodoroHelp = true" @mouseleave="showPomodoroHelp = false">
-							<i class="fas fa-question-circle"></i> Why use Pomodoro?
+				<div class="card-header d-flex justify-content-between align-items-center">
+					<div>
+						<i class="fas fa-clock"></i> Pomodoro Timer
+					</div>
+					<div class="feature-help-section">
+						<button class="help-button-header" @mouseover="showPomodoroHelp = true" @mouseleave="showPomodoroHelp = false">
+							<i class="fas fa-question-circle front-icon"></i>
 						</button>
-						<div v-if="showPomodoroHelp" class="help-tooltip">
+						<div v-if="showPomodoroHelp" class="help-tooltip-header">
 							<h6>🎯 How Pomodoro Helps You Study Better:</h6>
 							<ul class="text-start">
 								<li><strong>Fights Procrastination:</strong> Breaking work into 25-minute chunks makes starting less daunting</li>
@@ -162,7 +149,8 @@
 							<p class="mb-0 mt-2"><em>Tip: Start with 2-3 pomodoros per study session and gradually increase!</em></p>
 						</div>
 					</div>
-
+				</div>
+				<div class="card-body text-center">
 					<!-- Preset Timers -->
 					<div class="mb-4">
 						<h5>Quick Select (minutes):</h5>
@@ -258,22 +246,15 @@
 
 			<!-- Flashcards Section -->
 			<div class="card mb-0">
-				<div class="card-header">
-					<i class="fas fa-brain"></i> Spaced Repetition Flashcards
-					<i 
-						class="fas fa-question-circle help-icon" 
-						data-bs-toggle="tooltip" 
-						data-bs-placement="right"
-						title="Spaced Repetition optimizes learning by scheduling reviews at increasing intervals. You review cards right before you'd forget them, strengthening long-term memory. Cards you find easy are shown less often, while difficult cards appear more frequently."
-					></i>
-				</div>
-				<div class="card-body">
-					<!-- Spaced Repetition Explanation Help -->
-					<div class="feature-help-section mb-4">
-						<button class="help-button" @mouseover="showSpacedRepHelp = true" @mouseleave="showSpacedRepHelp = false">
-							<i class="fas fa-question-circle"></i> Why use Spaced Repetition?
+				<div class="card-header d-flex justify-content-between align-items-center">
+					<div>
+						<i class="fas fa-brain"></i> Spaced Repetition Flashcards
+					</div>
+					<div class="feature-help-section">
+						<button class="help-button-header" @mouseover="showSpacedRepHelp = true" @mouseleave="showSpacedRepHelp = false">
+							<i class="fas fa-question-circle front-icon"></i>
 						</button>
-						<div v-if="showSpacedRepHelp" class="help-tooltip">
+						<div v-if="showSpacedRepHelp" class="help-tooltip-header">
 							<h6>🧠 How Spaced Repetition Boosts Memory:</h6>
 							<ul class="text-start">
 								<li><strong>Fights the Forgetting Curve:</strong> Reviews information right before you'd naturally forget it</li>
@@ -286,7 +267,8 @@
 							<p class="mb-0 mt-2"><em>Research shows: Spaced repetition can improve retention by up to 200% compared to massed practice!</em></p>
 						</div>
 					</div>
-
+				</div>
+				<div class="card-body">
 					<!-- Add Flashcard Form -->
 					<div class="mb-4">
 						<button class="btn btn-primary" @click="showAddCard = !showAddCard">
@@ -896,6 +878,8 @@ export default {
 	border-radius: 15px;
 	box-shadow: 0 10px 30px rgba(0,0,0,0.2);
 	margin-bottom: 2rem;
+	overflow: visible;
+	position: relative;
 }
 
 .card-header {
@@ -905,17 +889,6 @@ export default {
 	padding: 1.5rem;
 	font-weight: 600;
 	font-size: 1.3rem;
-}
-
-.help-icon {
-	cursor: help;
-	color: #ffd700;
-	margin-left: 0.5rem;
-	transition: transform 0.2s;
-}
-
-.help-icon:hover {
-	transform: scale(1.2);
 }
 
 /* Topics Styles */
@@ -1079,52 +1052,68 @@ export default {
 	display: inline-block;
 }
 
-.help-button {
-	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-	color: white;
-	border: none;
-	padding: 8px 16px;
-	border-radius: 20px;
-	font-size: 14px;
-	font-weight: 600;
+.help-button-header {
+	color: #667eea;
+	border: 2px solid #ffd700;
+	width: 32px;
+	height: 32px;
+	border-radius: 50%;
+	font-size: 18px;
+	font-weight: bold;
 	cursor: help;
 	transition: all 0.3s;
-	box-shadow: 0 2px 10px rgba(102, 126, 234, 0.3);
+	padding: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
 }
 
-.help-button:hover {
-	transform: translateY(-2px);
-	box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
+.front-icon{
+  z-index: 9999;
+  font-size: 28px;
+  cursor: pointer;
 }
 
-.help-button i {
-	margin-right: 5px;
-	color: #ffd700;
+.help-button-header:hover {
+	background: #ffd700;
+	transform: scale(1.1);
+	color: #667eea;
 }
 
-.help-tooltip {
+.help-button-header i {
+	color: #667eea !important;
+	font-size: 18px;
+}
+
+.help-tooltip-header {
 	position: absolute;
-	top: 100%;
-	left: 50%;
-	transform: translateX(-50%);
-	margin-top: 10px;
+	top: calc(100% + 10px);
+	right: -10px;
 	background: white;
 	border: 2px solid #667eea;
 	border-radius: 15px;
 	padding: 20px;
 	width: 450px;
-	max-width: 90vw;
+	max-width: calc(100vw - 40px);
 	box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
 	z-index: 1000;
 	animation: fadeIn 0.3s;
 }
 
-.help-tooltip::before {
+@media (max-width: 768px) {
+	.help-tooltip-header {
+		right: auto;
+		left: 50%;
+		transform: translateX(-50%);
+		width: 90vw;
+	}
+}
+
+.help-tooltip-header::before {
 	content: '';
 	position: absolute;
 	top: -10px;
-	left: 50%;
-	transform: translateX(-50%);
+	right: 20px;
 	width: 0;
 	height: 0;
 	border-left: 10px solid transparent;
@@ -1132,27 +1121,27 @@ export default {
 	border-bottom: 10px solid #667eea;
 }
 
-.help-tooltip h6 {
+.help-tooltip-header h6 {
 	color: #667eea;
 	margin-bottom: 15px;
 	font-weight: 700;
 }
 
-.help-tooltip ul {
+.help-tooltip-header ul {
 	margin-bottom: 0;
 }
 
-.help-tooltip li {
+.help-tooltip-header li {
 	margin-bottom: 8px;
 	color: #333;
 	font-size: 14px;
 }
 
-.help-tooltip li strong {
+.help-tooltip-header li strong {
 	color: #667eea;
 }
 
-.help-tooltip em {
+.help-tooltip-header em {
 	color: #28a745;
 	font-weight: 600;
 }
@@ -1160,11 +1149,24 @@ export default {
 @keyframes fadeIn {
 	from {
 		opacity: 0;
-		transform: translateX(-50%) translateY(-10px);
+		transform: translateY(-5px);
 	}
 	to {
 		opacity: 1;
-		transform: translateX(-50%) translateY(0);
+		transform: translateY(0);
+	}
+}
+
+@media (max-width: 768px) {
+	@keyframes fadeIn {
+		from {
+			opacity: 0;
+			transform: translateX(-50%) translateY(-5px);
+		}
+		to {
+			opacity: 1;
+			transform: translateX(-50%) translateY(0);
+		}
 	}
 }
 
