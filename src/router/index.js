@@ -4,8 +4,8 @@ import { createRouter, createWebHistory } from "vue-router";
 import HomeView from "../views/HomeView.vue";
 
 // If you plan to use Firebase Auth later, you can import it here:
-// import { onAuthStateChanged } from "firebase/auth";
-// import { auth } from "@/firebase";
+import { onAuthStateChanged } from "firebase/auth";
+import { auth } from "@/firebase";
 
 const routes = [
   { path: "/", name: "home", component: HomeView, meta: { title: "Home" } },
@@ -39,7 +39,7 @@ router.afterEach((to) => {
   document.title = to.meta?.title ? `${to.meta.title} • ${base}` : base;
 });
 
-/* Optional auth guard template (uncomment when you have Firebase Auth)
+// Auth guard template (uncomment when you have Firebase Auth)
 const requireAuth = (to, from, next) => {
   const stop = auth.onAuthStateChanged((user) => {
     stop();
@@ -50,10 +50,9 @@ const requireAuth = (to, from, next) => {
 
 router.beforeEach((to, from, next) => {
   // Example: protect certain routes
-  const protectedNames = ["journal","wellbeing","study","nutrition","calendar","recommendations","settings"];
+  const protectedNames = ["home", "journal", "wellbeing", "study", "nutrition", "calendar", "recommendations", "settings"];
   if (protectedNames.includes(to.name)) return requireAuth(to, from, next);
   next();
 });
-*/
 
 export default router;
