@@ -15,6 +15,9 @@ const passwordLoading = ref(false);
 const passwordError = ref(null);
 const passwordSuccess = ref(false);
 
+// Logout state
+const logoutLoading = ref(false);
+
 // Load current user on mount
 onMounted(() => {
     user.value = auth.currentUser;
@@ -66,11 +69,14 @@ async function updatePasswordHandler() {
 
 // Logout handler
 async function logout() {
+    logoutLoading.value = true;
     try {
         await signOut(auth);
         router.push('/login');
     } catch (e) {
         console.error('Logout failed:', e);
+    } finally {
+        logoutLoading.value = false;
     }
 }
 </script>
