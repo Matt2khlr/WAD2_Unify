@@ -7,7 +7,27 @@
         </h1>
         <p class="text-muted fs-5">Log your thoughts and reflections to manage your wellness.</p>
       </div>
+      
+      <!-- Mental Health Check-in -->
+      <div class="card bg-primary text-white shadow mb-4 p-4">
+        <h2 class="mb-4">How are you feeling today?</h2>
+        <div class="d-flex justify-content-center gap-4 mb-3">
+          <button 
+            v-for="option in moodOptions" 
+            :key="option.label" 
+            :class="['d-flex flex-column align-items-center p-3 rounded', option.color, { 'opacity-75': selectedMood !== option.label }]"
+            style="width: 100px; transition: transform 0.3s;"
+            @click="selectMood(option.label)"
+            :style="{ transform: selectedMood === option.label ? 'scale(1.05)' : 'scale(1)' }"
+          >
+            <span class="fs-1">{{ option.icon }}</span>
+            <span class="mt-2 fw-semibold">{{ option.label }}</span>
+          </button>
+        </div>
+        <p class="text-center text-white-75">Track your mood daily to identify patterns and improve wellbeing</p>
+      </div>
 
+      <!-- Journal Entry -->
       <div class="p-4 shadow rounded bg-light mb-5">
         <h3 class="h5 mb-3 d-flex align-items-center gap-2">
           <i class="bi bi-pencil-square"></i> New Journal Entry
@@ -21,6 +41,7 @@
         <button class="btn btn-primary mt-3" @click="saveEntry">Save Journal Entry</button>
       </div>
       
+      <!-- Jounral History -->
       <div class="p-4 shadow rounded bg-light mb-4">
           <h3 class="h5 mb-3 d-flex align-items-center gap-2">
             <i class="bi bi-clock-history"></i> Recent Entries
@@ -56,7 +77,20 @@ const userId = ref('u1');
 const journalEntry = ref('');
 const journalHistory = ref([]); // Data populated by Firestore listener
 
+// Mood Functions
+function selectMood(label) {
+  selectedMood.value = label;
+}
 
+const moodOptions = [
+  { label: "Great", color: "bg-success", icon: "😊" },
+  { label: "Okay", color: "bg-warning", icon: "😐" },
+  { label: "Stressed", color: "bg-danger", icon: "☹️" },
+];
+
+const selectedMood = ref(null);
+
+// Journal Functions
 function subscribeToJournalEntries() {
     const q = query(
         collection(db, 'journals'), 
