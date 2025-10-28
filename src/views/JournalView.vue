@@ -8,7 +8,6 @@
         <p class="text-muted fs-5">Log your thoughts and reflections to manage your wellness.</p>
       </div>
       
-      <!-- Mental Health Check-in -->
       <div class="card bg-primary text-white shadow mb-4 p-4">
         <h2 class="mb-4">How are you feeling today?</h2>
         <div class="d-flex justify-content-center gap-4 mb-3">
@@ -27,7 +26,6 @@
         <p class="text-center text-white-75">Track your mood daily to identify patterns and improve wellbeing</p>
       </div>
 
-      <!-- Journal Entry -->
       <div class="p-4 shadow rounded bg-light mb-5">
         <h3 class="h5 mb-3 d-flex align-items-center gap-2">
           <i class="bi bi-pencil-square"></i> New Journal Entry
@@ -41,7 +39,6 @@
         <button class="btn btn-primary mt-3" @click="saveEntry">Save Journal Entry</button>
       </div>
       
-      <!-- Jounral History -->
       <div class="p-4 shadow rounded bg-light mb-4">
           <h3 class="h5 mb-3 d-flex align-items-center gap-2">
             <i class="bi bi-clock-history"></i> Recent Entries
@@ -55,10 +52,14 @@
                 :class="{'opacity-75 bg-light-subtle': entry.isSaving}"
               >
                   <span class="small text-muted mb-1 d-block fw-semibold">
+                      <span v-if="entry.moodIcon" class="me-2">{{ entry.moodIcon }}</span>
                       {{ entry.date }} 
                       <i v-if="entry.isSaving" class="bi bi-cloud-arrow-up-fill text-warning ms-2"></i>
                   </span>
                   <p class="mb-0">{{ entry.text }}</p>
+                  <span v-if="entry.mood" class="badge rounded-pill mt-2 align-self-start" :class="getMoodColorClass(entry.mood)">
+                      {{ entry.mood }}
+                  </span>
               </div>
           </div>
           <p v-else class="text-muted fst-italic">No entries saved yet. Start by writing your first journal entry above!</p>
@@ -75,13 +76,9 @@ import { collection, addDoc, query, orderBy, onSnapshot, where } from 'firebase/
 
 const userId = ref('u1'); 
 const journalEntry = ref('');
-const journalHistory = ref([]); // Data populated by Firestore listener
+const journalHistory = ref([]); 
 
-// Mood Functions
-function selectMood(label) {
-  selectedMood.value = label;
-}
-
+// MOOD TRACKING STATE AND LOGIC
 const moodOptions = [
   { label: "Great", color: "bg-success", icon: "😊" },
   { label: "Okay", color: "bg-warning", icon: "😐" },
@@ -90,68 +87,102 @@ const moodOptions = [
 
 const selectedMood = ref(null);
 
-// Journal Functions
+function selectMood(label) {
+  selectedMood.value = label;
+}
+
+// Helper functions for display
+function getMoodColorClass(moodLabel) {
+    const option = moodOptions.find(o => o.label === moodLabel);
+    return option ? option.color : 'bg-secondary';
+}
+
+function getMoodIcon(moodLabel) {
+    const option = moodOptions.find(o => o.label === moodLabel);
+    return option ? option.icon : '';
+}
+
+
+// FIREBASE READ FUNCTION (Real-time Listener)
 function subscribeToJournalEntries() {
     const q = query(
         collection(db, 'journals'), 
-        where('userId', '==', userId.value), // Filter by current user
-        orderBy('date', 'desc') // Show most recent first
+        where('userId', '==', userId.value), 
+        orderBy('date', 'desc') 
     );
 
     onSnapshot(q, (snapshot) => {
-        // Map the Firestore documents to local reactive data
         const fetchedEntries = snapshot.docs.map(doc => {
             const data = doc.data();
             
             return {
                 id: doc.id,
                 text: data.text,
-                date: data.date.toDate().toLocaleString(), 
+                date: data.date.toDate().toLocaleString(),
+                mood: data.mood || null, // Reads mood from Firestore
+                moodIcon: getMoodIcon(data.mood), 
                 isSaving: false 
             }
         });
         
-        // Update the history array
         journalHistory.value = fetchedEntries;
         console.log(`Journal history for user ${userId.value} updated from Firestore.`);
     });
 }
 
 
-// Saves new entry
+// FIREBASE WRITE FUNCTION (Saves new entry with mood)
 async function saveEntry() {
-  if (journalEntry.value.trim()) {
-    
-    const newEntryData = {
-        userId: userId.value,
-        text: journalEntry.value.trim(),
-        date: new Date(), 
-    };
-    
-    const optimisticEntry = {
-        id: Date.now(), 
-        text: newEntryData.text,
-        date: newEntryData.date.toLocaleString(), 
-        isSaving: true 
-    };
-
-    journalHistory.value.unshift(optimisticEntry);
-    journalEntry.value = ''; // Clear input immediately
-
-    try {
-        // Send data to Firestore
-        await addDoc(collection(db, 'journals'), newEntryData);
-        
-        
-    } catch (error) {
-        console.error("Error saving journal entry:", error);
-        alert('Failed to save journal entry to database. Please try again.');
-        
-        journalHistory.value = journalHistory.value.filter(e => e.id !== optimisticEntry.id);
-    }
-
-  } else {
+  if (!journalEntry.value.trim()) {
     alert('Please write something before saving.');
+    return;
+  }
+  
+  // CRITICAL: Check mood selection before proceeding
+  if (!selectedMood.value) {
+      alert('Please select a mood before saving your journal entry.');
+      return; 
+  }
+
+  // 1. Prepare data for Firestore
+  const newEntryData = {
+      userId: userId.value,
+      text: journalEntry.value.trim(),
+      date: new Date(), 
+      mood: selectedMood.value, // Mood is stored here
+  };
+  
+  // 2. Prepare data for OPTIMISTIC UI update
+  const optimisticEntry = {
+      id: Date.now(), 
+      text: newEntryData.text,
+      date: newEntryData.date.toLocaleString(), 
+      mood: selectedMood.value, 
+      moodIcon: getMoodIcon(selectedMood.value), 
+      isSaving: true 
+  };
+
+  // 3. OPTIMISTIC UPDATE: Add the entry to the list instantly
+  journalHistory.value.unshift(optimisticEntry);
+  
+  // 4. Clear inputs immediately
+  const moodToReset = selectedMood.value;
+  journalEntry.value = ''; 
+  selectedMood.value = null; 
+
+  try {
+      // 5. ASYNC WRITE: Send data to Firestore
+      await addDoc(collection(db, 'journals'), newEntryData);
+      
+      // Success. The listener handles the official UI update.
+
+  } catch (error) {
+      console.error("Error saving journal entry:", error);
+      alert('Failed to save journal entry to database. Please try again.');
+      
+      // FAILURE: Remove the optimistic entry and restore mood selection
+      journalHistory.value = journalHistory.value.filter(e => e.id !== optimisticEntry.id);
+      selectedMood.value = moodToReset;
   }
 }
 
