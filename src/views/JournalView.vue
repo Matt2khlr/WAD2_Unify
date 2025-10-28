@@ -1,119 +1,167 @@
-<script setup>
-import { ref } from 'vue';
-
-const journalEntry = ref('');
-const savedEntries = ref([]);
-
-// Load saved entries from localStorage on mount
-const loadEntries = () => {
-  const stored = localStorage.getItem('journalEntries');
-  if (stored) {
-    savedEntries.value = JSON.parse(stored);
-  }
-};
-
-loadEntries();
-
-// Save journal entry
-function saveEntry() {
-  if (journalEntry.value.trim()) {
-    const entry = {
-      id: Date.now(),
-      text: journalEntry.value.trim(),
-      date: new Date().toLocaleDateString(),
-      time: new Date().toLocaleTimeString()
-    };
-    
-    savedEntries.value.unshift(entry); // Add to beginning
-    localStorage.setItem('journalEntries', JSON.stringify(savedEntries.value));
-    
-    alert('Journal entry saved successfully!');
-    journalEntry.value = '';
-  } else {
-    alert('Please write something before saving.');
-  }
-}
-
-// Delete an entry
-function deleteEntry(id) {
-  if (confirm('Are you sure you want to delete this entry?')) {
-    savedEntries.value = savedEntries.value.filter(e => e.id !== id);
-    localStorage.setItem('journalEntries', JSON.stringify(savedEntries.value));
-  }
-}
-</script>
-
 <template>
-  <!-- Header -->
   <div class="min-vh-100 bg-gradient p-5">
     <div class="container">
       <div class="mb-5 text-center">
         <h1 class="display-4 fw-bold d-flex justify-content-center align-items-center gap-3">
-          <i class="bi bi-journal-text"></i> Daily Journal
+          <i class="bi bi-journal-text"></i> Journal
         </h1>
-        <p class="text-muted fs-5">Reflect on your learning journey</p>
+        <p class="text-muted fs-5">Log your thoughts and reflections to manage your wellness.</p>
+      </div>
+      
+      <!-- Mental Health Check-in -->
+      <div class="card bg-primary text-white shadow mb-4 p-4">
+        <h2 class="mb-4">How are you feeling today?</h2>
+        <div class="d-flex justify-content-center gap-4 mb-3">
+          <button 
+            v-for="option in moodOptions" 
+            :key="option.label" 
+            :class="['d-flex flex-column align-items-center p-3 rounded', option.color, { 'opacity-75': selectedMood !== option.label }]"
+            style="width: 100px; transition: transform 0.3s;"
+            @click="selectMood(option.label)"
+            :style="{ transform: selectedMood === option.label ? 'scale(1.05)' : 'scale(1)' }"
+          >
+            <span class="fs-1">{{ option.icon }}</span>
+            <span class="mt-2 fw-semibold">{{ option.label }}</span>
+          </button>
+        </div>
+        <p class="text-center text-white-75">Track your mood daily to identify patterns and improve wellbeing</p>
       </div>
 
       <!-- Journal Entry -->
-      <div class="p-4 shadow rounded bg-light mb-4">
+      <div class="p-4 shadow rounded bg-light mb-5">
         <h3 class="h5 mb-3 d-flex align-items-center gap-2">
           <i class="bi bi-pencil-square"></i> New Journal Entry
         </h3>
         <textarea 
           class="form-control" 
-          rows="8" 
-          placeholder="Write about your learning experience today, challenges you faced, insights you gained..."
+          rows="6" 
+          placeholder="Write about your day, your focus, or any stress you're feeling..."
           v-model="journalEntry"
-        ></textarea>
-        <button class="btn btn-primary mt-3" @click="saveEntry">
-          <i class="bi bi-save me-2"></i>Save Entry
-        </button>
+          @keyup.enter="saveEntry" ></textarea>
+        <button class="btn btn-primary mt-3" @click="saveEntry">Save Journal Entry</button>
+      </div>
+      
+      <!-- Jounral History -->
+      <div class="p-4 shadow rounded bg-light mb-4">
+          <h3 class="h5 mb-3 d-flex align-items-center gap-2">
+            <i class="bi bi-clock-history"></i> Recent Entries
+          </h3>
+          
+          <div v-if="journalHistory.length">
+              <div 
+                v-for="entry in journalHistory" 
+                :key="entry.id" 
+                class="card card-body mb-2 p-3"
+                :class="{'opacity-75 bg-light-subtle': entry.isSaving}"
+              >
+                  <span class="small text-muted mb-1 d-block fw-semibold">
+                      {{ entry.date }} 
+                      <i v-if="entry.isSaving" class="bi bi-cloud-arrow-up-fill text-warning ms-2"></i>
+                  </span>
+                  <p class="mb-0">{{ entry.text }}</p>
+              </div>
+          </div>
+          <p v-else class="text-muted fst-italic">No entries saved yet. Start by writing your first journal entry above!</p>
       </div>
 
-      <!-- Previous Entries -->
-      <div class="p-4 shadow rounded bg-light" v-if="savedEntries.length">
-        <h3 class="h5 mb-3 d-flex align-items-center gap-2">
-          <i class="bi bi-clock-history"></i> Previous Entries
-        </h3>
-        <div class="entry-list">
-          <div v-for="entry in savedEntries" :key="entry.id" class="entry-item mb-3 p-3 border rounded">
-            <div class="d-flex justify-content-between align-items-start mb-2">
-              <small class="text-muted">
-                <i class="bi bi-calendar3 me-1"></i>{{ entry.date }} 
-                <i class="bi bi-clock ms-2 me-1"></i>{{ entry.time }}
-              </small>
-              <button 
-                class="btn btn-sm btn-outline-danger"
-                @click="deleteEntry(entry.id)"
-                title="Delete Entry">
-                <i class="bi bi-trash"></i>
-              </button>
-            </div>
-            <p class="mb-0">{{ entry.text }}</p>
-          </div>
-        </div>
-      </div>
     </div>
   </div>
 </template>
 
+<script setup>
+import { ref, onMounted } from 'vue'; 
+import { db } from '@/firebase'; 
+import { collection, addDoc, query, orderBy, onSnapshot, where } from 'firebase/firestore'; 
+
+const userId = ref('u1'); 
+const journalEntry = ref('');
+const journalHistory = ref([]); // Data populated by Firestore listener
+
+// Mood Functions
+function selectMood(label) {
+  selectedMood.value = label;
+}
+
+const moodOptions = [
+  { label: "Great", color: "bg-success", icon: "😊" },
+  { label: "Okay", color: "bg-warning", icon: "😐" },
+  { label: "Stressed", color: "bg-danger", icon: "☹️" },
+];
+
+const selectedMood = ref(null);
+
+// Journal Functions
+function subscribeToJournalEntries() {
+    const q = query(
+        collection(db, 'journals'), 
+        where('userId', '==', userId.value), // Filter by current user
+        orderBy('date', 'desc') // Show most recent first
+    );
+
+    onSnapshot(q, (snapshot) => {
+        // Map the Firestore documents to local reactive data
+        const fetchedEntries = snapshot.docs.map(doc => {
+            const data = doc.data();
+            
+            return {
+                id: doc.id,
+                text: data.text,
+                date: data.date.toDate().toLocaleString(), 
+                isSaving: false 
+            }
+        });
+        
+        // Update the history array
+        journalHistory.value = fetchedEntries;
+        console.log(`Journal history for user ${userId.value} updated from Firestore.`);
+    });
+}
+
+
+// Saves new entry
+async function saveEntry() {
+  if (journalEntry.value.trim()) {
+    
+    const newEntryData = {
+        userId: userId.value,
+        text: journalEntry.value.trim(),
+        date: new Date(), 
+    };
+    
+    const optimisticEntry = {
+        id: Date.now(), 
+        text: newEntryData.text,
+        date: newEntryData.date.toLocaleString(), 
+        isSaving: true 
+    };
+
+    journalHistory.value.unshift(optimisticEntry);
+    journalEntry.value = ''; // Clear input immediately
+
+    try {
+        // Send data to Firestore
+        await addDoc(collection(db, 'journals'), newEntryData);
+        
+        
+    } catch (error) {
+        console.error("Error saving journal entry:", error);
+        alert('Failed to save journal entry to database. Please try again.');
+        
+        journalHistory.value = journalHistory.value.filter(e => e.id !== optimisticEntry.id);
+    }
+
+  } else {
+    alert('Please write something before saving.');
+  }
+}
+
+onMounted(() => {
+    subscribeToJournalEntries();
+});
+</script>
+
 <style scoped>
 .bg-gradient {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-}
-
-.entry-item {
-  background-color: #f8f9fa;
-  transition: all 0.3s ease;
-}
-
-.entry-item:hover {
-  background-color: #fff;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-}
-
-.entry-list {
-  max-height: 500px;
-  overflow-y: auto;
 }
 </style>

@@ -1,7 +1,10 @@
 <script setup>
 import { ref, computed, watch, onMounted, onBeforeUnmount } from "vue";
 import { db, auth } from "@/firebase";
-import { collection, addDoc, deleteDoc, doc, onSnapshot, query, where, serverTimestamp } from "firebase/firestore";
+import {
+  collection, addDoc, deleteDoc, doc, onSnapshot,
+  query, where, serverTimestamp, setDoc
+} from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import { Calendar, Flame, TrendingUp, Activity, Utensils, Clock, Plus, ChevronLeft, ChevronRight } from "lucide-vue-next";
 
@@ -17,20 +20,55 @@ function kcalFrom(activity,intensity,kg,minutes){const met=metFor(activity,inten
 const selectedDate = ref(toISO(new Date()));
 const userId = ref(null);
 
-const targets = ref({ weightKg: Number(localStorage.getItem("weightKg"))||65, calorieTarget: Number(localStorage.getItem("calorieTarget"))||2000 });
+const targets = ref({
+  heightCm: Number(localStorage.getItem("heightCm")) || null,
+  weightKg: Number(localStorage.getItem("weightKg")) || null,
+  calorieTarget: Number(localStorage.getItem("calorieTarget")) || 2000
+});
+const goal = ref(localStorage.getItem("goal") || "maintenance");
+
+let unsubProfile = null;
+let syncingProfile = false;
+const profileReady = ref(false);
+
+function bindProfile(){
+  if (unsubProfile) unsubProfile();
+  if (!userId.value){ profileReady.value=false; return; }
+  const refDoc = doc(db, "profiles", userId.value);
+  unsubProfile = onSnapshot(refDoc, (snap)=>{
+    profileReady.value = true;
+    syncingProfile = true;
+    if (snap.exists()){
+      const d = snap.data();
+      if (typeof d.heightCm !== "undefined") targets.value.heightCm = d.heightCm ?? null;
+      if (typeof d.weightKg !== "undefined") targets.value.weightKg = d.weightKg ?? null;
+      if (typeof d.calorieTarget !== "undefined") targets.value.calorieTarget = d.calorieTarget ?? targets.value.calorieTarget;
+      if (typeof d.goal === "string") goal.value = d.goal;
+    }
+    localStorage.setItem("heightCm", String(targets.value.heightCm ?? ""));
+    localStorage.setItem("weightKg", String(targets.value.weightKg ?? ""));
+    localStorage.setItem("calorieTarget", String(targets.value.calorieTarget ?? ""));
+    localStorage.setItem("goal", goal.value ?? "");
+    syncingProfile = false;
+  });
+}
+
+async function saveProfile(partial){
+  if (!userId.value || !profileReady.value || syncingProfile) return;
+  try{
+    await setDoc(doc(db, "profiles", userId.value), { ...partial, updatedAt: serverTimestamp() }, { merge: true });
+  }catch(e){ console.error("saveProfile failed", e); }
+}
 
 const mealForm = ref({ type:"Breakfast", name:"", kcal:"", protein:null, carbs:null, fat:null });
-const meals = ref([]);
-let unsubMeals = null;
+const meals = ref([]); let unsubMeals = null;
 
 const workoutForm = ref({ activity:"", minutes:"", intensity:"moderate" });
-const workouts = ref([]);
-let unsubWorkouts = null;
+const workouts = ref([]); let unsubWorkouts = null;
 
 const mealsSorted = computed(()=>[...meals.value].sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0)));
 const workoutsSorted = computed(()=>[...workouts.value].sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0)));
 
-const goal = ref(localStorage.getItem("goal") || "maintenance");
 const proteinTarget = computed(()=> goal.value==="muscle-gain" ? 150 : goal.value==="weight-loss" ? 120 : 130);
 const carbsTarget   = computed(()=> goal.value==="muscle-gain" ? 300 : goal.value==="weight-loss" ? 180 : 250);
 const fatTarget     = computed(()=> goal.value==="muscle-gain" ? 70  : goal.value==="weight-loss" ? 50  : 65 );
@@ -42,14 +80,28 @@ const QUICK_ACTIVITIES=[{name:"Walking",icon:"🚶"},{name:"Running",icon:"🏃"
 const QUICK_DURATIONS=[15,30,45,60];
 
 onMounted(()=>{ onAuthStateChanged(auth,(u)=>{ userId.value=u?.uid ?? null; bindAll(); }); });
-onBeforeUnmount(()=>{ if (unsubMeals) unsubMeals(); if (unsubWorkouts) unsubWorkouts(); });
+onBeforeUnmount(()=>{ if (unsubMeals) unsubMeals(); if (unsubWorkouts) unsubWorkouts(); if (unsubProfile) unsubProfile(); });
 watch(selectedDate, bindAll);
-watch(goal,(g)=>localStorage.setItem("goal",g));
+
 watch(mealTemplates,(v)=>localStorage.setItem("mealTemplates",JSON.stringify(v)),{deep:true});
 watch(workoutTemplates,(v)=>localStorage.setItem("workoutTemplates",JSON.stringify(v)),{deep:true});
-watch(targets,(v)=>{localStorage.setItem("weightKg",String(v.weightKg));localStorage.setItem("calorieTarget",String(v.calorieTarget));},{deep:true});
 
-function bindAll(){ if(!userId.value){ meals.value=[]; workouts.value=[]; return; } bindMeals(); bindWorkouts(); }
+watch(()=>targets.value.heightCm,(v,ov)=>{ if(v===ov) return; localStorage.setItem("heightCm", String(v ?? "")); saveProfile({ heightCm: v ?? null }); });
+watch(()=>targets.value.weightKg,(v,ov)=>{ if(v===ov) return; localStorage.setItem("weightKg", String(v ?? "")); saveProfile({ weightKg: v ?? null }); });
+watch(()=>targets.value.calorieTarget,(v,ov)=>{ if(v===ov) return; localStorage.setItem("calorieTarget", String(v ?? "")); saveProfile({ calorieTarget: v ?? null }); });
+watch(goal,(g,og)=>{ if(g===og) return; localStorage.setItem("goal", g); saveProfile({ goal: g }); });
+
+function bindAll(){
+  if(!userId.value){
+    meals.value=[]; workouts.value=[];
+    if (unsubMeals) unsubMeals(); if (unsubWorkouts) unsubWorkouts(); if (unsubProfile) unsubProfile();
+    return;
+  }
+  bindProfile();
+  bindMeals();
+  bindWorkouts();
+}
+
 function bindMeals(){
   if (unsubMeals) unsubMeals();
   const refCol=collection(db,"meals");
@@ -67,7 +119,17 @@ async function addMeal(){
   if(!userId.value) return;
   if(!mealForm.value.name.trim() || n(mealForm.value.kcal)<=0) return;
   const refCol=collection(db,"meals");
-  await addDoc(refCol,{userId:userId.value,type:mealForm.value.type,name:mealForm.value.name.trim(),kcal:n(mealForm.value.kcal),protein:n(mealForm.value.protein),carbs:n(mealForm.value.carbs),fat:n(mealForm.value.fat),date:selectedDate.value,createdAt:serverTimestamp()});
+  await addDoc(refCol,{
+    userId:userId.value,
+    type:mealForm.value.type,
+    name:mealForm.value.name.trim(),
+    kcal:n(mealForm.value.kcal),
+    protein:n(mealForm.value.protein),
+    carbs:n(mealForm.value.carbs),
+    fat:n(mealForm.value.fat),
+    date:selectedDate.value,
+    createdAt:serverTimestamp()
+  });
   mealForm.value={type:"Breakfast",name:"",kcal:"",protein:null,carbs:null,fat:null};
 }
 async function removeMeal(id){ if(!userId.value) return; await deleteDoc(doc(db,"meals",id)); }
@@ -79,13 +141,29 @@ async function addWorkout(){
   const met=metFor(workoutForm.value.activity,workoutForm.value.intensity);
   const kcal=Math.round((met*3.5*kg/200)*mins);
   const refCol=collection(db,"workouts");
-  await addDoc(refCol,{userId:userId.value,activity:workoutForm.value.activity.trim(),minutes:mins,intensity:workoutForm.value.intensity,met,kcal,date:selectedDate.value,createdAt:serverTimestamp()});
+  await addDoc(refCol,{
+    userId:userId.value,
+    activity:workoutForm.value.activity.trim(),
+    minutes:mins,
+    intensity:workoutForm.value.intensity,
+    met,kcal,
+    date:selectedDate.value,
+    createdAt:serverTimestamp()
+  });
   workoutForm.value={activity:"",minutes:"",intensity:"moderate"};
 }
 async function removeWorkout(id){ if(!userId.value) return; await deleteDoc(doc(db,"workouts",id)); }
 
-const totalsMeals = computed(()=>({kcal:meals.value.reduce((a,m)=>a+n(m.kcal),0),protein:meals.value.reduce((a,m)=>a+n(m.protein),0),carbs:meals.value.reduce((a,m)=>a+n(m.carbs),0),fat:meals.value.reduce((a,m)=>a+n(m.fat),0)}));
-const totalsWorkouts = computed(()=>({minutes:workouts.value.reduce((a,w)=>a+n(w.minutes),0),kcal:workouts.value.reduce((a,w)=>a+n(w.kcal),0)}));
+const totalsMeals = computed(()=>({
+  kcal:meals.value.reduce((a,m)=>a+n(m.kcal),0),
+  protein:meals.value.reduce((a,m)=>a+n(m.protein),0),
+  carbs:meals.value.reduce((a,m)=>a+n(m.carbs),0),
+  fat:meals.value.reduce((a,m)=>a+n(m.fat),0)
+}));
+const totalsWorkouts = computed(()=>({
+  minutes:workouts.value.reduce((a,w)=>a+n(w.minutes),0),
+  kcal:workouts.value.reduce((a,w)=>a+n(w.kcal),0)
+}));
 const netCalories = computed(()=>totalsMeals.value.kcal - totalsWorkouts.value.kcal);
 
 const overCals = computed(()=> netCalories.value - n(targets.value.calorieTarget));
@@ -95,10 +173,26 @@ const fatGap     = computed(()=> Math.max(0, fatTarget.value     - totalsMeals.v
 
 const suggestions = computed(()=>{
   const s=[];
-  if(goal.value==="weight-loss"){ if(overCals.value>0)s.push({type:"burn",text:`Burn ~${overCals.value} kcal to reach today’s target.`}); if(proteinGap.value>0)s.push({type:"eat",text:`Aim for +${proteinGap.value.toFixed(0)} g protein to preserve muscle.`}); }
-  else if(goal.value==="muscle-gain"){ if(proteinGap.value>0)s.push({type:"eat",text:`Eat +${proteinGap.value.toFixed(0)} g protein to support growth.`}); if(overCals.value<0)s.push({type:"eat",text:`You’re under target by ${Math.abs(overCals.value)} kcal — add a snack or shake.`}); }
-  else { if(Math.abs(overCals.value)>150)s.push({type:"balance",text:`Adjust by ${Math.abs(overCals.value)} kcal to hit maintenance.`}); }
-  if(overCals.value>0){ const kg=n(targets.value.weightKg)||1; const acts=[{name:"Walk",i:"moderate"},{name:"Cycle",i:"moderate"},{name:"Running",i:"easy"}]; const extra=acts.map(a=>{const m=metFor(a.name,a.i);const perMin=(m*3.5*kg)/200;const mins=perMin>0?Math.ceil(overCals.value/perMin):0;return`${a.name} ~${mins} min`;}).join(" • "); s.push({type:"burn",text:extra}); }
+  if(goal.value==="weight-loss"){
+    if(overCals.value>0)s.push({type:"burn",text:`Burn ~${overCals.value} kcal to reach today’s target.`});
+    if(proteinGap.value>0)s.push({type:"eat",text:`Aim for +${proteinGap.value.toFixed(0)} g protein to preserve muscle.`});
+  } else if(goal.value==="muscle-gain"){
+    if(proteinGap.value>0)s.push({type:"eat",text:`Eat +${proteinGap.value.toFixed(0)} g protein to support growth.`});
+    if(overCals.value<0)s.push({type:"eat",text:`You’re under target by ${Math.abs(overCals.value)} kcal — add a snack or shake.`});
+  } else {
+    if(Math.abs(overCals.value)>150)s.push({type:"balance",text:`Adjust by ${Math.abs(overCals.value)} kcal to hit maintenance.`});
+  }
+  if(overCals.value>0){
+    const kg=n(targets.value.weightKg)||1;
+    const acts=[{name:"Walk",i:"moderate"},{name:"Cycle",i:"moderate"},{name:"Running",i:"easy"}];
+    const extra=acts.map(a=>{
+      const m=metFor(a.name,a.i);
+      const perMin=(m*3.5*kg)/200;
+      const mins=perMin>0?Math.ceil(overCals.value/perMin):0;
+      return`${a.name} ~${mins} min`;
+    }).join(" • ");
+    s.push({type:"burn",text:extra});
+  }
   return s;
 });
 
@@ -112,34 +206,46 @@ async function searchFoods(){
     const json=await res.json();
     const prods=Array.isArray(json.products)?json.products:[];
     const lcq=q.toLowerCase();
-    mealResults.value=prods.map(p=>{const name=p.product_name_en?.trim()||p.product_name?.trim()||"(Unnamed)";return{name,brand:p.brands||"",kcal100:p.nutriments?.["energy-kcal_100g"]??0,p100:p.nutriments?.["proteins_100g"]??0,c100:p.nutriments?.["carbohydrates_100g"]??0,f100:p.nutriments?.["fat_100g"]??0,langs:p.languages_tags||[]};}).filter(r=>r.name.toLowerCase().includes(lcq)||r.langs.includes("en:english"));
+    mealResults.value=prods.map(p=>{
+      const name=p.product_name_en?.trim()||p.product_name?.trim()||"(Unnamed)";
+      return{
+        name,brand:p.brands||"",
+        kcal100:p.nutriments?.["energy-kcal_100g"]??0,
+        p100:p.nutriments?.["proteins_100g"]??0,
+        c100:p.nutriments?.["carbohydrates_100g"]??0,
+        f100:p.nutriments?.["fat_100g"]??0,
+        langs:p.languages_tags||[]
+      };
+    }).filter(r=>r.name.toLowerCase().includes(lcq)||r.langs.includes("en:english"));
   }catch{mealResults.value=[];}finally{searching.value=false;}
 }
 function useResult(r, autoAdd = false) {
   const raw = prompt(`How many grams? (per 100g: ${r.kcal100 || 0} kcal)`, "100");
   if (raw === null) return;
-
   const grams = Number(String(raw).trim());
   if (!Number.isFinite(grams) || grams <= 0) return;
-
   const f = grams / 100;
   mealForm.value.name   = r.brand ? `${r.name} (${r.brand})` : r.name;
   mealForm.value.kcal   = Math.round((r.kcal100 || 0) * f).toString();
   mealForm.value.protein = +((r.p100 || 0) * f).toFixed(1);
   mealForm.value.carbs   = +((r.c100 || 0) * f).toFixed(1);
   mealForm.value.fat     = +((r.f100 || 0) * f).toFixed(1);
-
   mealResults.value = [];
   mealSearch.value = "";
-
   if (autoAdd) addMeal();
 }
-
 
 const newMealTemplate=ref({name:"",kcal:"",p:"",c:"",f:""});
 function addMealTemplate(){
   if(!newMealTemplate.value.name||!Number(newMealTemplate.value.kcal))return;
-  mealTemplates.value.push({id:Date.now().toString(),name:newMealTemplate.value.name.trim(),calories:Number(newMealTemplate.value.kcal),protein:Number(newMealTemplate.value.p)||0,carbs:Number(newMealTemplate.value.c)||0,fat:Number(newMealTemplate.value.f)||0});
+  mealTemplates.value.push({
+    id:Date.now().toString(),
+    name:newMealTemplate.value.name.trim(),
+    calories:Number(newMealTemplate.value.kcal),
+    protein:Number(newMealTemplate.value.p)||0,
+    carbs:Number(newMealTemplate.value.c)||0,
+    fat:Number(newMealTemplate.value.f)||0
+  });
   newMealTemplate.value={name:"",kcal:"",p:"",c:"",f:""};
 }
 function removeMealTemplate(id){mealTemplates.value=mealTemplates.value.filter(t=>t.id!==id);}
@@ -215,12 +321,16 @@ function changeDate(days){const d=new Date(selectedDate.value);d.setDate(d.getDa
             </div>
           </div>
           <div class="col-6 col-sm-3">
-            <label class="form-label">Weight (kg)</label>
-            <input type="number" min="1" class="form-control" v-model.number="targets.weightKg"/>
+            <label class="form-label">Height (cm)</label>
+            <input type="number" min="1" class="form-control" v-model.number="targets.heightCm" placeholder="e.g., 175"/>
           </div>
-          <div class="col-6 col-sm-4">
+          <div class="col-6 col-sm-2">
+            <label class="form-label">Weight (kg)</label>
+            <input type="number" min="1" class="form-control" v-model.number="targets.weightKg" placeholder="e.g., 70"/>
+          </div>
+          <div class="col-12 col-sm-2">
             <label class="form-label">Calorie Target</label>
-            <input type="number" min="0" class="form-control" v-model.number="targets.calorieTarget"/>
+            <input type="number" min="0" class="form-control" v-model.number="targets.calorieTarget" placeholder="e.g., 2000"/>
           </div>
         </div>
       </div>
