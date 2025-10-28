@@ -511,10 +511,10 @@ export default {
     }
   },
 
-  setup() {
-    const router = useRouter()
-    return { router }
-  },
+  // setup() {
+  //   const router = useRouter()
+  //   return { router }
+  // },
 
   computed: {
     allEvents() {
@@ -1361,21 +1361,21 @@ export default {
       });
     },
 
-    //Check Authentication Status
-    checkAuth() {
-      onAuthStateChanged(auth, (user) => {
-        if (user) {
-          // User is signed in
-          this.userId = user.uid
+    // //Check Authentication Status
+    // checkAuth() {
+    //   onAuthStateChanged(auth, (user) => {
+    //     if (user) {
+    //       // User is signed in
+    //       this.userId = user.uid
           
-          // Start listening to events after we have user ID
-          this.listenToEvents()
-        } 
-        else {
-          this.router.push('/login')
-        }
-      })
-    },
+    //       // Start listening to events after we have user ID
+    //       this.listenToEvents()
+    //     } 
+    //     else {
+    //       this.router.push('/login')
+    //     }
+    //   })
+    // },
   },
 
   async mounted() {
