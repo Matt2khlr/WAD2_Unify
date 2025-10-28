@@ -178,23 +178,31 @@ async function addMeal(){
 async function removeMeal(id){ if(!userId.value) return; await deleteDoc(doc(db,"meals",id)); }
 
 async function addWorkout(){
-  if(!userId.value) return;
-  const mins=n(workoutForm.value.minutes), kg=n(targets.value.weightKg);
-  if(!workoutForm.value.activity.trim() || mins<=0 || kg<=0) return;
-  const met=metFor(workoutForm.value.activity,workoutForm.value.intensity);
-  const kcal=Math.round((met*3.5*kg/200)*mins);
-  const refCol=collection(db,"workouts");
-  await addDoc(refCol,{
-    userId:userId.value,
-    activity:workoutForm.value.activity.trim(),
-    minutes:mins,
-    intensity:workoutForm.value.intensity,
-    met,kcal,
-    date:selectedDate.value,
-    createdAt:serverTimestamp()
+  if (!userId.value) return;
+
+  const mins = Number(String(workoutForm.value.minutes).trim());
+  const activity = (workoutForm.value.activity || "").trim();
+  if (!activity || !Number.isFinite(mins) || mins <= 0) return;
+
+  const kg = n(targets.value.weightKg) || 70; // fallback so add never blocks
+  const met = metFor(activity, workoutForm.value.intensity);
+  const kcal = Math.round((met * 3.5 * kg / 200) * mins);
+
+  const refCol = collection(db, "workouts");
+  await addDoc(refCol, {
+    userId: userId.value,
+    activity,
+    minutes: mins,
+    intensity: workoutForm.value.intensity,
+    met,
+    kcal,
+    date: selectedDate.value,
+    createdAt: serverTimestamp()
   });
-  workoutForm.value={activity:"",minutes:"",intensity:"moderate"};
+
+  workoutForm.value = { activity: "", minutes: "", intensity: "moderate" };
 }
+
 async function removeWorkout(id){ if(!userId.value) return; await deleteDoc(doc(db,"workouts",id)); }
 
 const totalsMeals = computed(()=>({
