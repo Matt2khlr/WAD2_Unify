@@ -1,10 +1,7 @@
 <script setup>
-import { ref, computed, watch, onMounted, onBeforeUnmount } from "vue";
+import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from "vue";
 import { db, auth } from "@/firebase";
-import {
-  collection, addDoc, deleteDoc, doc, onSnapshot,
-  query, where, serverTimestamp, setDoc
-} from "firebase/firestore";
+import { collection, addDoc, deleteDoc, doc, onSnapshot, query, where, serverTimestamp, setDoc, deleteField } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import { Calendar, Flame, TrendingUp, Activity, Utensils, Clock, Plus, ChevronLeft, ChevronRight } from "lucide-vue-next";
 
@@ -20,16 +17,23 @@ function kcalFrom(activity,intensity,kg,minutes){const met=metFor(activity,inten
 const selectedDate = ref(toISO(new Date()));
 const userId = ref(null);
 
+const initialUseAuto = String(localStorage.getItem("useAutoCalorie") ?? "true") !== "false";
+const initialManualStr = localStorage.getItem("calorieTarget") ?? "";
+
 const targets = ref({
   heightCm: Number(localStorage.getItem("heightCm")) || null,
   weightKg: Number(localStorage.getItem("weightKg")) || null,
-  calorieTarget: Number(localStorage.getItem("calorieTarget")) || 2000
+  calorieTarget: initialUseAuto ? null : (n(initialManualStr) || null)
 });
 const goal = ref(localStorage.getItem("goal") || "maintenance");
+const useAutoCalorie = ref(initialUseAuto);
+const calorieInput = ref(initialUseAuto ? "" : initialManualStr);
 
 let unsubProfile = null;
 let syncingProfile = false;
 const profileReady = ref(false);
+
+const kcalInputRef = ref(null);
 
 function bindProfile(){
   if (unsubProfile) unsubProfile();
@@ -40,24 +44,38 @@ function bindProfile(){
     syncingProfile = true;
     if (snap.exists()){
       const d = snap.data();
-      if (typeof d.heightCm !== "undefined") targets.value.heightCm = d.heightCm ?? null;
-      if (typeof d.weightKg !== "undefined") targets.value.weightKg = d.weightKg ?? null;
-      if (typeof d.calorieTarget !== "undefined") targets.value.calorieTarget = d.calorieTarget ?? targets.value.calorieTarget;
-      if (typeof d.goal === "string") goal.value = d.goal;
+      targets.value.heightCm = typeof d.heightCm !== "undefined" ? (d.heightCm ?? null) : targets.value.heightCm;
+      targets.value.weightKg = typeof d.weightKg !== "undefined" ? (d.weightKg ?? null) : targets.value.weightKg;
+      goal.value = typeof d.goal === "string" ? d.goal : goal.value;
+      if (typeof d.useAutoCalorie === "boolean") {
+        useAutoCalorie.value = d.useAutoCalorie;
+      } else {
+        useAutoCalorie.value = !(typeof d.calorieTarget === "number" && d.calorieTarget > 0);
+      }
+      if (typeof d.calorieTarget === "number" && d.calorieTarget > 0) {
+        targets.value.calorieTarget = d.calorieTarget;
+        calorieInput.value = useAutoCalorie.value ? "" : String(d.calorieTarget);
+      } else {
+        targets.value.calorieTarget = null;
+        calorieInput.value = useAutoCalorie.value ? "" : (localStorage.getItem("calorieTarget") ?? "");
+      }
+    } else {
+      useAutoCalorie.value = true;
+      targets.value.calorieTarget = null;
+      calorieInput.value = "";
     }
     localStorage.setItem("heightCm", String(targets.value.heightCm ?? ""));
     localStorage.setItem("weightKg", String(targets.value.weightKg ?? ""));
-    localStorage.setItem("calorieTarget", String(targets.value.calorieTarget ?? ""));
     localStorage.setItem("goal", goal.value ?? "");
+    localStorage.setItem("useAutoCalorie", String(useAutoCalorie.value));
+    localStorage.setItem("calorieTarget", useAutoCalorie.value ? "" : (calorieInput.value ?? ""));
     syncingProfile = false;
   });
 }
 
 async function saveProfile(partial){
   if (!userId.value || !profileReady.value || syncingProfile) return;
-  try{
-    await setDoc(doc(db, "profiles", userId.value), { ...partial, updatedAt: serverTimestamp() }, { merge: true });
-  }catch(e){ console.error("saveProfile failed", e); }
+  try{ await setDoc(doc(db, "profiles", userId.value), { ...partial, updatedAt: serverTimestamp() }, { merge: true }); }catch(e){}
 }
 
 const mealForm = ref({ type:"Breakfast", name:"", kcal:"", protein:null, carbs:null, fat:null });
@@ -69,15 +87,12 @@ const workouts = ref([]); let unsubWorkouts = null;
 const mealsSorted = computed(()=>[...meals.value].sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0)));
 const workoutsSorted = computed(()=>[...workouts.value].sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0)));
 
-const proteinTarget = computed(()=> goal.value==="muscle-gain" ? 150 : goal.value==="weight-loss" ? 120 : 130);
-const carbsTarget   = computed(()=> goal.value==="muscle-gain" ? 300 : goal.value==="weight-loss" ? 180 : 250);
-const fatTarget     = computed(()=> goal.value==="muscle-gain" ? 70  : goal.value==="weight-loss" ? 50  : 65 );
-
 const mealTemplates = ref(JSON.parse(localStorage.getItem("mealTemplates") || "[]"));
 const workoutTemplates = ref(JSON.parse(localStorage.getItem("workoutTemplates") || "[]"));
 
-const QUICK_ACTIVITIES=[{name:"Walking",icon:"🚶"},{name:"Running",icon:"🏃"},{name:"Cycling",icon:"🚴"},{name:"Swimming",icon:"🏊"},{name:"Gym",icon:"💪"},{name:"Yoga",icon:"🧘"}];
-const QUICK_DURATIONS=[15,30,45,60];
+const proteinTarget = computed(()=> goal.value==="muscle-gain" ? 150 : goal.value==="weight-loss" ? 120 : 130);
+const carbsTarget   = computed(()=> goal.value==="muscle-gain" ? 300 : goal.value==="weight-loss" ? 180 : 250);
+const fatTarget     = computed(()=> goal.value==="muscle-gain" ? 70  : goal.value==="weight-loss" ? 50  : 65 );
 
 onMounted(()=>{ onAuthStateChanged(auth,(u)=>{ userId.value=u?.uid ?? null; bindAll(); }); });
 onBeforeUnmount(()=>{ if (unsubMeals) unsubMeals(); if (unsubWorkouts) unsubWorkouts(); if (unsubProfile) unsubProfile(); });
@@ -88,8 +103,37 @@ watch(workoutTemplates,(v)=>localStorage.setItem("workoutTemplates",JSON.stringi
 
 watch(()=>targets.value.heightCm,(v,ov)=>{ if(v===ov) return; localStorage.setItem("heightCm", String(v ?? "")); saveProfile({ heightCm: v ?? null }); });
 watch(()=>targets.value.weightKg,(v,ov)=>{ if(v===ov) return; localStorage.setItem("weightKg", String(v ?? "")); saveProfile({ weightKg: v ?? null }); });
-watch(()=>targets.value.calorieTarget,(v,ov)=>{ if(v===ov) return; localStorage.setItem("calorieTarget", String(v ?? "")); saveProfile({ calorieTarget: v ?? null }); });
 watch(goal,(g,og)=>{ if(g===og) return; localStorage.setItem("goal", g); saveProfile({ goal: g }); });
+
+watch(calorieInput, (v, ov) => {
+  if (syncingProfile) return;
+  if (useAutoCalorie.value) return;
+  const num = n(v);
+  localStorage.setItem("calorieTarget", v ?? "");
+  if (!num || num <= 0) {
+    targets.value.calorieTarget = null;
+    saveProfile({ calorieTarget: deleteField() });
+  } else {
+    targets.value.calorieTarget = num;
+    saveProfile({ calorieTarget: num });
+  }
+});
+
+watch(useAutoCalorie, async (v, ov) => {
+  if (v === ov) return;
+  localStorage.setItem("useAutoCalorie", String(v));
+  if (v) {
+    calorieInput.value = "";
+    targets.value.calorieTarget = null;
+    localStorage.setItem("calorieTarget", "");
+    await saveProfile({ useAutoCalorie: true, calorieTarget: deleteField() });
+  } else {
+    await saveProfile({ useAutoCalorie: false });
+    await nextTick();
+    kcalInputRef.value?.focus?.();
+    kcalInputRef.value?.select?.();
+  }
+});
 
 function bindAll(){
   if(!userId.value){
@@ -101,7 +145,6 @@ function bindAll(){
   bindMeals();
   bindWorkouts();
 }
-
 function bindMeals(){
   if (unsubMeals) unsubMeals();
   const refCol=collection(db,"meals");
@@ -166,19 +209,32 @@ const totalsWorkouts = computed(()=>({
 }));
 const netCalories = computed(()=>totalsMeals.value.kcal - totalsWorkouts.value.kcal);
 
-const overCals = computed(()=> netCalories.value - n(targets.value.calorieTarget));
-const proteinGap = computed(()=> Math.max(0, proteinTarget.value - totalsMeals.value.protein));
+const suggestedCalorie = computed(() => {
+  const kg = n(targets.value.weightKg);
+  const base = kg>0 ? Math.round(30*kg) : 2000;
+  if (goal.value === "weight-loss")  return Math.round(base*0.85);
+  if (goal.value === "muscle-gain")  return Math.round(base*1.10);
+  return base;
+});
+const effectiveCalorieTarget = computed(() => {
+  if (useAutoCalorie.value) return suggestedCalorie.value;
+  const explicit = n(targets.value.calorieTarget);
+  return explicit > 0 ? explicit : suggestedCalorie.value;
+});
+const overCals = computed(()=> netCalories.value - effectiveCalorieTarget.value);
+
 const carbsGap   = computed(()=> Math.max(0, carbsTarget.value   - totalsMeals.value.carbs));
 const fatGap     = computed(()=> Math.max(0, fatTarget.value     - totalsMeals.value.fat));
+const proteinGap = computed(()=> Math.max(0, proteinTarget.value - totalsMeals.value.protein));
 
 const suggestions = computed(()=>{
   const s=[];
   if(goal.value==="weight-loss"){
     if(overCals.value>0)s.push({type:"burn",text:`Burn ~${overCals.value} kcal to reach today’s target.`});
-    if(proteinGap.value>0)s.push({type:"eat",text:`Aim for +${proteinGap.value.toFixed(0)} g protein to preserve muscle.`});
+    if(proteinGap.value>0)s.push({type:"eat",text:`Aim for +${proteinGap.value.toFixed(0)} g protein.`});
   } else if(goal.value==="muscle-gain"){
-    if(proteinGap.value>0)s.push({type:"eat",text:`Eat +${proteinGap.value.toFixed(0)} g protein to support growth.`});
-    if(overCals.value<0)s.push({type:"eat",text:`You’re under target by ${Math.abs(overCals.value)} kcal — add a snack or shake.`});
+    if(proteinGap.value>0)s.push({type:"eat",text:`Eat +${proteinGap.value.toFixed(0)} g protein.`});
+    if(overCals.value<0)s.push({type:"eat",text:`You’re under by ${Math.abs(overCals.value)} kcal — add a snack.`});
   } else {
     if(Math.abs(overCals.value)>150)s.push({type:"balance",text:`Adjust by ${Math.abs(overCals.value)} kcal to hit maintenance.`});
   }
@@ -249,6 +305,7 @@ function addMealTemplate(){
   newMealTemplate.value={name:"",kcal:"",p:"",c:"",f:""};
 }
 function removeMealTemplate(id){mealTemplates.value=mealTemplates.value.filter(t=>t.id!==id);}
+function applyWorkoutTemplate(t){workoutForm.value.activity=t.name;workoutForm.value.intensity=t.intensity;workoutForm.value.minutes=String(t.duration);}
 function applyMealTemplate(t){mealForm.value.name=t.name;mealForm.value.kcal=String(t.calories);mealForm.value.protein=t.protein;mealForm.value.carbs=t.carbs;mealForm.value.fat=t.fat;}
 
 const newWorkoutTemplate=ref({name:"",intensity:"moderate",dur:""});
@@ -258,7 +315,9 @@ function addWorkoutTemplate(){
   newWorkoutTemplate.value={name:"",intensity:"moderate",dur:""};
 }
 function removeWorkoutTemplate(id){workoutTemplates.value=workoutTemplates.value.filter(t=>t.id!==id);}
-function applyWorkoutTemplate(t){workoutForm.value.activity=t.name;workoutForm.value.intensity=t.intensity;workoutForm.value.minutes=String(t.duration);}
+
+const QUICK_ACTIVITIES=[{name:"Walking",icon:"🚶"},{name:"Running",icon:"🏃"},{name:"Cycling",icon:"🚴"},{name:"Swimming",icon:"🏊"},{name:"Gym",icon:"💪"},{name:"Yoga",icon:"🧘"}];
+const QUICK_DURATIONS=[15,30,45,60];
 
 function changeDate(days){const d=new Date(selectedDate.value);d.setDate(d.getDate()+days);selectedDate.value=toISO(d);}
 </script>
@@ -329,8 +388,35 @@ function changeDate(days){const d=new Date(selectedDate.value);d.setDate(d.getDa
             <input type="number" min="1" class="form-control" v-model.number="targets.weightKg" placeholder="e.g., 70"/>
           </div>
           <div class="col-12 col-sm-2">
-            <label class="form-label">Calorie Target</label>
-            <input type="number" min="0" class="form-control" v-model.number="targets.calorieTarget" placeholder="e.g., 2000"/>
+            <label class="form-label d-flex align-items-center justify-content-between">
+              <span>Calorie Target</span>
+              <div class="form-check form-switch m-0">
+                <input class="form-check-input" type="checkbox" id="autoKcal" v-model="useAutoCalorie">
+                <label class="form-check-label small ms-2" for="autoKcal">Auto</label>
+              </div>
+            </label>
+
+            <input
+              v-if="useAutoCalorie"
+              type="number"
+              class="form-control"
+              :value="suggestedCalorie"
+              disabled
+            />
+
+            <input
+              v-else
+              ref="kcalInputRef"
+              type="number"
+              min="0"
+              class="form-control"
+              v-model="calorieInput"
+              placeholder="e.g., 2000"
+              @keydown.stop
+              @keyup.stop
+              @keypress.stop
+            />
+
           </div>
         </div>
       </div>
@@ -339,7 +425,7 @@ function changeDate(days){const d=new Date(selectedDate.value);d.setDate(d.getDa
     <div class="card shadow-sm mb-3">
       <div class="card-body">
         <h6 class="mb-2 d-flex align-items-center gap-2"><Clock class="text-secondary" :size="18"/>Suggestions</h6>
-        <div v-if="suggestions.length===0" class="text-success">You're tracking well — no action needed!</div>
+        <div v-if="suggestions.length===0" class="text-success">You're tracking well — no action needed.</div>
         <ul v-else class="list-unstyled mb-0">
           <li v-for="(s,i) in suggestions" :key="i" class="mb-1">• {{ s.text }}</li>
         </ul>
@@ -354,17 +440,11 @@ function changeDate(days){const d=new Date(selectedDate.value);d.setDate(d.getDa
           <button class="btn btn-outline-secondary" @click="searchFoods" :disabled="searching">{{ searching?'Searching…':'Search' }}</button>
         </div>
         <ul v-if="mealResults.length" class="list-group mt-2">
-          <li
-            v-for="r in mealResults"
-            :key="r.name+r.brand"
-            class="list-group-item d-flex justify-content-between align-items-center"
-          >
+          <li v-for="r in mealResults" :key="r.name+r.brand" class="list-group-item d-flex justify-content-between align-items-center">
             <div class="me-2">
               <div class="fw-semibold">{{ r.name }}</div>
               <div class="small text-secondary" v-if="r.brand">{{ r.brand }}</div>
-              <div class="small text-muted">
-                per 100g: {{ r.kcal100||0 }} kcal • P{{ r.p100||0 }} C{{ r.c100||0 }} F{{ r.f100||0 }}
-              </div>
+              <div class="small text-muted">per 100g: {{ r.kcal100||0 }} kcal • P{{ r.p100||0 }} C{{ r.c100||0 }} F{{ r.f100||0 }}</div>
             </div>
             <button class="btn btn-sm btn-primary" @click="useResult(r, true)">Add</button>
           </li>
