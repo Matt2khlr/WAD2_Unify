@@ -1,28 +1,91 @@
-// firestore.rules
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     function isSignedIn() { return request.auth != null; }
+    function isNumber(x) { return x is int || x is float; }
+    function nonNeg(x) { return isNumber(x) && x >= 0; }
 
-    // Only allow a user to access docs where userId == their UID.
-    // Prevent writing a different userId and prevent changing userId on update.
-    match /meals/{docId} {
-      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      allow read:    if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow update, delete:
-        if isSignedIn()
-        && resource.data.userId == request.auth.uid
-        && request.resource.data.userId == resource.data.userId;
+    /** PROFILES — doc id = uid */
+    match /profiles/{uid} {
+      allow read, write:
+        if isSignedIn() && request.auth.uid == uid
+        // Optional: lock to expected fields & types
+        && (
+          // allow reads only
+          !(request.method in ['create','update']) ||
+          (
+            request.resource.data.keys().hasOnly(
+              ['heightCm','weightKg','calorieTarget','goal','updatedAt']
+            )
+            && ( !request.resource.data.keys().hasAny(['heightCm']) || nonNeg(request.resource.data.heightCm) )
+            && ( !request.resource.data.keys().hasAny(['weightKg']) || nonNeg(request.resource.data.weightKg) )
+            && ( !request.resource.data.keys().hasAny(['calorieTarget']) || nonNeg(request.resource.data.calorieTarget) )
+            && ( !request.resource.data.keys().hasAny(['goal']) || (request.resource.data.goal is string) )
+          )
+        );
     }
 
-    match /workouts/{docId} {
-      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      allow read:    if isSignedIn() && resource.data.userId == request.auth.uid;
+    /** Meals — user can only touch their own docs */
+    match /meals/{docId} {
+      // Create must set userId correctly
+      allow create:
+        if isSignedIn()
+        && request.resource.data.userId == request.auth.uid
+        // Optional: basic validations & allowed keys (adjust if you add fields)
+        && request.resource.data.keys().hasOnly(
+          ['userId','type','name','kcal','protein','carbs','fat','date','createdAt']
+        )
+        && (request.resource.data.name is string)
+        && nonNeg(request.resource.data.kcal)
+        && ( !request.resource.data.keys().hasAny(['protein']) || nonNeg(request.resource.data.protein) )
+        && ( !request.resource.data.keys().hasAny(['carbs'])   || nonNeg(request.resource.data.carbs) )
+        && ( !request.resource.data.keys().hasAny(['fat'])     || nonNeg(request.resource.data.fat) )
+        && (request.resource.data.date is string);
+
+      // Reads are per-doc gated; queries must filter by userId == auth.uid
+      allow read:
+        if isSignedIn()
+        && resource.data.userId == request.auth.uid;
+
+      // Update/Delete: must own the doc and keep userId unchanged.
       allow update, delete:
         if isSignedIn()
         && resource.data.userId == request.auth.uid
-        && request.resource.data.userId == resource.data.userId;
+        && request.resource.data.userId == resource.data.userId
+        // Optional: prevent createdAt edits
+        && (
+          !resource.data.keys().hasAll(['createdAt']) ||
+          request.resource.data.createdAt == resource.data.createdAt
+        );
+    }
+
+    /** Workouts — mirror meals */
+    match /workouts/{docId} {
+      allow create:
+        if isSignedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.keys().hasOnly(
+          ['userId','activity','minutes','intensity','met','kcal','date','createdAt']
+        )
+        && (request.resource.data.activity is string)
+        && nonNeg(request.resource.data.minutes)
+        && nonNeg(request.resource.data.kcal)
+        && (request.resource.data.intensity is string)
+        && (request.resource.data.date is string);
+
+      allow read:
+        if isSignedIn()
+        && resource.data.userId == request.auth.uid;
+
+      allow update, delete:
+        if isSignedIn()
+        && resource.data.userId == request.auth.uid
+        && request.resource.data.userId == resource.data.userId
+        && (
+          !resource.data.keys().hasAll(['createdAt']) ||
+          request.resource.data.createdAt == resource.data.createdAt
+        );
     }
 
     // Everything else denied
