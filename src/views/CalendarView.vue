@@ -9,31 +9,6 @@
         <div class="card h-100 shadow-soft">
           <div class="card-header">
             <div class="d-flex align-items-center">
-              
-              <!-- View Type Selector -->
-              <!-- <div class="btn-group text-light me-3">
-                <button 
-                  class="btn btn-sm"
-                  :class="calendarView === 'day' ? 'btn-primary' : 'btn-outline-primary'"
-                  @click="calendarView = 'day'"
-                >
-                  Day
-                </button>
-                <button 
-                  class="btn btn-sm"
-                  :class="calendarView === 'week' ? 'btn-primary' : 'btn-outline-primary'"
-                  @click="calendarView = 'week'"
-                >
-                  Week
-                </button>
-                <button 
-                  class="btn btn-sm"
-                  :class="calendarView === 'month' ? 'btn-primary' : 'btn-outline-primary'"
-                  @click="calendarView = 'month'"
-                >
-                  Month
-                </button>
-              </div> -->
 
               <!-- View Selector Dropdown -->
               <div class="dropdown me-3">
@@ -83,19 +58,6 @@
                   </li>
                 </ul>
               </div>
-              
-              <!-- Navigation -->
-              <!-- <div class="btn-group">
-                <button class="btn btn-sm btn-outline-secondary" @click="prev">
-                  <i class="mdi mdi-chevron-left"></i>
-                </button>
-                <button class="btn btn-sm btn-outline-secondary" @click="setToday">
-                  Today
-                </button>
-                <button class="btn btn-sm btn-outline-secondary" @click="next">
-                  <i class="mdi mdi-chevron-right"></i>
-                </button>
-              </div> -->
 
               <!-- Nabigation Buttons-->
               <div class="btn-group nav-btn-group">
@@ -539,8 +501,8 @@ export default {
         synced: false,
         gEventId: null
       },
-      //userId: auth.currentUser?.uid,
-      userId: 'u1',
+      userId: auth.currentUser?.uid,
+      //userId: 'u1',
       syncEnabled: false,
       accessToken: null,
       syncInterval: null,
@@ -571,25 +533,6 @@ export default {
         }
       })
     },
-
-    // sortedEvents() {
-    //   const now = new Date()
-    //   const priorityOrder = { 'High': 1, 'Medium': 2, 'Low': 3 }
-      
-    //   // Filter Events
-    //   return this.events
-    //     .filter(event => new Date(event.start) >= now)
-    //     .sort((a, b) => {
-    //       // Sort by Event Date
-    //       const dateCompare = new Date(a.start) - new Date(b.start);
-    //       if (dateCompare !== 0) {
-    //         return dateCompare;
-    //       };
-
-    //       // Sort by Event Priority Level
-    //       return priorityOrder[a.priority] - priorityOrder[b.priority];
-    //     })
-    // },
 
     upcomingEventsByDay() {
       const now = new Date()
@@ -1419,26 +1362,26 @@ export default {
     },
 
     //Check Authentication Status
-    // checkAuth() {
-    //   onAuthStateChanged(auth, (user) => {
-    //     if (user) {
-    //       // User is signed in
-    //       this.userId = user.uid
+    checkAuth() {
+      onAuthStateChanged(auth, (user) => {
+        if (user) {
+          // User is signed in
+          this.userId = user.uid
           
-    //       // Start listening to events after we have user ID
-    //       this.listenToEvents()
-    //     } 
-    //     else {
-    //       this.router.push('/login')
-    //     }
-    //   })
-    // },
+          // Start listening to events after we have user ID
+          this.listenToEvents()
+        } 
+        else {
+          this.router.push('/login')
+        }
+      })
+    },
   },
 
   async mounted() {
 
-    //this.checkAuth()
-    this.listenToEvents();
+    this.checkAuth()
+    //this.listenToEvents();
     await this.initGoogle();
     
     // Check for Saved Session
