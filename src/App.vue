@@ -1,9 +1,19 @@
 <script setup>
-import Navbar from "./components/Navbar.vue";
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
+import Navbar from "./components/Navbar.vue"
+
+const route = useRoute()
+
+// Hide navbar on these routes
+const hideNavbar = computed(() => {
+  const excludedRoutes = ['/login', '/register']
+  return excludedRoutes.includes(route.path)
+})
 </script>
 
 <template>
-  <Navbar />
+  <Navbar v-if="!hideNavbar" />
   <RouterView />
 </template>
 

@@ -174,7 +174,7 @@ export default {
             })
 
             // Sort Events by Time and Priority
-            const priorityOrder = { 'high': 1, 'medium': 2, 'low': 3 }
+            const priorityOrder = { 'High': 1, 'Medium': 2, 'Low': 3 }
             
             Object.values(grouped).forEach(dayGroup => {
             dayGroup.events.sort((a, b) => {
@@ -675,7 +675,7 @@ export default {
         </div>
         
         <!-- Dashboard section -->
-        <div class="container px-4 py-3">
+        <div class="container px-2 py-3">
             <div class="row g-4 mb-4">
                 <div class="col-12 col-md-4">
                     <div class="card stat-card gradient-primary shadow-soft h-100">
@@ -733,102 +733,104 @@ export default {
                                     <i class="mdi mdi-calendar-week"></i>
                                     This Week's Events
                                 </h5>
-                                
-                                <div class="form-check form-switch mb-0">
+
+                                <div class="ios-switch-container">
                                     <input 
-                                    class="form-check-input" 
-                                    type="checkbox" 
-                                    id="weekGoogleSync"
-                                    v-model="syncEnabled"
-                                    @change="toggleSync"
+                                        type="checkbox" 
+                                        id="weekGoogleSync"
+                                        class="ios-switch-input"
+                                        v-model="syncEnabled"
+                                        @change="toggleSync"
                                     >
-                                    <label class="form-check-label small text-muted" for="weekGoogleSync" style="cursor: pointer;">
-                                    <i class="mdi mdi-google"></i>
+                                    <label class="ios-switch-label" for="weekGoogleSync">
+                                        <span class="ios-switch-slider"></span>
+                                    </label>
+                                    <label class="small text-muted ms-2" for="weekGoogleSync" style="cursor: pointer;">
+                                        <i class="mdi mdi-google"></i>
                                     </label>
                                 </div>
                             </div>
 
                             <!-- Events List -->
                             <div class="flex-grow-1" style="overflow-y: auto; max-height: 300px;">
-                            <div v-if="weekEvents.length > 0" class="d-flex flex-column gap-3">
-                                <div v-for="(dayGroup, index) in weekEvents" :key="index">
-                                <!-- Day Header -->
-                                <div class="d-flex align-items-center mb-2">
-                                    <span class="badge text-light fw-medium px-2 py-1" style="font-size: 0.75rem; background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);">
-                                    {{ dayGroup.dayLabel }}
-                                    </span>
-                                    <div class="flex-grow-1 ms-2" style="height: 1px; background: #e0e0e0;"></div>
-                                </div>
-
-                                <!-- Events -->
-                                <div class="d-flex flex-column gap-2">
-                                    <div 
-                                    v-for="event in dayGroup.events" 
-                                    :key="event.id"
-                                    class="event-card py-2 px-3 rounded-2 border"
-                                    :style="{ backgroundColor: event.colour, color: getContrastColor(event.colour) }"
-                                    >
-                                    <div class="d-flex align-items-start justify-content-between gap-2">
-                                        <div class="flex-grow-1">
-                                        <!-- Event Name -->
-                                        <div class="fw-medium mb-1" style="font-size: 0.875rem; line-height: 1.3;">
-                                            {{ event.name }}
+                                <div v-if="weekEvents.length > 0" class="d-flex flex-column gap-3">
+                                    <div v-for="(dayGroup, index) in weekEvents" :key="index">
+                                        <!-- Day Header -->
+                                        <div class="d-flex align-items-center mb-2">
+                                            <span class="badge fw-medium px-2 py-1" style="font-size: 0.75rem; background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);">
+                                            {{ dayGroup.dayLabel }}
+                                            </span>
+                                            <div class="flex-grow-1 ms-2" style="height: 1px; background: #e0e0e0;"></div>
                                         </div>
-                                        
-                                        <!-- Event Information (Date, Time, Priority) -->
-                                        <div class="d-flex align-items-center gap-2 flex-wrap" style="font-size: 0.75rem;">
-                                            <!-- Date -->
-                                            <span class="d-flex align-items-center gap-1">
-                                            <i class="mdi mdi-calendar-blank" style="font-size: 0.875rem;"></i>
-                                            {{ formatShortDate(event.start) }}
-                                            </span>
-                                            
-                                            <!-- Time -->
-                                            <span class="d-flex align-items-center gap-1">
-                                            <i class="mdi mdi-clock-outline" style="font-size: 0.875rem;"></i>
-                                            {{ formatEventTime(event.start) }}
-                                            </span>
-                                            
-                                            <!-- Priority Badge -->
-                                            <span 
-                                            v-if="event.priority"
-                                            class="badge"
-                                            :class="{
-                                                'bg-danger': event.priority === 'High',
-                                                'bg-warning text-dark': event.priority === 'Medium',
-                                                'bg-success': event.priority === 'Low'
-                                            }"
-                                            style="font-size: 0.65rem; padding: 2px 6px;"
+
+                                        <!-- Events -->
+                                        <div class="d-flex flex-column gap-2">
+                                            <div 
+                                            v-for="event in dayGroup.events" 
+                                            :key="event.id"
+                                            class="event-card py-2 px-3 rounded-2 border"
+                                            :style="{ backgroundColor: event.colour, color: getContrastColor(event.colour) }"
                                             >
-                                            {{ event.priority }}
-                                            </span>
-                                        </div>
-                                        </div>
+                                                <div class="d-flex align-items-start justify-content-between gap-2">
+                                                    <div class="flex-grow-1">
+                                                        <!-- Event Name -->
+                                                        <div class="fw-medium mb-1" style="font-size: 1rem; line-height: 1.3;">
+                                                            {{ event.name }}
+                                                        </div>
+                                                    
+                                                    <!-- Event Information (Date, Time, Priority) -->
+                                                        <div class="d-flex align-items-center gap-2 flex-wrap" style="font-size: 0.9rem;">
+                                                            <!-- Date -->
+                                                            <span class="d-flex align-items-center gap-1">
+                                                            <i class="mdi mdi-calendar-blank" style="font-size: 0.9rem;"></i>
+                                                            {{ formatShortDate(event.start) }}
+                                                            </span>
+                                                            
+                                                            <!-- Time -->
+                                                            <span class="d-flex align-items-center gap-1">
+                                                            <i class="mdi mdi-clock-outline" style="font-size: 0.9rem;"></i>
+                                                            {{ formatEventTime(event.start) }}
+                                                            </span>
+                                                            
+                                                            <!-- Priority Badge -->
+                                                            <span 
+                                                            v-if="event.priority"
+                                                            class="badge"
+                                                            :class="{
+                                                                'bg-danger': event.priority === 'High',
+                                                                'bg-warning text-dark': event.priority === 'Medium',
+                                                                'bg-success': event.priority === 'Low'
+                                                            }"
+                                                            style="font-size: 0.8rem; padding: 2px 6px;"
+                                                            >
+                                                            {{ event.priority }}
+                                                            </span>
+                                                        </div>
+                                                    </div>
 
-                                        <!-- Google Maps Button -->
-                                        <button 
-                                        v-if="event.location || event.locationName"
-                                        @click.stop="openMap(event)"
-                                        class="btn btn-sm d-flex align-items-center justify-content-center"
-                                        style="width: 32px; height: 32px; margin-top: 5.5px; flex-shrink: 0; background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);"
-                                        title="Open in Google Maps"
-                                        >
-                                        <i class="mdi mdi-map-marker" style="font-size: 1rem; color: white;"></i>
-                                        </button>
-                                    </div>
+                                                    <!-- Google Maps Button -->
+                                                    <button 
+                                                    v-if="event.location || event.locationName"
+                                                    @click.stop="openMap(event)"
+                                                    class="map-button"
+                                                    title="Open in Google Maps"
+                                                    >
+                                                    <i class="mdi mdi-map-marker map-icon"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
-                                </div>
-                            </div>
 
                             <!-- Empty State -->
-                            <div v-else class="text-center py-5">
-                                <i class="mdi mdi-calendar-blank-outline text-muted" style="font-size: 3rem; opacity: 0.3;"></i>
-                                <p class="text-muted mt-2 mb-0">No events this week</p>
-                            </div>
+                                <div v-else class="text-center py-5">
+                                    <i class="mdi mdi-calendar-blank-outline text-muted" style="font-size: 3rem; opacity: 0.3;"></i>
+                                    <p class="text-muted mt-2 mb-0">No Upcoming Events This Week</p>
+                                </div>
                             </div>
                         </div>
-                        </div>
+                    </div>
                 
                 </div>
 
@@ -870,13 +872,13 @@ export default {
     transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-/* Card hover effect */
+/* Card Hover Effect */
 .card:hover {
     transform: translateY(-4px);
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.05);
 }
 
-/* Badge text */
+/* Badge Text */
 .badge {
     text-transform: capitalize;
 }
@@ -931,7 +933,7 @@ export default {
 
 /* Custom Scrollbar for Event Card */
 .card-body > div {
-  padding-right: 8px; /* Creates gap between content and scrollbar */
+  padding-right: 8px;
 }
 
 .card-body > div::-webkit-scrollbar {
@@ -949,6 +951,160 @@ export default {
 
 .card-body > div::-webkit-scrollbar-thumb:hover {
   background: rgba(0, 0, 0, 0.25);
+}
+
+/* CSS for Toggle Switch */
+/* iOS Toggle Switch Container */
+.ios-switch-container {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0;
+}
+
+/* Hide default checkbox */
+.ios-switch-input {
+  display: none;
+}
+
+/* Switch Label/Track */
+.ios-switch-label {
+  position: relative;
+  display: inline-block;
+  width: 42px;
+  height: 24px;
+  cursor: pointer;
+  margin: 0;
+}
+
+/* Switch Track (background) */
+.ios-switch-slider {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #e0e0e0;
+  border-radius: 24px;
+  transition: all 0.3s ease;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Switch Knob */
+.ios-switch-slider::before {
+  content: '';
+  position: absolute;
+  height: 20px;
+  width: 20px;
+  left: 2px;
+  bottom: 2px;
+  background-color: white;
+  border-radius: 50%;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Checked State - Gradient Background */
+.ios-switch-input:checked + .ios-switch-label .ios-switch-slider {
+  background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+}
+
+/* Checked State - Move Knob */
+.ios-switch-input:checked + .ios-switch-label .ios-switch-slider::before {
+  transform: translateX(18px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+/* Hover Effect */
+.ios-switch-label:hover .ios-switch-slider {
+  box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+}
+
+/* Active/Pressed Effect */
+.ios-switch-input:active + .ios-switch-label .ios-switch-slider::before {
+  width: 24px;
+}
+
+/* Focus State */
+.ios-switch-input:focus + .ios-switch-label .ios-switch-slider {
+  outline: 2px solid #667eea;
+  outline-offset: 2px;
+}
+
+/* Disabled State */
+.ios-switch-input:disabled + .ios-switch-label {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* CSS for Map Button */
+.map-button {
+  width: 32px;
+  height: 32px;
+  margin-top: 7.5px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Icon */
+.map-icon {
+  font-size: 1rem;
+  color: white;
+  transition: all 0.3s ease;
+  position: relative;
+  z-index: 1;
+}
+
+/* Pseudo element for smooth transition */
+.map-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: white;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 0;
+}
+
+/* Hover state */
+.map-button:hover {
+  box-shadow: 0 8px 16px rgba(102, 126, 234, 0.4);
+  transform: translateY(-3px);
+}
+
+.map-button:hover::before {
+  opacity: 1;
+}
+
+.map-button:hover .map-icon {
+  background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Active/pressed */
+.map-button:active {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+}
+
+/* Focus outline */
+.map-button:focus-visible {
+  outline: 2px solid #667eea;
+  outline-offset: 2px;
 }
 
 </style>
