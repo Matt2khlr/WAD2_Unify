@@ -674,7 +674,7 @@ export default {
 
       // Generate New Google Account Token
       const tokenClient = google.accounts.oauth2.initTokenClient({
-        client_id: '1071880442683-199adq7lhl4k4i867qffge4gfb9ca6a8.apps.googleusercontent.com',
+        client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
         scope: 'https://www.googleapis.com/auth/calendar',
         callback: async (response) => {
           if (response.error) {
@@ -725,7 +725,7 @@ export default {
 
         // Initialise Google Calendar Client
         await gapi.client.init({
-          apiKey: 'AIzaSyDyg_B2fzJsgaDO8bjyyikjVeee4AM08kI',
+          apiKey: import.meta.env.VITE_GOOGLE_API_KEY,
           discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest']
         })
 

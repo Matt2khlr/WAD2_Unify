@@ -7,12 +7,12 @@ import {
 } from "firebase/firestore";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDyg_B2fzJsgaDO8bjyyikjVeee4AM08kI",
-  authDomain: "unify-app-wad2.firebaseapp.com",
-  projectId: "unify-app-wad2",
-  storageBucket: "unify-app-wad2.firebasestorage.app",
-  messagingSenderId: "1071880442683",
-  appId: "1:1071880442683:web:aab32153d164fd2b515d1e",
+  apiKey: import.meta.env.VITE_GOOGLE_API_KEY,
+  authDomain: import.meta.env.VITE_GOOGLE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_GOOGLE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_GOOGLE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_APP_ID,
 };
 
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
