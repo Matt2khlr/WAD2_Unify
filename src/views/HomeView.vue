@@ -180,7 +180,15 @@ export default {
 
             // Convert to Array & Sort by Date
             return Object.values(grouped).sort((a, b) => a.date - b.date)
-        }
+        },
+
+        averageSleep(){
+            let total=0
+            this.sleepData.forEach(day => {
+                total += day.hours;
+            });
+            const avgSleep = total / this.sleepData.length; 
+            return avgSleep.toFixed(1);
     },
     
     methods: {
@@ -640,6 +648,25 @@ export default {
             return brightness > 128 ? '#000000' : '#ffffff'
         },
     },
+
+    async fetchLatestSleepLog() {
+        const user = auth.currentUser;
+        if (!user) return;
+        const sleepLogQuery = query(
+            collection(db, "sleepLogs"),
+            where("userId", "==", user.uid),             
+            orderBy("date", "desc"),
+            limit(1)
+        );
+        const querySnapshot = await getDocs(sleepLogQuery);
+        if (!querySnapshot.empty) {
+            const latestLog = querySnapshot.docs[0].data();
+            if (latestLog.sleepData) {
+            sleepData.value = latestLog.sleepData;
+            console.log("Fetched sleep log:", latestLog.sleepData);
+            }
+        }
+},
 
     async mounted() {
         // Set up authentication listener
