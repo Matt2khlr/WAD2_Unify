@@ -875,8 +875,8 @@ export default {
 
 /* Card Hover Effect */
 .card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+    transform: translateY(-4px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.05);
 }
 
 /* Badge Text */
