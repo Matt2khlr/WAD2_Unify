@@ -207,7 +207,7 @@
                         <!-- Google Maps Button -->
                         <button 
                           v-if="event.location || event.locationName"
-                          @click.stop="openMap(event)"
+                          @click.stop="openMap(currentEvent)"
                           class="map-button"
                           title="Open in Google Maps"
                           style="display: flex; margin-top: 7.5px;"
@@ -438,7 +438,7 @@
                 <div v-if="currentEvent.location" class="text">
                   📍 {{ currentEvent.locationName }}&nbsp;&nbsp;
                   <button 
-                    @click.stop="openMap(event)"
+                    @click.stop="openMap(currentEvent)"
                     class="map-button"
                     title="Open in Google Maps"
                   >
@@ -475,8 +475,8 @@
 <script>
 import { collection, addDoc, updateDoc, deleteDoc, doc, setDoc, query, where, onSnapshot, GeoPoint } from 'firebase/firestore';
 import { db, auth } from '@/firebase';
-import { onAuthStateChanged } from 'firebase/auth';
-import { useRouter } from 'vue-router';
+// import { onAuthStateChanged } from 'firebase/auth';
+// import { useRouter } from 'vue-router';
 
 export default {
   data() {
@@ -1380,8 +1380,8 @@ export default {
 
   async mounted() {
 
-    this.checkAuth()
-    //this.listenToEvents();
+    //this.checkAuth()
+    this.listenToEvents();
     await this.initGoogle();
     
     // Check for Saved Session
