@@ -2,7 +2,8 @@
 import { ref, computed, onMounted } from 'vue';
 import WordCloud from 'wordcloud';
 import { db, auth } from '../firebase.js';
-import { collection, addDoc, getDocs, query, orderBy, limit } from "firebase/firestore";
+import { collection, where, addDoc, getDocs, query, orderBy, limit } from "firebase/firestore";
+import { onAuthStateChanged } from "firebase/auth";
 
 const sleepData = ref([
   { day: "Mon", hours: 7 },
@@ -14,39 +15,32 @@ const sleepData = ref([
   { day: "Sun", hours: 8.5 },
 ]);
 
-const moodOptions = [
-  { label: "Great", color: "bg-success", icon: "😊" },
-  { label: "Okay", color: "bg-warning", icon: "😐" },
-  { label: "Stressed", color: "bg-danger", icon: "☹️" },
-];
-
-const selectedMood = ref(null);
 const stressLevel = ref(40);
 
-// Compute average sleep directly from sleepData
+// Stress factors 
+const stressFactors = [
+  ['Deadlines', 12],
+  ['Homework', 9],
+  ['Exams', 15],
+  ['Sleep', 7],
+  ['Lack of support', 6],
+  ['Social', 8],
+  ['Fear of future', 10],
+  ['Health', 5],
+  ['Environment', 4]
+];
+
+const canvasRef = ref(null);
+
+
+// Average sleep
 const averageSleep = computed(() => {
   const total = sleepData.value.reduce((sum, d) => sum + d.hours, 0);
   return (total / sleepData.value.length).toFixed(1);
 });
 
-function selectMood(label) {
-  selectedMood.value = label;
-}
-
 function updateStress() {
   alert(`Stress level updated to ${stressLevel.value}`);
-}
-
-// Allow user to edit sleep for a given day
-function editSleep(dayObj) {
-  const current = dayObj.hours;
-  let newVal = window.prompt(`Enter sleep hours for ${dayObj.day}:`, current);
-  if (newVal !== null) {
-    newVal = parseFloat(newVal);
-    if (!isNaN(newVal) && newVal >= 0 && newVal <= 24) {
-      dayObj.hours = newVal;
-    }
-  }
 }
 
 async function logSleep() {
@@ -98,8 +92,40 @@ async function fetchLatestSleepLog() {
     const latestLog = querySnapshot.docs[0].data();
     if (latestLog.sleepData) {
       sleepData.value = latestLog.sleepData;
+      console.log("Fetched sleep log:", latestLog.sleepData);
     }
   }
+}
+
+async function fetchStressFactorsWordCloud() {
+  const user = auth.currentUser;
+  if (!user) return;
+
+  // Fetch last 7 mood logs for this user
+  const moodLogQuery = query(
+    collection(db, "moodLogs"),
+    where("userId", "==", user.uid),
+    orderBy("date", "desc"),
+    limit(7)
+  );
+
+  const querySnapshot = await getDocs(moodLogQuery);
+
+  // Aggregate factors
+  const factorCount = {};
+  querySnapshot.forEach(doc => {
+    const log = doc.data();
+    if (Array.isArray(log.stressFactors)) {
+      log.stressFactors.forEach(factor => {
+        factorCount[factor] = (factorCount[factor] || 0) + 1;
+      });
+    }
+  });
+
+
+  const factorsArray = Object.entries(factorCount);
+
+  return factorsArray;
 }
 
 const stressLabel = computed(() => {
@@ -109,9 +135,9 @@ const stressLabel = computed(() => {
 });
 
 const stressColorClass = computed(() => {
-  if (stressLevel.value < 30) return 'text-success';  // Green
-  if (stressLevel.value < 70) return 'text-warning';  // Yellow-ish for Moderate
-  return 'text-danger';  // Red
+  if (stressLevel.value < 30) return 'text-success';  
+  if (stressLevel.value < 70) return 'text-warning';  
+  return 'text-danger';  
 });
 
 const selectedFactors = ref([]);
@@ -126,50 +152,44 @@ function toggleFactor(factor) {
   }
 }
 
-// Stress factors and values for word cloud
-const stressFactors = [
-  ['Deadlines', 12],
-  ['Homework', 9],
-  ['Exams', 15],
-  ['Sleep', 7],
-  ['Lack of support', 6],
-  ['Social', 8],
-  ['Fear of future', 10],
-  ['Health', 5],
-  ['Environment', 4]
-];
-
-const canvasRef = ref(null);
-
 onMounted(() => {
-  fetchLatestSleepLog();
+  onAuthStateChanged(auth, async(user) => {
+    if (user) {
+      fetchLatestSleepLog();
+
+      const cloudFactors = await fetchStressFactorsWordCloud();
+
+      WordCloud(canvasRef.value, {
+        list: cloudFactors.length ? cloudFactors : stressFactors,
+        gridSize: 5,
+        weightFactor: 10,
+        minFontSize: 8,
+        maxFontSize: 30,
+        fontFamily: 'Arial, sans-serif',
+        color: 'random-dark',
+        rotateRatio: 0.1,
+        ellipticity: 0.8,
+        backgroundColor: '#f0f0f0',
+        origin: [
+          canvasRef.value.getBoundingClientRect().width / 2,
+          canvasRef.value.getBoundingClientRect().height / 2
+        ],
+      });
+    }
+  });
+
   const canvas = canvasRef.value;
   if (!canvas) return;
 
   const dpr = window.devicePixelRatio || 1;
   const rect = canvas.getBoundingClientRect();
 
-  // Set canvas buffer size with DPR scaling
   canvas.width = rect.width * dpr;
   canvas.height = rect.height * dpr;
 
-  // Scale drawing context for crispness
   const ctx = canvas.getContext('2d');
   ctx.scale(dpr, dpr);
 
-  WordCloud(canvas, {
-    list: stressFactors,
-    gridSize: 5,
-    weightFactor: 10,
-    minFontSize: 8,
-    maxFontSize:30,
-    fontFamily: 'Arial, sans-serif',
-    color: 'random-dark',
-    rotateRatio: 0.1,
-    ellipticity: 0.8,
-    backgroundColor: '#f0f0f0',
-    origin: [rect.width / 2, rect.height / 2], // Use rect width/height for origin coords
-  });
 });
 
 
@@ -181,7 +201,6 @@ onMounted(() => {
       <!-- Header -->
       <div class="mb-4">
         <h1 class="d-flex align-items-center gap-3 mb-2">
-          <!--<span class="text-danger fs-1">❤️</span>-->
           Wellness Tracker
         </h1>
         <p class="text-muted">Monitor your mental health and sleep patterns</p>
@@ -194,7 +213,6 @@ onMounted(() => {
           <div class="card shadow p-4 h-100">
             <div class="d-flex align-items-center justify-content-between mb-3">
               <h3 class="d-flex align-items-center gap-2 mb-0">
-                <!--<span class="fs-5 text-info">🌙</span>-->
                 Sleep Tracking
               </h3>
             </div>
