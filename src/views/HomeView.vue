@@ -1,13 +1,12 @@
 <script>
-import { BookOpen, Heart, Dumbbell, CheckCircle2, Clock, TrendingUp, Wheat } from "lucide-vue-next";
+import { BookOpen, Heart, Dumbbell, CheckCircle2, Clock, TrendingUp } from "lucide-vue-next";
 import { collection, addDoc, updateDoc, deleteDoc, doc, setDoc, query, where, onSnapshot, GeoPoint, getDocs } from 'firebase/firestore';
 import { db, auth } from '@/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
-import { useRouter } from 'vue-router';
 
 export default {
     name: 'YourComponentName',
-    
+
     components: {
         BookOpen,
         Heart,
@@ -16,7 +15,7 @@ export default {
         Clock,
         TrendingUp
     },
-    
+
     data() {
         return {
             tasks: [
@@ -25,16 +24,16 @@ export default {
                 { title: "Pomodoro Session: Physics", time: "25 mins", completed: true },
                 { title: "Evening Workout", time: "5 PM", completed: false },
             ],
-            
+
             modules: [],
-            
+
             currentStatus: {
                 stress: 'Moderate',
                 freeTime: '3 hours',
                 upcomingDeadlines: 4,
                 sleepQuality: 'Good'
             },
-            
+
             suggestions: [
                 {
                     title: 'Take a Break',
@@ -65,14 +64,14 @@ export default {
                     type: 'sleep'
                 }
             ],
-            
+
             priorityClasses: {
-                high: { badge: 'bg-danger text-white'},
-                medium: { badge: 'bg-warning text-dark'},
-                low: { badge: 'bg-success'},
-                default: { badge: 'bg-light text-dark'}
+                high: { badge: 'bg-danger text-white' },
+                medium: { badge: 'bg-warning text-dark' },
+                low: { badge: 'bg-success' },
+                default: { badge: 'bg-light text-dark' }
             },
-            
+
             icons: {
                 study: '📘',
                 break: '☕',
@@ -104,7 +103,7 @@ export default {
             },
         };
     },
-    
+
     computed: {
         statusList() {
             return [
@@ -119,15 +118,15 @@ export default {
             return this.events.map(event => {
                 const start = new Date(event.start)
                 const end = new Date(event.end)
-                
+
                 return {
-                ...event,
-                name: event.name,
-                start: start,
-                end: end,
-                title: event.name,
-                color: event.colour,
-                timed: true
+                    ...event,
+                    name: event.name,
+                    start: start,
+                    end: end,
+                    title: event.name,
+                    color: event.colour,
+                    timed: true
                 }
             })
         },
@@ -135,7 +134,7 @@ export default {
         weekEvents() {
             const now = new Date()
             const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-            
+
             // Calculate End of Week (Sunday)
             const endOfWeek = new Date(today)
             const dayOfWeek = today.getDay()
@@ -145,49 +144,49 @@ export default {
 
             // Filter Events for Current Week
             const thisWeekEvents = this.events.filter(event => {
-            const eventDate = new Date(event.start)
-            return eventDate >= today && eventDate <= endOfWeek
+                const eventDate = new Date(event.start)
+                return eventDate >= today && eventDate <= endOfWeek
             })
 
             // Group Events by Day
             const grouped = {}
-            
+
             thisWeekEvents.forEach(event => {
-            const eventDate = new Date(event.start)
-            const dateKey = eventDate.toDateString()
-            
-            if (!grouped[dateKey]) {
-                grouped[dateKey] = {
-                date: eventDate,
-                dayLabel: this.formatDayLabel(eventDate),
-                events: []
+                const eventDate = new Date(event.start)
+                const dateKey = eventDate.toDateString()
+
+                if (!grouped[dateKey]) {
+                    grouped[dateKey] = {
+                        date: eventDate,
+                        dayLabel: this.formatDayLabel(eventDate),
+                        events: []
+                    }
                 }
-            }
-            
-            grouped[dateKey].events.push(event)
+
+                grouped[dateKey].events.push(event)
             })
 
             // Sort Events by Time and Priority
             const priorityOrder = { 'High': 1, 'Medium': 2, 'Low': 3 }
-            
+
             Object.values(grouped).forEach(dayGroup => {
-            dayGroup.events.sort((a, b) => {
-                const timeCompare = new Date(a.start) - new Date(b.start)
-                if (timeCompare !== 0) return timeCompare
-                return priorityOrder[a.priority] - priorityOrder[b.priority]
-            })
+                dayGroup.events.sort((a, b) => {
+                    const timeCompare = new Date(a.start) - new Date(b.start)
+                    if (timeCompare !== 0) return timeCompare
+                    return priorityOrder[a.priority] - priorityOrder[b.priority]
+                })
             })
 
             // Convert to Array & Sort by Date
             return Object.values(grouped).sort((a, b) => a.date - b.date)
         },
 
-        averageSleep(){
-            let total=0
+        averageSleep() {
+            let total = 0
             this.sleepData.forEach(day => {
                 total += day.hours;
             });
-            const avgSleep = total / this.sleepData.length; 
+            const avgSleep = total / this.sleepData.length;
             return avgSleep.toFixed(1);
         },
     },
@@ -285,24 +284,24 @@ export default {
 
             // Generate New Google Account Token
             const tokenClient = google.accounts.oauth2.initTokenClient({
-                client_id: '1071880442683-199adq7lhl4k4i867qffge4gfb9ca6a8.apps.googleusercontent.com',
+                client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
                 scope: 'https://www.googleapis.com/auth/calendar',
                 callback: async (response) => {
-                if (response.error) {
-                    console.log(response.error);
-                    this.syncEnabled = false;
-                    return
-                }
-                
-                this.accessToken = response.access_token;
-                sessionStorage.setItem('google_token', this.accessToken);
-                
-                await this.waitForGoogleAPI();
-                await this.syncWithGoogle();
-                this.startAutoSync();
+                    if (response.error) {
+                        console.log(response.error);
+                        this.syncEnabled = false;
+                        return
+                    }
+
+                    this.accessToken = response.access_token;
+                    sessionStorage.setItem('google_token', this.accessToken);
+
+                    await this.waitForGoogleAPI();
+                    await this.syncWithGoogle();
+                    this.startAutoSync();
                 }
             })
-            
+
             tokenClient.requestAccessToken()
         },
 
@@ -311,7 +310,7 @@ export default {
             if (this.syncInterval) {
                 clearInterval(this.syncInterval);
             }
-            
+
             sessionStorage.removeItem('google_token')
             this.accessToken = null;
         },
@@ -321,7 +320,7 @@ export default {
             if (this.syncInterval) {
                 clearInterval(this.syncInterval);
             }
-            
+
             this.syncInterval = setInterval(() => {
                 this.syncWithGoogle()
             }, 1 * 60 * 1000)
@@ -331,13 +330,13 @@ export default {
             try {
                 // Load Google Calendar API Client
                 await new Promise((resolve) => {
-                gapi.load('client', resolve)
+                    gapi.load('client', resolve)
                 })
 
                 // Initialise Google Calendar Client
                 await gapi.client.init({
-                apiKey: 'AIzaSyDyg_B2fzJsgaDO8bjyyikjVeee4AM08kI',
-                discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest']
+                    apiKey: import.meta.env.VITE_GOOGLE_API_KEY,
+                    discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest']
                 })
 
                 console.log('Google Calendar API Initialised')
@@ -347,116 +346,125 @@ export default {
         },
 
         async syncWithGoogle() {
-            if (!window.gapi?.client?.calendar) {
-                console.log('Google Calendar API not initialised yet.');
-                return;
-            }
             if (!this.accessToken) {
                 console.log('No Access Token.');
                 return;
             }
 
             try {
-                // Pull Events from Google Calendar API
-                const response = await gapi.client.calendar.events.list({
-                calendarId: 'primary',
-                timeMin: new Date().toISOString(),
-                showDeleted: false,
-                singleEvents: true,
-                maxResults: 100,
-                orderBy: 'startTime'
-                });
+                // Use Fetch API instead of gapi.client.calendar
+                const response = await fetch(
+                    'https://www.googleapis.com/calendar/v3/calendars/primary/events?orderBy=startTime&singleEvents=true&showDeleted=false&timeMin=' + new Date().toISOString() + '&maxResults=100',
+                    {
+                        headers: {
+                            'Authorization': `Bearer ${this.accessToken}`,
+                            'Accept': 'application/json'
+                        }
+                    }
+                );
 
-                const googleApiEvents = response.result.items || [];
+                if (!response.ok) {
+                    throw new Error(`Calendar API error: ${response.status} ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                const googleApiEvents = data.items || [];
                 const googleEventIdsFromApi = new Set(googleApiEvents.map(item => item.id));
 
                 const gEventIdToDocIdMap = new Map();
                 this.events
-                .filter(event => event.gEventId)
-                .forEach(event => {
-                    gEventIdToDocIdMap.set(event.gEventId, event.id);
-                });
+                    .filter(event => event.gEventId)
+                    .forEach(event => {
+                        gEventIdToDocIdMap.set(event.gEventId, event.id);
+                    });
 
                 // Add/Update Pulled Events in Cloud Firestore
                 for (const item of googleApiEvents) {
-                let location = null;
-                let locationName = '';
-                
-                if (item.location) {
-                    const parsed = await this.geocodeLocation(item.location);
-                    if (parsed) {
-                    location = parsed.geopoint;
-                    locationName = parsed.name;
-                    } 
-                    else {
-                    locationName = item.location;
+                    let location = null;
+                    let locationName = '';
+
+                    if (item.location) {
+                        const parsed = await this.geocodeLocation(item.location);
+                        if (parsed) {
+                            location = parsed.geopoint;
+                            locationName = parsed.name;
+                        } else {
+                            locationName = item.location;
+                        }
                     }
-                }
 
-                const eventData = {
-                    userId: this.userId,
-                    name: item.summary || 'Untitled Event',
-                    description: item.description || '',
-                    start: new Date(item.start.dateTime || item.start.date),
-                    end: new Date(item.end.dateTime || item.end.date),
-                    locationName: locationName,
-                    location: location,
-                    synced: true,
-                    gEventId: item.id
-                };
+                    const eventData = {
+                        userId: this.userId,
+                        name: item.summary || 'Untitled Event',
+                        description: item.description || '',
+                        start: new Date(item.start.dateTime || item.start.date),
+                        end: new Date(item.end.dateTime || item.end.date),
+                        locationName: locationName,
+                        location: location,
+                        synced: true,
+                        gEventId: item.id
+                    };
 
-                if (gEventIdToDocIdMap.has(item.id)) {
-                    const firestoreDocId = gEventIdToDocIdMap.get(item.id);
-                    console.log(`Updating Firestore Event ${firestoreDocId} with Google Calendar Event ${item.id}`);
-                    await updateDoc(doc(db, 'events', firestoreDocId), eventData);
-                } 
-                else {
-                    eventData.colour = '#9FE1E7';
-                    eventData.source = 'google';
-                    eventData.priority = 'Low';
-                    console.log(`Creating New Firestore Document for Google Calendar Event ${item.id}`);
-                    await setDoc(doc(db, 'events', item.id), eventData);
-                }
+                    if (gEventIdToDocIdMap.has(item.id)) {
+                        const firestoreDocId = gEventIdToDocIdMap.get(item.id);
+                        console.log(`Updating Firestore Event ${firestoreDocId} with Google Calendar Event ${item.id}`);
+                        await updateDoc(doc(db, 'events', firestoreDocId), eventData);
+                    } else {
+                        eventData.colour = '#9FE1E7';
+                        eventData.source = 'google';
+                        eventData.priority = 'Low';
+                        console.log(`Creating New Firestore Document for Google Calendar Event ${item.id}`);
+                        await setDoc(doc(db, 'events', item.id), eventData);
+                    }
                 }
 
                 // Remove Deleted Google Calendar Events from Cloud Firestore
                 const localGoogleEvents = this.events.filter(event => event.source === 'google');
                 for (const localEvent of localGoogleEvents) {
-                if (!googleEventIdsFromApi.has(localEvent.id)) {
-                    console.log(`Deleting Google Event from Cloud Firestore: ${localEvent.name} (${localEvent.id})`);
-                    await deleteDoc(doc(db, 'events', localEvent.id));
-                }
+                    if (!googleEventIdsFromApi.has(localEvent.id)) {
+                        console.log(`Deleting Google Event from Cloud Firestore: ${localEvent.name} (${localEvent.id})`);
+                        await deleteDoc(doc(db, 'events', localEvent.id));
+                    }
                 }
 
                 // Add unsynched Cloud Firestore Events to Google Calendar
                 const eventsToPush = this.events.filter(event => event.source === 'firestore' && !event.synced);
-                
-                for (const event of eventsToPush) {
-                try {
-                    const resource = {
-                    summary: event.name,
-                    description: event.description,
-                    start: { dateTime: new Date(event.start).toISOString() },
-                    end: { dateTime: new Date(event.end).toISOString() },
-                    location: event.locationName || ''
-                    };
 
-                    const insertResponse = await gapi.client.calendar.events.insert({
-                    calendarId: 'primary',
-                    resource: resource
-                    });
-                    
-                    // Update Sync Status in Cloud Firestore
-                    if (insertResponse.result) {
-                    await updateDoc(doc(db, 'events', event.id), {
-                        synced: true,
-                        gEventId: insertResponse.result.id
-                    });
-                    console.log(`Synced Event "${event.name}" to Google Calendar.`);
+                for (const event of eventsToPush) {
+                    try {
+                        const resource = {
+                            summary: event.name,
+                            description: event.description,
+                            start: { dateTime: new Date(event.start).toISOString() },
+                            end: { dateTime: new Date(event.end).toISOString() },
+                            location: event.locationName || ''
+                        };
+
+                        const insertResponse = await fetch(
+                            'https://www.googleapis.com/calendar/v3/calendars/primary/events',
+                            {
+                                method: 'POST',
+                                headers: {
+                                    'Authorization': `Bearer ${this.accessToken}`,
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify(resource)
+                            }
+                        );
+
+                        if (insertResponse.ok) {
+                            const result = await insertResponse.json();
+                            await updateDoc(doc(db, 'events', event.id), {
+                                synced: true,
+                                gEventId: result.id
+                            });
+                            console.log(`Synced Event "${event.name}" to Google Calendar.`);
+                        } else {
+                            console.error(`Error Adding Event "${event.name}" to Google Calendar:`, insertResponse.status);
+                        }
+                    } catch (err) {
+                        console.error(`Error Adding Event "${event.name}" to Google Calendar:`, err);
                     }
-                } catch (err) {
-                    console.error(`Error Adding Event "${event.name}" to Google Calendar:`, err);
-                }
                 }
             } catch (error) {
                 console.error('Overall Synchronisation Error:', error);
@@ -467,13 +475,13 @@ export default {
         async waitForGoogleAPI() {
             return new Promise((resolve) => {
                 const checkAPI = () => {
-                if (window.gapi && window.gapi.client && window.gapi.client.calendar) {
-                    console.log('Google Calendar API is ready')
-                    resolve()
-                } else {
-                    console.log('Waiting for Google Calendar API...')
-                    setTimeout(checkAPI, 500)
-                }
+                    if (window.gapi && window.gapi.client && window.gapi.client.calendar) {
+                        console.log('Google Calendar API is ready')
+                        resolve()
+                    } else {
+                        console.log('Waiting for Google Calendar API...')
+                        setTimeout(checkAPI, 500)
+                    }
                 }
                 checkAPI()
             })
@@ -484,19 +492,19 @@ export default {
             try {
                 const { Geocoder } = await google.maps.importLibrary("geocoding")
                 const geocoder = new Geocoder()
-                
+
                 return new Promise((resolve) => {
-                geocoder.geocode({ address: address }, (results, status) => {
-                    if (status === 'OK' && results[0]) {
-                    const loc = results[0].geometry.location
-                    resolve({
-                        geopoint: new GeoPoint(loc.lat(), loc.lng()),
-                        name: results[0].formatted_address
+                    geocoder.geocode({ address: address }, (results, status) => {
+                        if (status === 'OK' && results[0]) {
+                            const loc = results[0].geometry.location
+                            resolve({
+                                geopoint: new GeoPoint(loc.lat(), loc.lng()),
+                                name: results[0].formatted_address
+                            })
+                        } else {
+                            resolve(null)
+                        }
                     })
-                    } else {
-                    resolve(null)
-                    }
-                })
                 })
             } catch (err) {
                 return null
@@ -507,28 +515,28 @@ export default {
         async updateInGoogle(eventId, eventData) {
             try {
                 const resource = {
-                summary: eventData.name,
-                description: eventData.description,
-                start: {
-                    dateTime: eventData.start.toISOString(),
-                    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
-                },
-                end: {
-                    dateTime: eventData.end.toISOString(),
-                    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
-                }
+                    summary: eventData.name,
+                    description: eventData.description,
+                    start: {
+                        dateTime: eventData.start.toISOString(),
+                        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
+                    },
+                    end: {
+                        dateTime: eventData.end.toISOString(),
+                        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
+                    }
                 }
 
                 if (eventData.locationName) {
-                resource.location = eventData.locationName
+                    resource.location = eventData.locationName
                 }
 
                 await gapi.client.calendar.events.update({
-                calendarId: 'primary',
-                eventId: eventId,
-                resource: resource
+                    calendarId: 'primary',
+                    eventId: eventId,
+                    resource: resource
                 })
-            } 
+            }
             catch (error) {
                 console.log('Error Updating Event in Google Calendar:', error);
             }
@@ -537,47 +545,55 @@ export default {
         // Add Event to Google Calendar
         async addToGoogle(eventData) {
             try {
-                const startDate = eventData.start instanceof Date ? eventData.start : new Date(eventData.start)
-                const endDate = eventData.end instanceof Date ? eventData.end : new Date(eventData.end)
+                const startDate = eventData.start instanceof Date ? eventData.start : new Date(eventData.start);
+                const endDate = eventData.end instanceof Date ? eventData.end : new Date(eventData.end);
 
                 const resource = {
-                summary: eventData.name,
-                description: eventData.description,
-                start: {
-                    dateTime: startDate.toISOString(),
-                    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
-                },
-                end: {
-                    dateTime: endDate.toISOString(),
-                    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
-                }
+                    summary: eventData.name,
+                    description: eventData.description,
+                    start: {
+                        dateTime: startDate.toISOString(),
+                        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
+                    },
+                    end: {
+                        dateTime: endDate.toISOString(),
+                        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
+                    },
+                    location: eventData.locationName || ''
+                };
+
+                const response = await fetch(
+                    'https://www.googleapis.com/calendar/v3/calendars/primary/events',
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${this.accessToken}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(resource)
+                    }
+                );
+
+                if (!response.ok) {
+                    throw new Error(`Calendar API error: ${response.status}`);
                 }
 
-                if (eventData.locationName) {
-                resource.location = eventData.locationName
-                }
-
-                const response = await gapi.client.calendar.events.insert({
-                calendarId: 'primary',
-                resource: resource
-                })
-
-                console.log('Event Added to Google Calendar:', response.result.id)
-                return response.result.id
-            } 
-            catch (error) {
-                console.error('Error Adding Event to Google Calendar:', error)
-                return null
+                const result = await response.json();
+                console.log('Event Added to Google Calendar:', result.id);
+                return result.id;
+            } catch (error) {
+                console.error('Error Adding Event to Google Calendar:', error);
+                return null;
             }
         },
 
         // Open Google Maps
         openMap(event) {
-        if (!event.location) return
-        
-        const lat = event.location.latitude
-        const lng = event.location.longitude
-        window.open(`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`, '_blank');
+            if (!event.location) return
+
+            const lat = event.location.latitude
+            const lng = event.location.longitude
+            window.open(`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`, '_blank');
         },
 
         // Format Event Date
@@ -593,8 +609,8 @@ export default {
         formatEventTime(dateTime) {
             const date = new Date(dateTime)
             return date.toLocaleTimeString('en-UK', {
-            hour: 'numeric',
-            minute: '2-digit',
+                hour: 'numeric',
+                minute: '2-digit',
             })
         },
 
@@ -609,15 +625,15 @@ export default {
             const tomorrowOnly = new Date(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate())
 
             if (dateOnly.getTime() === todayOnly.getTime()) {
-            return 'Today'
+                return 'Today'
             } else if (dateOnly.getTime() === tomorrowOnly.getTime()) {
-            return 'Tomorrow'
+                return 'Tomorrow'
             } else {
-            return date.toLocaleDateString('en-US', { 
-                weekday: 'short', 
-                month: 'short', 
-                day: 'numeric' 
-            })
+                return date.toLocaleDateString('en-US', {
+                    weekday: 'short',
+                    month: 'short',
+                    day: 'numeric'
+                })
             }
         },
 
@@ -626,10 +642,10 @@ export default {
             const q = query(collection(db, 'events'), where('userId', '==', this.userId));
             onSnapshot(q, (snapshot) => {
                 this.events = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data(),
-                start: doc.data().start.toDate(),
-                end: doc.data().end.toDate(),
+                    id: doc.id,
+                    ...doc.data(),
+                    start: doc.data().start.toDate(),
+                    end: doc.data().end.toDate(),
                 }))
             });
             console.log(this.events);
@@ -641,10 +657,10 @@ export default {
             const r = parseInt(color.substr(0, 2), 16)
             const g = parseInt(color.substr(2, 2), 16)
             const b = parseInt(color.substr(4, 2), 16)
-            
+
             // Calculate Perceived Brightness
             const brightness = (r * 299 + g * 587 + b * 114) / 1000
-            
+
             // Return Black or White Text Colour based on Brightness
             return brightness > 128 ? '#000000' : '#ffffff'
         },
@@ -654,7 +670,7 @@ export default {
             if (!user) return;
             const sleepLogQuery = query(
                 collection(db, "sleepLogs"),
-                where("userId", "==", user.uid),             
+                where("userId", "==", user.uid),
                 orderBy("date", "desc"),
                 limit(1)
             );
@@ -662,47 +678,56 @@ export default {
             if (!querySnapshot.empty) {
                 const latestLog = querySnapshot.docs[0].data();
                 if (latestLog.sleepData) {
-                sleepData.value = latestLog.sleepData;
-                console.log("Fetched sleep log:", latestLog.sleepData);
+                    sleepData.value = latestLog.sleepData;
+                    console.log("Fetched sleep log:", latestLog.sleepData);
                 }
             }
-        },
+        }
+    },
 
-        async mounted() {
-            // Set up authentication listener
-            onAuthStateChanged(auth, async (user) => {
-                if (user) {
-                    this.userId = user.uid;
-                    console.log('User authenticated:', this.userId);
+    async mounted() {
+        // Setup authentication listener
+        try {
+            await new Promise((resolve) => {
+                const unsubscribe = onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        this.userId = user.uid;
+                        console.log('User authenticated:', this.userId);
 
-                    // Load module progress from Firebase
-                    await this.loadModuleProgress();
-                } else {
-                    this.userId = null;
-                    this.modules = [];
-                    console.log('No user authenticated');
-                }
+                        // Load module progress from Firebase
+                        await this.loadModuleProgress();
+                    } else {
+                        this.userId = null;
+                        this.modules = [];
+                        console.log('No user authenticated');
+                    }
+                    unsubscribe();
+                    resolve();
+                });
             });
 
             this.listenToEvents();
             await this.initGoogle();
 
-        // Check for Saved Session
-            const savedToken = sessionStorage.getItem('google_token')
+            // Check for saved session
+            const savedToken = sessionStorage.getItem('google_token');
             if (savedToken) {
                 this.syncEnabled = true;
                 this.accessToken = savedToken;
 
-                await this.waitForGoogleAPI()
-                await this.syncWithGoogle()
-                this.startAutoSync()
-            }
-        },
+                await this.waitForGoogleAPI();
+                await this.syncWithGoogle();
+                this.startAutoSync();
 
-        beforeUnmount() {
-            if (this.syncInterval) {
-                clearInterval(this.syncInterval);
             }
+        } catch (error) {
+            console.error('Error in mounted:', error);
+        }
+    },
+
+    beforeUnmount() {
+        if (this.syncInterval) {
+            clearInterval(this.syncInterval);
         }
     }
 }
@@ -760,7 +785,7 @@ export default {
                 </div>
             </div>
         </div>
-        
+
         <!-- Dashboard section -->
         <div class="container px-2 py-3">
             <div class="row g-4 mb-4">
@@ -822,13 +847,8 @@ export default {
                                 </h5>
 
                                 <div class="ios-switch-container">
-                                    <input 
-                                        type="checkbox" 
-                                        id="weekGoogleSync"
-                                        class="ios-switch-input"
-                                        v-model="syncEnabled"
-                                        @change="toggleSync"
-                                    >
+                                    <input type="checkbox" id="weekGoogleSync" class="ios-switch-input"
+                                        v-model="syncEnabled" @change="toggleSync">
                                     <label class="ios-switch-label" for="weekGoogleSync">
                                         <span class="ios-switch-slider"></span>
                                     </label>
@@ -844,65 +864,60 @@ export default {
                                     <div v-for="(dayGroup, index) in weekEvents" :key="index">
                                         <!-- Day Header -->
                                         <div class="d-flex align-items-center mb-2">
-                                            <span class="badge fw-medium px-2 py-1" style="font-size: 0.75rem; background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);">
-                                            {{ dayGroup.dayLabel }}
+                                            <span class="badge fw-medium px-2 py-1"
+                                                style="font-size: 0.75rem; background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);">
+                                                {{ dayGroup.dayLabel }}
                                             </span>
-                                            <div class="flex-grow-1 ms-2" style="height: 1px; background: #e0e0e0;"></div>
+                                            <div class="flex-grow-1 ms-2" style="height: 1px; background: #e0e0e0;">
+                                            </div>
                                         </div>
 
                                         <!-- Events -->
                                         <div class="d-flex flex-column gap-2">
-                                            <div 
-                                            v-for="event in dayGroup.events" 
-                                            :key="event.id"
-                                            class="event-card py-2 px-3 rounded-2 border"
-                                            :style="{ backgroundColor: event.colour, color: getContrastColor(event.colour) }"
-                                            >
+                                            <div v-for="event in dayGroup.events" :key="event.id"
+                                                class="event-card py-2 px-3 rounded-2 border"
+                                                :style="{ backgroundColor: event.colour, color: getContrastColor(event.colour) }">
                                                 <div class="d-flex align-items-start justify-content-between gap-2">
                                                     <div class="flex-grow-1">
                                                         <!-- Event Name -->
-                                                        <div class="fw-medium mb-1" style="font-size: 1rem; line-height: 1.3;">
+                                                        <div class="fw-medium mb-1"
+                                                            style="font-size: 1rem; line-height: 1.3;">
                                                             {{ event.name }}
                                                         </div>
-                                                    
-                                                    <!-- Event Information (Date, Time, Priority) -->
-                                                        <div class="d-flex align-items-center gap-2 flex-wrap" style="font-size: 0.9rem;">
+
+                                                        <!-- Event Information (Date, Time, Priority) -->
+                                                        <div class="d-flex align-items-center gap-2 flex-wrap"
+                                                            style="font-size: 0.9rem;">
                                                             <!-- Date -->
                                                             <span class="d-flex align-items-center gap-1">
-                                                            <i class="mdi mdi-calendar-blank" style="font-size: 0.9rem;"></i>
-                                                            {{ formatShortDate(event.start) }}
+                                                                <i class="mdi mdi-calendar-blank"
+                                                                    style="font-size: 0.9rem;"></i>
+                                                                {{ formatShortDate(event.start) }}
                                                             </span>
-                                                            
+
                                                             <!-- Time -->
                                                             <span class="d-flex align-items-center gap-1">
-                                                            <i class="mdi mdi-clock-outline" style="font-size: 0.9rem;"></i>
-                                                            {{ formatEventTime(event.start) }}
+                                                                <i class="mdi mdi-clock-outline"
+                                                                    style="font-size: 0.9rem;"></i>
+                                                                {{ formatEventTime(event.start) }}
                                                             </span>
-                                                            
+
                                                             <!-- Priority Badge -->
-                                                            <span 
-                                                            v-if="event.priority"
-                                                            class="badge"
-                                                            :class="{
+                                                            <span v-if="event.priority" class="badge" :class="{
                                                                 'bg-danger': event.priority === 'High',
                                                                 'bg-warning text-dark': event.priority === 'Medium',
                                                                 'bg-success': event.priority === 'Low'
-                                                            }"
-                                                            style="font-size: 0.8rem; padding: 2px 6px;"
-                                                            >
-                                                            {{ event.priority }}
+                                                            }" style="font-size: 0.8rem; padding: 2px 6px;">
+                                                                {{ event.priority }}
                                                             </span>
                                                         </div>
                                                     </div>
 
                                                     <!-- Google Maps Button -->
-                                                    <button 
-                                                    v-if="event.location || event.locationName"
-                                                    @click.stop="openMap(event)"
-                                                    class="map-button"
-                                                    title="Open in Google Maps"
-                                                    >
-                                                    <i class="mdi mdi-map-marker map-icon"></i>
+                                                    <button v-if="event.location || event.locationName"
+                                                        @click.stop="openMap(event)" class="map-button"
+                                                        title="Open in Google Maps">
+                                                        <i class="mdi mdi-map-marker map-icon"></i>
                                                     </button>
                                                 </div>
                                             </div>
@@ -910,15 +925,16 @@ export default {
                                     </div>
                                 </div>
 
-                            <!-- Empty State -->
+                                <!-- Empty State -->
                                 <div v-else class="text-center py-5">
-                                    <i class="mdi mdi-calendar-blank-outline text-muted" style="font-size: 3rem; opacity: 0.3;"></i>
+                                    <i class="mdi mdi-calendar-blank-outline text-muted"
+                                        style="font-size: 3rem; opacity: 0.3;"></i>
                                     <p class="text-muted mt-2 mb-0">No Upcoming Events This Week</p>
                                 </div>
                             </div>
                         </div>
                     </div>
-                
+
                 </div>
 
                 <div class="col-12 col-lg-6">
@@ -934,7 +950,8 @@ export default {
                                 <div v-for="m in modules" :key="m.name">
                                     <div class="d-flex justify-content-between mb-1">
                                         <span class="small fw-semibold">{{ m.name }}</span>
-                                        <span class="small text-secondary">{{ m.progress }}% ({{ m.completed }}/{{ m.total }})</span>
+                                        <span class="small text-secondary">{{ m.progress }}% ({{ m.completed }}/{{
+                                            m.total }})</span>
                                     </div>
                                     <div class="progress" style="height: 8px;">
                                         <div class="progress-bar" role="progressbar"
@@ -1022,189 +1039,188 @@ p {
 
 /* Event Cards*/
 .event-card {
-  background: #fafafa;
-  transition: all 0.2s ease;
+    background: #fafafa;
+    transition: all 0.2s ease;
 }
 
 .event-card:hover {
-  background: #f5f5f5;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+    background: #f5f5f5;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
 }
 
 /* Custom Scrollbar for Event Card */
-.card-body > div {
-  padding-right: 8px;
+.card-body>div {
+    padding-right: 8px;
 }
 
-.card-body > div::-webkit-scrollbar {
-  width: 6px;
+.card-body>div::-webkit-scrollbar {
+    width: 6px;
 }
 
-.card-body > div::-webkit-scrollbar-track {
-  background: transparent;
+.card-body>div::-webkit-scrollbar-track {
+    background: transparent;
 }
 
-.card-body > div::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.15);
-  border-radius: 3px;
+.card-body>div::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: 3px;
 }
 
-.card-body > div::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.25);
+.card-body>div::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.25);
 }
 
 /* CSS for Toggle Switch */
 /* iOS Toggle Switch Container */
 .ios-switch-container {
-  display: flex;
-  align-items: center;
-  margin-bottom: 0;
+    display: flex;
+    align-items: center;
+    margin-bottom: 0;
 }
 
 /* Hide default checkbox */
 .ios-switch-input {
-  display: none;
+    display: none;
 }
 
 /* Switch Label/Track */
 .ios-switch-label {
-  position: relative;
-  display: inline-block;
-  width: 42px;
-  height: 24px;
-  cursor: pointer;
-  margin: 0;
+    position: relative;
+    display: inline-block;
+    width: 42px;
+    height: 24px;
+    cursor: pointer;
+    margin: 0;
 }
 
 /* Switch Track (background) */
 .ios-switch-slider {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: #e0e0e0;
-  border-radius: 24px;
-  transition: all 0.3s ease;
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #e0e0e0;
+    border-radius: 24px;
+    transition: all 0.3s ease;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 /* Switch Knob */
 .ios-switch-slider::before {
-  content: '';
-  position: absolute;
-  height: 20px;
-  width: 20px;
-  left: 2px;
-  bottom: 2px;
-  background-color: white;
-  border-radius: 50%;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    content: '';
+    position: absolute;
+    height: 20px;
+    width: 20px;
+    left: 2px;
+    bottom: 2px;
+    background-color: white;
+    border-radius: 50%;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 /* Checked State - Gradient Background */
-.ios-switch-input:checked + .ios-switch-label .ios-switch-slider {
-  background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+.ios-switch-input:checked+.ios-switch-label .ios-switch-slider {
+    background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
 }
 
 /* Checked State - Move Knob */
-.ios-switch-input:checked + .ios-switch-label .ios-switch-slider::before {
-  transform: translateX(18px);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+.ios-switch-input:checked+.ios-switch-label .ios-switch-slider::before {
+    transform: translateX(18px);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
 }
 
 /* Hover Effect */
 .ios-switch-label:hover .ios-switch-slider {
-  box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+    box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
 }
 
 /* Active/Pressed Effect */
-.ios-switch-input:active + .ios-switch-label .ios-switch-slider::before {
-  width: 24px;
+.ios-switch-input:active+.ios-switch-label .ios-switch-slider::before {
+    width: 24px;
 }
 
 /* Focus State */
-.ios-switch-input:focus + .ios-switch-label .ios-switch-slider {
-  outline: 2px solid #667eea;
-  outline-offset: 2px;
+.ios-switch-input:focus+.ios-switch-label .ios-switch-slider {
+    outline: 2px solid #667eea;
+    outline-offset: 2px;
 }
 
 /* Disabled State */
-.ios-switch-input:disabled + .ios-switch-label {
-  opacity: 0.5;
-  cursor: not-allowed;
+.ios-switch-input:disabled+.ios-switch-label {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 /* CSS for Map Button */
 .map-button {
-  width: 32px;
-  height: 32px;
-  margin-top: 7.5px;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: none;
-  border-radius: 8px;
-  background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-  position: relative;
-  overflow: hidden;
+    width: 32px;
+    height: 32px;
+    margin-top: 7.5px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 8px;
+    background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+    overflow: hidden;
 }
 
 /* Icon */
 .map-icon {
-  font-size: 1rem;
-  color: white;
-  transition: all 0.3s ease;
-  position: relative;
-  z-index: 1;
+    font-size: 1rem;
+    color: white;
+    transition: all 0.3s ease;
+    position: relative;
+    z-index: 1;
 }
 
 /* Pseudo element for smooth transition */
 .map-button::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: white;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  z-index: 0;
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: white;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: 0;
 }
 
 /* Hover state */
 .map-button:hover {
-  box-shadow: 0 8px 16px rgba(102, 126, 234, 0.4);
-  transform: translateY(-3px);
+    box-shadow: 0 8px 16px rgba(102, 126, 234, 0.4);
+    transform: translateY(-3px);
 }
 
 .map-button:hover::before {
-  opacity: 1;
+    opacity: 1;
 }
 
 .map-button:hover .map-icon {
-  background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+    background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
 /* Active/pressed */
 .map-button:active {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
 }
 
 /* Focus outline */
 .map-button:focus-visible {
-  outline: 2px solid #667eea;
-  outline-offset: 2px;
+    outline: 2px solid #667eea;
+    outline-offset: 2px;
 }
-
 </style>
