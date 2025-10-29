@@ -28,10 +28,4 @@ npm run dev
 npm run build
 ```
 
-VITE_FB_API_KEY=AIzaSyREPLACE_ME
 
-VITE_FB_AUTH_DOMAIN=unify-app-wad2.firebaseapp.com
-
-VITE_FB_PROJECT_ID=unify-app-wad2
-
-VITE_FB_APP_ID=1:1071880442683:web:aab32153d16f4f2b515d1e
