@@ -189,8 +189,9 @@ export default {
             });
             const avgSleep = total / this.sleepData.length; 
             return avgSleep.toFixed(1);
+        },
     },
-    
+
     methods: {
         async loadModuleProgress() {
             if (!this.userId) {
@@ -647,65 +648,64 @@ export default {
             // Return Black or White Text Colour based on Brightness
             return brightness > 128 ? '#000000' : '#ffffff'
         },
-    },
 
-    async fetchLatestSleepLog() {
-        const user = auth.currentUser;
-        if (!user) return;
-        const sleepLogQuery = query(
-            collection(db, "sleepLogs"),
-            where("userId", "==", user.uid),             
-            orderBy("date", "desc"),
-            limit(1)
-        );
-        const querySnapshot = await getDocs(sleepLogQuery);
-        if (!querySnapshot.empty) {
-            const latestLog = querySnapshot.docs[0].data();
-            if (latestLog.sleepData) {
-            sleepData.value = latestLog.sleepData;
-            console.log("Fetched sleep log:", latestLog.sleepData);
+        async fetchLatestSleepLog() {
+            const user = auth.currentUser;
+            if (!user) return;
+            const sleepLogQuery = query(
+                collection(db, "sleepLogs"),
+                where("userId", "==", user.uid),             
+                orderBy("date", "desc"),
+                limit(1)
+            );
+            const querySnapshot = await getDocs(sleepLogQuery);
+            if (!querySnapshot.empty) {
+                const latestLog = querySnapshot.docs[0].data();
+                if (latestLog.sleepData) {
+                sleepData.value = latestLog.sleepData;
+                console.log("Fetched sleep log:", latestLog.sleepData);
+                }
             }
-        }
-},
+        },
 
-    async mounted() {
-        // Set up authentication listener
-        onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                this.userId = user.uid;
-                console.log('User authenticated:', this.userId);
+        async mounted() {
+            // Set up authentication listener
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    this.userId = user.uid;
+                    console.log('User authenticated:', this.userId);
 
-                // Load module progress from Firebase
-                await this.loadModuleProgress();
-            } else {
-                this.userId = null;
-                this.modules = [];
-                console.log('No user authenticated');
-            }
-        });
+                    // Load module progress from Firebase
+                    await this.loadModuleProgress();
+                } else {
+                    this.userId = null;
+                    this.modules = [];
+                    console.log('No user authenticated');
+                }
+            });
 
-        this.listenToEvents();
-        await this.initGoogle();
+            this.listenToEvents();
+            await this.initGoogle();
 
         // Check for Saved Session
-        const savedToken = sessionStorage.getItem('google_token')
-        if (savedToken) {
-            this.syncEnabled = true;
-            this.accessToken = savedToken;
+            const savedToken = sessionStorage.getItem('google_token')
+            if (savedToken) {
+                this.syncEnabled = true;
+                this.accessToken = savedToken;
 
-            await this.waitForGoogleAPI()
-            await this.syncWithGoogle()
-            this.startAutoSync()
-        }
-    },
+                await this.waitForGoogleAPI()
+                await this.syncWithGoogle()
+                this.startAutoSync()
+            }
+        },
 
-    beforeUnmount() {
-        if (this.syncInterval) {
-            clearInterval(this.syncInterval);
+        beforeUnmount() {
+            if (this.syncInterval) {
+                clearInterval(this.syncInterval);
+            }
         }
     }
-
-};
+}
 </script>
 
 <template>
