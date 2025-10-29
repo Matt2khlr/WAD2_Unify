@@ -475,6 +475,7 @@
 <script>
 import { collection, addDoc, updateDoc, deleteDoc, doc, setDoc, query, where, onSnapshot, GeoPoint } from 'firebase/firestore';
 import { db, auth } from '@/firebase';
+import { loadGoogleMaps } from '@/plugins/googleMaps';
 // import { onAuthStateChanged } from 'firebase/auth';
 // import { useRouter } from 'vue-router';
 
@@ -1380,7 +1381,7 @@ export default {
 
   async mounted() {
 
-    //this.checkAuth()
+    await loadGoogleMaps()
     this.listenToEvents();
     await this.initGoogle();
     
