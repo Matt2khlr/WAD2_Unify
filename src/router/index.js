@@ -20,7 +20,7 @@ const routes = [
     { path: "/settings", name: "settings", component: () => import("@/views/SettingsView.vue"), meta: { title: "Settings" } },
 
     // 404
-    { path: "/:pathMatch(.*)*", name: "not-found", component: () => import("@/views/NotFoundView.vue"), meta: { title: "Not Found" } },
+    { path: "/:pathMatch(.*)*", name: "not-found", redirect: "/" }
 ];
 
 const router = createRouter({
@@ -46,7 +46,7 @@ const requireAuth = (to, __from, next) => {
 
 router.beforeEach((to, from, next) => {
     // Example: protect certain routes
-    const protectedNames = ["home", "journal", "wellbeing", "study", "nutrition", "calendar", "recommendations", "settings"];
+    const protectedNames = ["home", "journal", "wellbeing", "study", "nutrition", "calendar", "settings"];
 
     if (protectedNames.includes(to.name)) {
         return requireAuth(to, from, next);
