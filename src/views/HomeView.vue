@@ -720,9 +720,6 @@ export default {
     beforeUnmount() {
         if (this.syncInterval) {
             clearInterval(this.syncInterval);
-    beforeUnmount() {
-        if (this.syncInterval) {
-            clearInterval(this.syncInterval);
         }
     }
 }
