@@ -4,6 +4,7 @@ import { collection, addDoc, updateDoc, deleteDoc, doc, setDoc, query, where, on
 import { db, auth } from '@/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { useRouter } from 'vue-router';
+import { loadGoogleMaps } from "@/plugins/googleMaps";
 
 export default {
     name: 'YourComponentName',
@@ -667,42 +668,41 @@ export default {
                 }
             }
         },
+    },
+    async mounted() {
+        // Set up authentication listener
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                this.userId = user.uid;
+                console.log('User authenticated:', this.userId);
 
-        async mounted() {
-            // Set up authentication listener
-            onAuthStateChanged(auth, async (user) => {
-                if (user) {
-                    this.userId = user.uid;
-                    console.log('User authenticated:', this.userId);
-
-                    // Load module progress from Firebase
-                    await this.loadModuleProgress();
-                } else {
-                    this.userId = null;
-                    this.modules = [];
-                    console.log('No user authenticated');
-                }
-            });
-
-            this.listenToEvents();
-            await this.initGoogle();
+                // Load module progress from Firebase
+                await loadGoogleMaps();
+                await this.loadModuleProgress();
+                this.listenToEvents();
+                await this.initGoogle();
+            } else {
+                this.userId = null;
+                this.modules = [];
+                console.log('No user authenticated');
+            }
+        });
 
         // Check for Saved Session
-            const savedToken = sessionStorage.getItem('google_token')
-            if (savedToken) {
-                this.syncEnabled = true;
-                this.accessToken = savedToken;
+        const savedToken = sessionStorage.getItem('google_token')
+        if (savedToken) {
+            this.syncEnabled = true;
+            this.accessToken = savedToken;
 
-                await this.waitForGoogleAPI()
-                await this.syncWithGoogle()
-                this.startAutoSync()
-            }
-        },
+            await this.waitForGoogleAPI()
+            await this.syncWithGoogle()
+            this.startAutoSync()
+        }
+    },
 
-        beforeUnmount() {
-            if (this.syncInterval) {
-                clearInterval(this.syncInterval);
-            }
+    beforeUnmount() {
+        if (this.syncInterval) {
+            clearInterval(this.syncInterval);
         }
     }
 }

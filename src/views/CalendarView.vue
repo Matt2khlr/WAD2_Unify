@@ -476,8 +476,6 @@
 import { collection, addDoc, updateDoc, deleteDoc, doc, setDoc, query, where, onSnapshot, GeoPoint } from 'firebase/firestore';
 import { db, auth } from '@/firebase';
 import { loadGoogleMaps } from '@/plugins/googleMaps';
-// import { onAuthStateChanged } from 'firebase/auth';
-// import { useRouter } from 'vue-router';
 
 export default {
   data() {
@@ -503,7 +501,6 @@ export default {
         gEventId: null
       },
       userId: auth.currentUser?.uid,
-      //userId: 'u1',
       syncEnabled: false,
       accessToken: null,
       syncInterval: null,
@@ -511,11 +508,6 @@ export default {
       showAutocomplete: false
     }
   },
-
-  // setup() {
-  //   const router = useRouter()
-  //   return { router }
-  // },
 
   computed: {
     allEvents() {
@@ -748,12 +740,15 @@ export default {
 
       try {
         // Pull Events from Google Calendar API
+        const twoWeeksAgo = new Date();
+        twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
+
         const response = await gapi.client.calendar.events.list({
           calendarId: 'primary',
-          timeMin: new Date().toISOString(),
+          timeMin: twoWeeksAgo.toISOString(),
           showDeleted: false,
           singleEvents: true,
-          maxResults: 100,
+          maxResults: 200,
           orderBy: 'startTime'
         });
 
