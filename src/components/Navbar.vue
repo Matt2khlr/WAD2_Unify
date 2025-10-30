@@ -54,7 +54,7 @@ nav {
     background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
     position: sticky;
     top: 0;
-    z-index: 1;
+    z-index: 100;
 }
 
 .navbar-nav .nav-link {

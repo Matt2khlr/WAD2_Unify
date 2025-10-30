@@ -122,7 +122,6 @@ onMounted(() => {
         } else {
             userId.value = null;
             journalHistory.value = []; // Clear history
-            alert('Please log in to view and save your journal entries.');
         }
     });
 });

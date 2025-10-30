@@ -1,8 +1,9 @@
 <script setup>
 import { ref, onMounted } from 'vue';
-import { updatePassword, reauthenticateWithCredential, EmailAuthProvider, signOut } from 'firebase/auth';
+import { updatePassword, reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth';
 import { auth } from '@/firebase';
 import { useRouter } from 'vue-router';
+import { performLogout } from '@/utils/auth';
 
 const router = useRouter();
 const user = ref(null);
@@ -71,8 +72,7 @@ async function updatePasswordHandler() {
 async function logout() {
     logoutLoading.value = true;
     try {
-        await signOut(auth);
-        router.push('/login');
+        await performLogout(router);
     } catch (e) {
         console.error('Logout failed:', e);
     } finally {
