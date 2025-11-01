@@ -66,6 +66,6 @@ nav {
 }
 
 .router-link-active {
-  color: #FFD700 !important;
+  color: wheat !important;
 }
 </style>
