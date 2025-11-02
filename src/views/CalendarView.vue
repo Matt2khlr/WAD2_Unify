@@ -1420,7 +1420,7 @@ export default {
           }
         }
 
-        // FIXED: Smart deletion that accounts for recurring events
+        // Delete Events from Google Calendar
         const localGoogleEvents = this.events.filter(event => event.source === 'google');
         for (const localEvent of localGoogleEvents) {
           const shouldDelete = !googleEventIdsFromApi.has(localEvent.id) && !baseRecurringEventIds.has(localEvent.id);
@@ -1495,27 +1495,67 @@ export default {
       })
     },
 
-    // Convert Location to Geopoint
+    // Convert Location to GeoPoint
     async geocodeLocation(address) {
       try {
-        const { Geocoder } = await google.maps.importLibrary("geocoding")
-        const geocoder = new Geocoder()
+        const { PlacesService } = await google.maps.importLibrary("places");
+        const { Geocoder } = await google.maps.importLibrary("geocoding");
+        
+        const geocoder = new Geocoder();
         
         return new Promise((resolve) => {
-          geocoder.geocode({ address: address }, (results, status) => {
+          // Geocode Location
+          geocoder.geocode({ address: address }, async (results, status) => {
             if (status === 'OK' && results[0]) {
-              const loc = results[0].geometry.location
-              resolve({
-                geopoint: new GeoPoint(loc.lat(), loc.lng()),
-                name: results[0].formatted_address
-              })
-            } else {
-              resolve(null)
+              const loc = results[0].geometry.location;
+              let displayName = address;
+              
+              // Get Place Details
+              if (results[0].place_id) {
+                try {
+                  const service = new PlacesService(document.createElement('div'));
+                  
+                  service.getDetails(
+                    { placeId: results[0].place_id },
+                    (place, placeStatus) => {
+                      if (placeStatus === 'OK' && place) {
+                        displayName = place.name 
+                          ? `${place.name}, ${place.formatted_address}`
+                          : place.formatted_address || address;
+                      } 
+                      else {
+                        displayName = address;
+                      }
+                      
+                      resolve({
+                        geopoint: new GeoPoint(loc.lat(), loc.lng()),
+                        name: displayName
+                      });
+                    }
+                  );
+                } 
+                catch (err) {
+                  resolve({
+                    geopoint: new GeoPoint(loc.lat(), loc.lng()),
+                    name: address
+                  });
+                }
+              } 
+              else {
+                resolve({
+                  geopoint: new GeoPoint(loc.lat(), loc.lng()),
+                  name: address
+                });
+              }
+            } 
+            else {
+              resolve(null);
             }
-          })
-        })
-      } catch (err) {
-        return null
+          });
+        });
+      } 
+      catch (err) {
+        return null;
       }
     },
 
