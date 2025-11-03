@@ -1,13 +1,13 @@
 <script>
 import { BookOpen, Heart, Dumbbell, CheckCircle2, Clock, TrendingUp, Flame, Activity, Utensils } from "lucide-vue-next";
-import { collection, addDoc, updateDoc, deleteDoc, doc, setDoc, query, where, onSnapshot, GeoPoint, getDocs } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, deleteDoc, doc, setDoc, query, where, onSnapshot, GeoPoint, getDocs, orderBy } from 'firebase/firestore';
 import { db, auth } from '@/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { useRouter } from 'vue-router';
 import { loadGoogleMaps } from "@/plugins/googleMaps";
 
 export default {
-    name: 'YourComponentName',
+    name: 'Home',
 
     components: {
         BookOpen,
@@ -111,7 +111,11 @@ export default {
                 gEventId: null
             },
 
-            // Meals and Workouts Data
+            // Journal data
+            journalHistory: [],
+            unsubscribeJournal: null,
+
+            // Meals and workouts data
             meals: [],
             workouts: [],
             unsubscribeMeals: null,
@@ -779,8 +783,63 @@ export default {
             }
         },
 
+        async subscribeToJournalEntries() {
+            if (!this.userId) {
+                this.journalHistory = [];
+                if (this.unsubscribeJournal) {
+                    this.unsubscribeJournal();
+                }
+                return;
+            }
+
+            try {
+                const q = query(
+                    collection(db, 'journals'),
+                    where('userId', '==', this.userId),
+                    orderBy('date', 'desc')
+                );
+
+                this.unsubscribeJournal = onSnapshot(q, (snapshot) => {
+                    this.journalHistory = snapshot.docs.map(doc => {
+                        const data = doc.data();
+                        return {
+                            id: doc.id,
+                            text: data.text,
+                            date: data.date.toDate().toLocaleString(),
+                            mood: data.mood || null,
+                            moodIcon: this.getMoodIcon(data.mood),
+                            isSaving: false
+                        };
+                    });
+                    console.log(`Journal history loaded for user ${this.userId}`);
+                }, (error) => {
+                    console.error('Error loading journal entries:', error);
+                });
+            } catch (error) {
+                console.error('Error subscribing to journal entries:', error);
+            }
+        },
+
+        getMoodColorClass(moodLabel) {
+            const moodColors = {
+                'Great': 'bg-success',
+                'Okay': 'bg-warning',
+                'Stressed': 'bg-danger'
+            };
+            return moodColors[moodLabel] || 'bg-secondary';
+        },
+
+        getMoodIcon(moodLabel) {
+            const moodIcons = {
+                'Great': '😊',
+                'Okay': '😐',
+                'Stressed': '☹️'
+            };
+            return moodIcons[moodLabel] || '';
+        },
+
         // Nutrition data
-        bindNutritionData() {
+        async bindNutritionData() {
             if (!this.userId) {
                 this.meals = [];
                 this.workouts = [];
@@ -792,43 +851,75 @@ export default {
                 }
                 return;
             }
+            try {
+                const today = new Date().toISOString().split('T')[0];
 
-            const today = new Date().toISOString().split('T')[0];
+                if (this.unsubscribeMeals) {
+                    this.unsubscribeMeals();
+                }
+
+                const mealsQuery = query(
+                    collection(db, 'meals'),
+                    where('userId', '==', this.userId),
+                    where('date', '==', today)
+                );
+
+                this.unsubscribeMeals = onSnapshot(mealsQuery, (snapshot) => {
+                    this.meals = snapshot.docs.map(doc => ({
+                        id: doc.id,
+                        ...doc.data()
+                    }));
+                });
+
+                if (this.unsubscribeWorkouts) {
+                    this.unsubscribeWorkouts();
+                }
+
+                const workoutsQuery = query(
+                    collection(db, 'workouts'),
+                    where('userId', '==', this.userId),
+                    where('date', '==', today)
+                );
+
+                this.unsubscribeWorkouts = onSnapshot(workoutsQuery, (snapshot) => {
+                    this.workouts = snapshot.docs.map(doc => ({
+                        id: doc.id,
+                        ...doc.data()
+                    }));
+                });
+            } catch (error) {
+                console.error('Error binding nutrition data:', error);
+            }
+        },
+
+        cleanupAllListeners() {
+            this.userId = null;
+
+            if (this.syncInterval) {
+                clearInterval(this.syncInterval);
+                this.syncInterval = null;
+            }
+
+            if (this.unsubscribeJournal) {
+                this.unsubscribeJournal();
+                this.unsubscribeJournal = null;
+            }
 
             if (this.unsubscribeMeals) {
                 this.unsubscribeMeals();
+                this.unsubscribeMeals = null;
             }
-
-            const mealsQuery = query(
-                collection(db, 'meals'),
-                where('userId', '==', this.userId),
-                where('date', '==', today)
-            );
-
-            this.unsubscribeMeals = onSnapshot(mealsQuery, (snapshot) => {
-                this.meals = snapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data()
-                }));
-            });
 
             if (this.unsubscribeWorkouts) {
                 this.unsubscribeWorkouts();
+                this.unsubscribeWorkouts = null;
             }
 
-            const workoutsQuery = query(
-                collection(db, 'workouts'),
-                where('userId', '==', this.userId),
-                where('date', '==', today)
-            );
-
-            this.unsubscribeWorkouts = onSnapshot(workoutsQuery, (snapshot) => {
-                this.workouts = snapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data()
-                }));
-            });
-        },
+            this.journalHistory = [];
+            this.meals = [];
+            this.workouts = [];
+            this.events = [];
+        }
     },
 
     async mounted() {
@@ -845,12 +936,19 @@ export default {
                 // Load today's study sessions from Firebase
                 await this.loadTodayStudySessions();
 
+                // Load nutrition data from Firebase
+                await this.bindNutritionData();
+
+                // Load journal entries
+                await this.subscribeToJournalEntries();
+
+                // Listen for real-time updates
                 this.listenToEvents();
-                this.bindNutritionData();
                 await this.initGoogle();
             } else {
                 this.userId = null;
                 this.modules = [];
+                this.cleanupAllListeners();
                 console.log('No user authenticated');
             }
         });
@@ -871,6 +969,18 @@ export default {
         if (this.syncInterval) {
             clearInterval(this.syncInterval);
         }
+        if (this.unsubscribeJournal) {
+            this.unsubscribeJournal();
+            this.unsubscribeJournal = null;
+        }
+        if (this.unsubscribeMeals) {
+            this.unsubscribeMeals();
+            this.unsubscribeMeals = null;
+        }
+        if (this.unsubscribeWorkouts) {
+            this.unsubscribeWorkouts();
+            this.unsubscribeWorkouts = null;
+        }
     }
 }
 </script>
@@ -879,9 +989,9 @@ export default {
     <div class="min-vh-100 bg-light">
         <header class="bg-white border-bottom">
             <div class="container px-3 py-5">
-                <h1 class="display-6 fw-bold mb-2">Welcome back! 👋</h1>
+                <h1 class="display-6 fw-bold mb-2">Welcome back!</h1>
                 <p class="fs-5 text-muted mb-0">
-                    Your hub for academic success & wellbeing. Let's make today productive and balanced.
+                    Check out your recent activity and personalised recommendations.
                 </p>
             </div>
         </header>
@@ -940,7 +1050,8 @@ export default {
                             <div>
                                 <div class="text-uppercase small fw-semibold opacity-75">Study Sessions Today</div>
                                 <div class="h3 mb-0">{{ studySessionsToday }}</div>
-                                <div class="small opacity-75">{{ formatStudyTime(totalStudyTimeToday) }} focused time</div>
+                                <div class="small opacity-75">{{ formatStudyTime(totalStudyTimeToday) }} focused time
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1098,7 +1209,7 @@ export default {
                                     <div class="progress" style="height: 8px;">
                                         <div class="progress-bar" role="progressbar"
                                             :style="{ width: m.progress + '%' }" :aria-valuenow="m.progress"
-                                            aria-valuemin="0" aria-valuemax="100" />
+                                            aria-valuemin="0" aria-valuemax="100"></div>
                                     </div>
                                 </div>
                             </div>
@@ -1106,6 +1217,52 @@ export default {
                                 <i class="mdi mdi-school-outline" style="font-size: 3rem;"></i>
                                 <p class="mb-0 mt-2">No study topics yet</p>
                                 <small>Add topics in the Study Tools page to track your progress</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-12 col-lg-6">
+                    <div class="card shadow-soft h-100">
+                        <div class="card-body d-flex flex-column">
+                            <h5 class="mb-3 fw-semibold d-flex align-items-center gap-2">
+                                <i class="mdi mdi-book-open-variant"></i> Recent Journal Entries
+                            </h5>
+
+                            <div v-if="!userId" class="text-center text-muted py-4">
+                                <i class="mdi mdi-lock-outline" style="font-size: 2rem; opacity: 0.3;"></i>
+                                <p class="mt-2 mb-0">Log in to load your journal history.</p>
+                            </div>
+
+                            <div v-else-if="journalHistory.length" class="d-flex flex-column gap-2 flex-grow-1">
+                                <div v-for="entry in journalHistory.slice(0, 3)" :key="entry.id"
+                                    class="border rounded-2 p-3 transition-all"
+                                    style="border-color: #e0e0e0; background: #fafafa;">
+
+                                    <div class="d-flex align-items-center justify-content-between mb-2">
+                                        <span class="small text-muted fw-semibold">
+                                            <span v-if="entry.mood" class="me-2">{{ getMoodIcon(entry.mood) }}</span>
+                                            {{ entry.date }}
+                                        </span>
+                                        <span v-if="entry.mood" class="badge rounded-pill"
+                                            :class="getMoodColorClass(entry.mood)"
+                                            style="font-size: 0.75rem; padding: 4px 8px;">
+                                            {{ entry.mood }}
+                                        </span>
+                                    </div>
+
+                                    <p class="mb-0 text-secondary" style="font-size: 0.95rem; line-height: 1.4;">
+                                        {{ entry.text.length > 100 ? entry.text.substring(0, 100) + '...' : entry.text
+                                        }}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div v-else
+                                class="text-center text-muted py-4 flex-grow-1 d-flex flex-column justify-content-center">
+                                <i class="mdi mdi-feather" style="font-size: 2rem; opacity: 0.3;"></i>
+                                <p class="mb-0 mt-2">No journal entries yet.</p>
+                                <small>Visit the Journal page to start writing!</small>
                             </div>
                         </div>
                     </div>
