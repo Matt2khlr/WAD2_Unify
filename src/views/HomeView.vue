@@ -92,6 +92,10 @@ export default {
             events: [],
             focus: new Date(),
 
+            // Study Sessions
+            studySessionsToday: 0,
+            totalStudyTimeToday: 0, // in minutes
+
             currentEvent: {
                 id: null,
                 name: '',
@@ -271,6 +275,68 @@ export default {
             } catch (error) {
                 console.error('Error loading module progress:', error);
             }
+        },
+
+        async loadTodayStudySessions() {
+            if (!this.userId) {
+                console.log('No user authenticated, skipping study sessions load');
+                return;
+            }
+
+            try {
+                // Get today's date range (start and end of day)
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const todayEnd = new Date();
+                todayEnd.setHours(23, 59, 59, 999);
+
+                // Query study sessions from Firebase
+                const q = query(
+                    collection(db, 'studytimes'),
+                    where('userId', '==', this.userId)
+                );
+                const querySnapshot = await getDocs(q);
+
+                let sessionCount = 0;
+                let totalMinutes = 0;
+
+                querySnapshot.forEach((docSnap) => {
+                    const data = docSnap.data();
+
+                    // Convert Firebase Timestamp to Date
+                    const startTime = data.starttime?.toDate ? data.starttime.toDate() : new Date(data.starttime);
+
+                    // Check if session is from today
+                    if (startTime >= today && startTime <= todayEnd) {
+                        sessionCount++;
+
+                        // Calculate duration
+                        const endTime = data.endtime?.toDate ? data.endtime.toDate() : new Date(data.endtime);
+                        const durationMs = endTime - startTime;
+                        const durationMinutes = Math.round(durationMs / 60000);
+                        totalMinutes += durationMinutes;
+                    }
+                });
+
+                this.studySessionsToday = sessionCount;
+                this.totalStudyTimeToday = totalMinutes;
+
+                console.log(`Study sessions today: ${sessionCount}, Total time: ${totalMinutes} minutes`);
+            } catch (error) {
+                console.error('Error loading study sessions:', error);
+            }
+        },
+
+        formatStudyTime(minutes) {
+            if (minutes < 60) {
+                return `${minutes} min${minutes !== 1 ? 's' : ''}`;
+            }
+            const hours = Math.floor(minutes / 60);
+            const mins = minutes % 60;
+            if (mins === 0) {
+                return `${hours} hour${hours !== 1 ? 's' : ''}`;
+            }
+            return `${hours} hour${hours !== 1 ? 's' : ''} ${mins} min${mins !== 1 ? 's' : ''}`;
         },
 
         getPriorityClass(suggestion) {
@@ -775,6 +841,10 @@ export default {
                 // Load module progress from Firebase
                 await loadGoogleMaps();
                 await this.loadModuleProgress();
+
+                // Load today's study sessions from Firebase
+                await this.loadTodayStudySessions();
+
                 this.listenToEvents();
                 this.bindNutritionData();
                 await this.initGoogle();
@@ -869,8 +939,8 @@ export default {
                             </div>
                             <div>
                                 <div class="text-uppercase small fw-semibold opacity-75">Study Sessions Today</div>
-                                <div class="h3 mb-0">3</div>
-                                <div class="small opacity-75">2 hours focused time</div>
+                                <div class="h3 mb-0">{{ studySessionsToday }}</div>
+                                <div class="small opacity-75">{{ formatStudyTime(totalStudyTimeToday) }} focused time</div>
                             </div>
                         </div>
                     </div>
