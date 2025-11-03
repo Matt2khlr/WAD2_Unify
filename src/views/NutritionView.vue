@@ -81,6 +81,22 @@ async function saveProfile(partial){
 const mealForm = ref({ type:"Breakfast", name:"", kcal:"", protein:null, carbs:null, fat:null });
 const meals = ref([]); let unsubMeals = null;
 
+const calculatedCalories = computed(() => {
+  const p = n(mealForm.value.protein);
+  const c = n(mealForm.value.carbs);
+  const f = n(mealForm.value.fat);
+  // Precise Atwater factors: Protein=4.1, Carbs=4.1, Fat=9.3 kcal/g
+  return Math.round(p * 4.1 + c * 4.1 + f * 9.3);
+});
+
+const calculatedTemplateCalories = computed(() => {
+  const p = n(newMealTemplate.value.p);
+  const c = n(newMealTemplate.value.c);
+  const f = n(newMealTemplate.value.f);
+  // Precise Atwater factors: Protein=4.1, Carbs=4.1, Fat=9.3 kcal/g
+  return Math.round(p * 4.1 + c * 4.1 + f * 9.3);
+});
+
 const workoutForm = ref({ activity:"", minutes:"", intensity:"moderate" });
 const workouts = ref([]); let unsubWorkouts = null;
 
@@ -160,13 +176,13 @@ function bindWorkouts(){
 
 async function addMeal(){
   if(!userId.value) return;
-  if(!mealForm.value.name.trim() || n(mealForm.value.kcal)<=0) return;
+  if(!mealForm.value.name.trim() || calculatedCalories.value<=0) return;
   const refCol=collection(db,"meals");
   await addDoc(refCol,{
     userId:userId.value,
     type:mealForm.value.type,
     name:mealForm.value.name.trim(),
-    kcal:n(mealForm.value.kcal),
+    kcal:calculatedCalories.value,
     protein:n(mealForm.value.protein),
     carbs:n(mealForm.value.carbs),
     fat:n(mealForm.value.fat),
@@ -301,11 +317,11 @@ function useResult(r, autoAdd = false) {
 
 const newMealTemplate=ref({name:"",kcal:"",p:"",c:"",f:""});
 function addMealTemplate(){
-  if(!newMealTemplate.value.name||!Number(newMealTemplate.value.kcal))return;
+  if(!newMealTemplate.value.name||calculatedTemplateCalories.value<=0)return;
   mealTemplates.value.push({
     id:Date.now().toString(),
     name:newMealTemplate.value.name.trim(),
-    calories:Number(newMealTemplate.value.kcal),
+    calories:calculatedTemplateCalories.value,
     protein:Number(newMealTemplate.value.p)||0,
     carbs:Number(newMealTemplate.value.c)||0,
     fat:Number(newMealTemplate.value.f)||0
@@ -379,7 +395,7 @@ function changeDate(days){const d=new Date(selectedDate.value);d.setDate(d.getDa
     <div class="card shadow-sm mb-3">
       <div class="card-body">
         <div class="row g-2 align-items-end">
-          <div class="col-12 col-sm-5">
+          <div class="col-12 col-md-5">
             <label class="form-label">Goal</label>
             <div class="btn-group w-100">
               <button class="btn" :class="goal==='weight-loss'?'btn-primary':'btn-outline-primary'" @click="goal='weight-loss'">Weight loss</button>
@@ -387,15 +403,15 @@ function changeDate(days){const d=new Date(selectedDate.value);d.setDate(d.getDa
               <button class="btn" :class="goal==='muscle-gain'?'btn-primary':'btn-outline-primary'" @click="goal='muscle-gain'">Muscle gain</button>
             </div>
           </div>
-          <div class="col-6 col-sm-3">
+          <div class="col-6 col-md-3">
             <label class="form-label">Height (cm)</label>
             <input type="number" min="1" class="form-control" v-model.number="targets.heightCm" placeholder="e.g., 175"/>
           </div>
-          <div class="col-6 col-sm-2">
+          <div class="col-6 col-md-2">
             <label class="form-label">Weight (kg)</label>
             <input type="number" min="1" class="form-control" v-model.number="targets.weightKg" placeholder="e.g., 70"/>
           </div>
-          <div class="col-12 col-sm-2">
+          <div class="col-12 col-md-2">
             <label class="form-label d-flex align-items-center justify-content-between">
               <span>Calorie Target</span>
               <div class="form-check form-switch m-0">
@@ -466,18 +482,36 @@ function changeDate(days){const d=new Date(selectedDate.value);d.setDate(d.getDa
         <div class="card h-100 shadow-sm">
           <div class="card-body">
             <h6 class="mb-2">Meal Templates</h6>
-            <div class="row g-2 mb-2">
-              <div class="col-12 col-md-4"><input class="form-control" placeholder="Name" v-model.trim="newMealTemplate.name"/></div>
-              <div class="col-6 col-md-2"><input class="form-control" type="text" inputmode="numeric" placeholder="kcal" :value="newMealTemplate.kcal" @input="e=>newMealTemplate.kcal=digitsOnly(e.target.value)"/></div>
-              <div class="col-6 col-md-2"><input class="form-control" type="number" min="0" placeholder="P" v-model.number="newMealTemplate.p"/></div>
-              <div class="col-6 col-md-2"><input class="form-control" type="number" min="0" placeholder="C" v-model.number="newMealTemplate.c"/></div>
-              <div class="col-6 col-md-2"><input class="form-control" type="number" min="0" placeholder="F" v-model.number="newMealTemplate.f"/></div>
+            <div class="row g-2 mb-2 align-items-end">
+              <div class="col-12 col-md-4">
+                <label class="form-label small text-muted mb-1">Template Name</label>
+                <input class="form-control" placeholder="e.g., Protein Shake" v-model.trim="newMealTemplate.name"/>
+              </div>
+              <div class="col-3 col-md-2">
+                <label class="form-label small text-muted mb-1">Calories (auto)</label>
+                <input class="form-control bg-light" type="number" placeholder="0" :value="calculatedTemplateCalories" readonly/>
+              </div>
+              <div class="col-3 col-md-2">
+                <label class="form-label small text-muted mb-1">Protein (g)</label>
+                <input class="form-control" type="number" min="0" placeholder="0" v-model.number="newMealTemplate.p"/>
+              </div>
+              <div class="col-3 col-md-2">
+                <label class="form-label small text-muted mb-1">Carbs (g)</label>
+                <input class="form-control" type="number" min="0" placeholder="0" v-model.number="newMealTemplate.c"/>
+              </div>
+              <div class="col-3 col-md-2">
+                <label class="form-label small text-muted mb-1">Fat (g)</label>
+                <input class="form-control" type="number" min="0" placeholder="0" v-model.number="newMealTemplate.f"/>
+              </div>
             </div>
             <button class="btn btn-sm btn-dark mb-2" @click="addMealTemplate"><Plus :size="14" class="me-1"/>Add template</button>
             <div class="d-flex flex-wrap gap-2">
-              <div v-for="t in mealTemplates" :key="t.id" class="badge text-bg-light p-2">
-                <span class="me-2">{{ t.name }} ({{ t.calories }}k)</span>
-                <button class="btn btn-xs btn-outline-primary me-1" @click="applyMealTemplate(t)">Use</button>
+              <div v-for="t in mealTemplates" :key="t.id" class="badge text-bg-light p-2 d-flex align-items-center gap-2">
+                <div>
+                  <div>{{ t.name }}</div>
+                  <div class="text-muted">{{ t.calories }} kcal</div>
+                </div>
+                <button class="btn btn-xs btn-outline-primary" @click="applyMealTemplate(t)">Use</button>
                 <button class="btn btn-xs btn-outline-danger" @click="removeMealTemplate(t.id)">Remove</button>
               </div>
             </div>
@@ -531,8 +565,8 @@ function changeDate(days){const d=new Date(selectedDate.value);d.setDate(d.getDa
             <input class="form-control rounded-pill" placeholder="e.g., Chicken Rice" v-model.trim="mealForm.name" />
           </div>
           <div class="col-4 col-md-1">
-            <label class="form-label small text-muted">kcal</label>
-            <input type="number" class="form-control text-center rounded-pill" placeholder="0" v-model="mealForm.kcal" />
+            <label class="form-label small text-muted">kcal (auto)</label>
+            <input type="number" class="form-control text-center rounded-pill bg-light" placeholder="0" :value="calculatedCalories" readonly />
           </div>
           <div class="col-4 col-md-1">
             <label class="form-label small text-muted">P (g)</label>
@@ -547,7 +581,7 @@ function changeDate(days){const d=new Date(selectedDate.value);d.setDate(d.getDa
             <input type="number" class="form-control text-center rounded-pill" v-model="mealForm.fat" />
           </div>
           <div class="col-12 col-md-1 d-grid">
-            <button class="btn btn-dark rounded-pill" :disabled="!mealForm.name || !mealForm.kcal" @click="addMeal">
+            <button class="btn btn-dark rounded-pill" :disabled="!mealForm.name || calculatedCalories <= 0" @click="addMeal">
               <Plus :size="16" class="me-1" /> Add
             </button>
           </div>
@@ -563,7 +597,7 @@ function changeDate(days){const d=new Date(selectedDate.value);d.setDate(d.getDa
         <div v-else-if="mealsSorted.length===0" class="text-muted">No meals yet.</div>
         <ul class="list-group">
           <li v-for="m in mealsSorted" :key="m.id" class="list-group-item d-flex justify-content-between align-items-center">
-            <div><div class="fw-semibold">{{ m.name }}</div><div class="small text-secondary">{{ m.type }} • {{ m.kcal }} kcal • P{{ m.protein }} C{{ m.carbs }} F{{ m.fat }}</div></div>
+            <div><div class="fw-semibold">{{ m.name }}</div><div class="small text-secondary">{{ m.type }} • {{ m.kcal }} kcal • {{ m.protein }}g Protein • {{ m.carbs }}g Carbs • {{ m.fat }}g Fat</div></div>
             <button class="btn btn-sm btn-outline-danger" @click="removeMeal(m.id)">Delete</button>
           </li>
         </ul>
