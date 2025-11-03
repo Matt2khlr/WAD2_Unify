@@ -173,7 +173,7 @@
 										<small class="text-muted me-3">
 											{{ formatTopicDate(topic.addedDate) }}
 										</small>
-										<button 
+										<button
 											class="btn btn-danger delete-topic-btn"
 											@click="deleteTopic(topic.id, topic.name)"
 											title="Delete this topic"
@@ -370,11 +370,14 @@
 						</button>
 					</div>
 
-					<!-- Due Cards -->
-					<div v-if="dueCards.length > 0">
+					<!-- All Cards Available for Review -->
+					<div v-if="allCards.length > 0">
 						<div v-if="!reviewMode">
 							<h5 class="mb-3">
-								<span class="badge bg-danger">{{ dueCards.length }}</span> Cards Due for Review
+								<span class="badge bg-primary">{{ allCards.length }}</span> Total Flashcards
+								<span v-if="dueCards.length > 0" class="ms-2">
+									<span class="badge bg-danger">{{ dueCards.length }}</span> Due for Review
+								</span>
 							</h5>
 							<button class="btn btn-primary btn-lg" @click="startReview">
 								<i class="fas fa-play"></i> Start Review Session
@@ -384,7 +387,7 @@
 						<div v-else>
 							<div class="mb-3">
 								<h5>
-									Review Progress: {{ currentCardIndex + 1 }} / {{ dueCards.length }}
+									Review Progress: {{ currentCardIndex + 1 }} / {{ allCards.length }}
 								</h5>
 								<div class="progress" style="height: 25px;">
 									<div class="progress-bar" :style="{width: reviewProgress + '%'}">
@@ -434,37 +437,64 @@
 						</div>
 					</div>
 
-<!-- Upcoming Reviews -->
-					<div v-if="upcomingCards.length > 0" class="mt-4">
+<!-- All Flashcards List -->
+					<div v-if="!reviewMode && allCards.length > 0" class="mt-4">
 						<h5 class="mb-3">
-							<span class="badge bg-info">{{ upcomingCards.length }}</span> Upcoming Reviews
+							All Flashcards
 						</h5>
 						<div class="list-group">
-							<div 
-								v-for="card in upcomingCards" 
-								:key="card.id" 
-								class="list-group-item"
+							<div
+								v-for="card in allCards"
+								:key="card.id"
+								class="list-group-item flashcard-list-item"
 							>
-								<div class="d-flex justify-content-between align-items-center">
-									<div class="flex-grow-1">
-										<strong>{{ card.question }}</strong>
-										<br>
-										<small class="text-muted">
-											Review in {{ daysUntil(card.nextReview) }} days
+								<div class="d-flex justify-content-between align-items-start mb-2">
+									<div class="flex-grow-1 cursor-pointer" @click="toggleCardFlip(card.id)">
+										<div class="mb-2">
+											<strong>Q: {{ card.question }}</strong>
+											<i class="fas fa-chevron-down ms-2 text-muted" v-if="!card.showAnswer"></i>
+											<i class="fas fa-chevron-up ms-2 text-muted" v-else></i>
+										</div>
+										<div v-if="card.showAnswer" class="answer-section p-3 bg-light rounded">
+											<strong>A:</strong> {{ card.answer }}
+											<div class="mt-3">
+												<p class="text-muted mb-2 small">How well did you know this?</p>
+												<button
+													class="btn btn-danger btn-sm me-2"
+													@click.stop="rateCard(card.id, 'hard')"
+												>
+													Hard (1 day)
+												</button>
+												<button
+													class="btn btn-warning btn-sm me-2"
+													@click.stop="rateCard(card.id, 'medium')"
+												>
+													Medium (3 days)
+												</button>
+												<button
+													class="btn btn-success btn-sm"
+													@click.stop="rateCard(card.id, 'easy')"
+												>
+													Easy (7 days)
+												</button>
+											</div>
+										</div>
+										<small class="text-muted d-block mt-2">
+											{{ card.nextReview <= new Date().toISOString().split('T')[0] ? 'Due for review' : 'Next review in ' + daysUntil(card.nextReview) + ' days' }}
 										</small>
 									</div>
-									<div class="d-flex align-items-center">
-										<span 
-											class="badge review-badge me-3" 
+									<div class="d-flex align-items-start ms-3">
+										<span
+											class="badge review-badge me-2"
 											:class="getBadgeClass(card.nextReview)"
 										>
 											{{ formatDate(card.nextReview) }}
 										</span>
-										<button 
-											class="btn btn-danger" 
+										<button
+											class="btn btn-danger btn-sm"
 											@click="deleteCard(card.id)"
 										>
-											<i class="fas fa-trash"></i> Delete
+											<i class="fas fa-trash"></i>
 										</button>
 									</div>
 								</div>
@@ -647,12 +677,16 @@ export default {
 			return this.flashcards.filter(card => card.nextReview > today)
 				.sort((a, b) => new Date(a.nextReview) - new Date(b.nextReview));
 		},
+		allCards() {
+			// All flashcards available for review anytime
+			return this.flashcards;
+		},
 		currentCard() {
-			return this.dueCards[this.currentCardIndex] || null;
+			return this.allCards[this.currentCardIndex] || null;
 		},
 		reviewProgress() {
-			if (this.dueCards.length === 0) return 0;
-			return ((this.currentCardIndex + 1) / this.dueCards.length) * 100;
+			if (this.allCards.length === 0) return 0;
+			return ((this.currentCardIndex + 1) / this.allCards.length) * 100;
 		}
 	},
 	methods: {
@@ -1016,16 +1050,17 @@ export default {
 				alert('Please fill in both question and answer');
 				return;
 			}
-			
+
 			const card = {
 				id: this.cardIdCounter++,
 				question: this.newCard.question,
 				answer: this.newCard.answer,
 				nextReview: new Date().toISOString().split('T')[0],
 				interval: 1,
-				flipped: false
+				flipped: false,
+				showAnswer: false
 			};
-			
+
 			this.flashcards.push(card);
 			this.newCard = { question: '', answer: '' };
 			this.showAddCard = false;
@@ -1061,7 +1096,11 @@ export default {
 			this.currentCardIndex = 0;
 			this.dueCards.forEach(card => card.flipped = false);
 		},
-		rateCard(card, difficulty) {
+		rateCard(cardOrId, difficulty) {
+			// Handle both card object (from review mode) and card ID (from list view)
+			const card = typeof cardOrId === 'object' ? cardOrId : this.flashcards.find(c => c.id === cardOrId);
+			if (!card) return;
+
 			let daysToAdd;
 			if (difficulty === 'hard') {
 				daysToAdd = 1;
@@ -1073,10 +1112,10 @@ export default {
 				daysToAdd = 7;
 				card.interval = Math.min(card.interval * 2, 30);
 			}
-			
+
 			const nextDate = new Date();
 			nextDate.setDate(nextDate.getDate() + daysToAdd);
-			
+
 			// Check if next review would be after exam date
 			if (this.examDate) {
 				const examDateTime = new Date(this.examDate).getTime();
@@ -1084,15 +1123,22 @@ export default {
 					nextDate.setTime(examDateTime);
 				}
 			}
-			
+
 			card.nextReview = nextDate.toISOString().split('T')[0];
 			card.flipped = false;
+			card.showAnswer = false; // Collapse the answer after rating
 			this.saveData();
 		},
 		deleteCard(id) {
 			if (confirm('Delete this flashcard?')) {
 				this.flashcards = this.flashcards.filter(c => c.id !== id);
 				this.saveData();
+			}
+		},
+		toggleCardFlip(cardId) {
+			const card = this.flashcards.find(c => c.id === cardId);
+			if (card) {
+				card.showAnswer = !card.showAnswer;
 			}
 		},
 		formatDate(dateStr) {
@@ -1636,6 +1682,33 @@ export default {
 	font-size: 0.9rem;
 	padding: 0.5rem 1rem;
 	border-radius: 20px;
+}
+
+.cursor-pointer {
+	cursor: pointer;
+}
+
+.flashcard-list-item {
+	transition: background-color 0.2s;
+}
+
+.flashcard-list-item:hover {
+	background-color: #f8f9fa;
+}
+
+.answer-section {
+	animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+	from {
+		opacity: 0;
+		transform: translateY(-10px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
 }
 
 .modal.show {
