@@ -1,5 +1,5 @@
 <script>
-import { BookOpen, Heart, Dumbbell, CheckCircle2, Clock, TrendingUp } from "lucide-vue-next";
+import { BookOpen, Heart, Dumbbell, CheckCircle2, Clock, TrendingUp, Flame, Activity, Utensils } from "lucide-vue-next";
 import { collection, addDoc, updateDoc, deleteDoc, doc, setDoc, query, where, onSnapshot, GeoPoint, getDocs } from 'firebase/firestore';
 import { db, auth } from '@/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -15,7 +15,10 @@ export default {
         Dumbbell,
         CheckCircle2,
         Clock,
-        TrendingUp
+        TrendingUp,
+        Flame,
+        Activity,
+        Utensils
     },
 
     data() {
@@ -103,6 +106,12 @@ export default {
                 synced: false,
                 gEventId: null
             },
+
+            // Meals and Workouts Data
+            meals: [],
+            workouts: [],
+            unsubscribeMeals: null,
+            unsubscribeWorkouts: null,
         };
     },
 
@@ -191,6 +200,24 @@ export default {
             const avgSleep = total / this.sleepData.length;
             return avgSleep.toFixed(1);
         },
+
+        totalsMeals() {
+            return {
+                kcal: this.meals.reduce((a, m) => a + (Number(m.kcal) || 0), 0),
+                protein: this.meals.reduce((a, m) => a + (Number(m.protein) || 0), 0),
+                carbs: this.meals.reduce((a, m) => a + (Number(m.carbs) || 0), 0),
+                fat: this.meals.reduce((a, m) => a + (Number(m.fat) || 0), 0)
+            };
+        },
+        totalsWorkouts() {
+            return {
+                minutes: this.workouts.reduce((a, w) => a + (Number(w.minutes) || 0), 0),
+                kcal: this.workouts.reduce((a, w) => a + (Number(w.kcal) || 0), 0)
+            };
+        },
+        netCalories() {
+            return this.totalsMeals.kcal - this.totalsWorkouts.kcal;
+        }
     },
 
     methods: {
@@ -680,12 +707,64 @@ export default {
             if (!querySnapshot.empty) {
                 const latestLog = querySnapshot.docs[0].data();
                 if (latestLog.sleepData) {
-                sleepData.value = latestLog.sleepData;
-                console.log("Fetched sleep log:", latestLog.sleepData);
+                    sleepData.value = latestLog.sleepData;
+                    console.log("Fetched sleep log:", latestLog.sleepData);
                 }
             }
         },
+
+        // Nutrition data
+        bindNutritionData() {
+            if (!this.userId) {
+                this.meals = [];
+                this.workouts = [];
+                if (this.unsubscribeMeals) {
+                    this.unsubscribeMeals();
+                }
+                if (this.unsubscribeWorkouts) {
+                    this.unsubscribeWorkouts();
+                }
+                return;
+            }
+
+            const today = new Date().toISOString().split('T')[0];
+
+            if (this.unsubscribeMeals) {
+                this.unsubscribeMeals();
+            }
+
+            const mealsQuery = query(
+                collection(db, 'meals'),
+                where('userId', '==', this.userId),
+                where('date', '==', today)
+            );
+
+            this.unsubscribeMeals = onSnapshot(mealsQuery, (snapshot) => {
+                this.meals = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
+            });
+
+            if (this.unsubscribeWorkouts) {
+                this.unsubscribeWorkouts();
+            }
+
+            const workoutsQuery = query(
+                collection(db, 'workouts'),
+                where('userId', '==', this.userId),
+                where('date', '==', today)
+            );
+
+            this.unsubscribeWorkouts = onSnapshot(workoutsQuery, (snapshot) => {
+                this.workouts = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
+            });
+        },
     },
+
     async mounted() {
         // Set up authentication listener
         onAuthStateChanged(auth, async (user) => {
@@ -697,6 +776,7 @@ export default {
                 await loadGoogleMaps();
                 await this.loadModuleProgress();
                 this.listenToEvents();
+                this.bindNutritionData();
                 await this.initGoogle();
             } else {
                 this.userId = null;
@@ -956,6 +1036,33 @@ export default {
                                 <i class="mdi mdi-school-outline" style="font-size: 3rem;"></i>
                                 <p class="mb-0 mt-2">No study topics yet</p>
                                 <small>Add topics in the Study Tools page to track your progress</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-12 col-md-6">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-body d-flex align-items-center justify-content-around">
+                            <div class="text-center">
+                                <Flame class="text-primary mb-2" :size="24" />
+                                <div class="fw-bold">{{ totalsMeals.kcal }}</div>
+                                <div class="small text-muted">Meals kcal</div>
+                            </div>
+                            <div class="text-center">
+                                <Activity class="text-success mb-2" :size="24" />
+                                <div class="fw-bold">{{ totalsWorkouts.minutes }}</div>
+                                <div class="small text-muted">Workout min</div>
+                            </div>
+                            <div class="text-center">
+                                <TrendingUp class="text-info mb-2" :size="24" />
+                                <div class="fw-bold">{{ totalsWorkouts.kcal }}</div>
+                                <div class="small text-muted">Burned kcal</div>
+                            </div>
+                            <div class="text-center">
+                                <Utensils class="text-dark mb-2" :size="24" />
+                                <div class="fw-bold">{{ netCalories }}</div>
+                                <div class="small text-muted">Net kcal</div>
                             </div>
                         </div>
                     </div>
