@@ -605,25 +605,6 @@
                 >
               </div>
             </div>
-            
-            <!-- <div class="mb-3" v-if="!editMode">
-              <label class="form-label">Event Priority</label>
-              <input 
-                  :disabled="!editMode" 
-                  type="text" 
-                  class="form-control"
-                  v-model="currentEvent.priority"
-              >
-            </div> -->
-
-            <!-- <div class="mb-3" v-if="editMode">
-              <label class="form-label">Event Priority</label>
-              <select class="form-select" v-model="currentEvent.priority">
-                <option value="High">High</option>
-                <option value="Medium">Medium</option>
-                <option value="Low">Low</option>
-              </select>
-            </div> -->
 
             <div class="row" v-if="!editMode">
               <div class="col-md-6 mb-3">
@@ -737,6 +718,19 @@
       </div>
     </div>
 
+    <div
+      ref="toast"
+      class="toast position-fixed bottom-0 start-50 translate-middle-x m-3"
+      role="alert"
+      aria-live="assertive"
+      aria-atomic="true"
+      data-bs-delay="3000"
+    >
+      <div class="toast-body">
+        {{ toastMessage }}
+      </div>
+    </div>
+
   </div>
 </template>
 
@@ -752,6 +746,7 @@ export default {
       calendarView: 'month',
       createDialog: false,
       eventDialog: false,
+      toastMessage: '',
       editMode: false,
       events: [],
       currentEvent: {
@@ -930,6 +925,13 @@ export default {
       }
       
       this.focus = date
+    },
+
+    showToast(message) {
+      this.toastMessage = message;
+      let toastEl = this.$refs.toast;
+      let toast = new bootstrap.Toast(toastEl);
+      toast.show();
     },
 
     // Toggle Recurring Event
@@ -1829,13 +1831,15 @@ export default {
         }
         
         if (this.editMode) {
-          this.closeEventDialog()
+          this.closeEventDialog();
         } else {
-          this.closeCreateDialog()
+          this.closeCreateDialog();
         }
-        this.editMode = false
+        this.editMode = false;
+        this.showToast(this.editMode ? 'Event Updated Successfully!' : 'Event Created Successfully');
       } catch (error) {
-        alert('Error Saving Event: ' + error.message)
+        alert('Error Saving Event: ' + error.message);
+        //this.showToast('Error Saving Event. Please Try Again.');
       }
     },
 
@@ -1988,7 +1992,7 @@ export default {
 
         const container = this.$refs.placeAutocompleteContainer
         if (container) {
-          container.innerHTML = ''
+          container.innerText = ''
           container.appendChild(this.placeAutocomplete)
         }
 
@@ -2543,4 +2547,17 @@ export default {
   color: white;
 }
 
+.toast {
+  background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+</style>
+
+<style>
+html, body {
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+}
 </style>
