@@ -23,6 +23,7 @@ export default {
         return {
             // Loading state
             isLoading: true,
+            userId: null,
 
             // Recommendations
             currentStatus: {
@@ -31,42 +32,45 @@ export default {
             },
             stressFactorsCount: 0,
             avgSleepQuality: 0,
+            studySessionsToday: 0,
+            totalStudyTimeToday: 0,
             suggestions: [],
 
+            // Module progress
             modules: [],
-            userId: null,
+
+            // Calendar sync
             syncEnabled: false,
             accessToken: null,
             syncInterval: null,
             events: [],
-            focus: new Date(),
-
-            // Study Sessions
-            studySessionsToday: 0,
-            totalStudyTimeToday: 0, // in minutes
 
             // Journal data
             journalHistory: [],
-            unsubscribeJournal: null,
 
             // Meals and workouts data
             meals: [],
             workouts: [],
+
+            // Firestore unsubscribe functions
+            unsubscribeJournal: null,
             unsubscribeMeals: null,
             unsubscribeWorkouts: null,
         };
     },
 
     computed: {
+        // Status card information
         statusList() {
             return [
                 { key: 'sessions', label: 'Study Sessions Today', value: this.studySessionsToday, subtext: `${this.formatStudyTime(this.totalStudyTimeToday)} focused time` },
                 { key: 'stress', label: 'Stress Level', value: this.currentStatus.stress, subtext: `${this.stressFactorsCount} stress factor${this.stressFactorsCount !== 1 ? 's' : ''} identified` },
-                { key: 'activity', label: 'Activity Minutes', value: `${this.totalsWorkouts.minutes} min`, subtext: `${this.totalsWorkouts.kcal} kcal burned` },
+                { key: 'activity', label: 'Activity Minutes', value: `${this.totalWorkouts.minutes} min`, subtext: `${this.totalWorkouts.kcal} kcal burned` },
                 { key: 'sleep', label: 'Sleep Quality', value: this.currentStatus.sleepQuality, subtext: `${this.avgSleepQuality} hrs average this week` }
             ];
         },
 
+        // All calendar events formatted for calendar display
         allEvents() {
             return this.events.map(event => {
                 const start = new Date(event.start)
@@ -84,6 +88,7 @@ export default {
             })
         },
 
+        // Events for current week grouped by day
         weekEvents() {
             const now = new Date()
             const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
@@ -150,7 +155,8 @@ export default {
             return Object.values(grouped).sort((a, b) => a.date - b.date)
         },
 
-        totalsMeals() {
+        // Total nutritional information of meals
+        totalMeals() {
             return {
                 kcal: this.meals.reduce((a, m) => a + (Number(m.kcal) || 0), 0),
                 protein: this.meals.reduce((a, m) => a + (Number(m.protein) || 0), 0),
@@ -158,20 +164,27 @@ export default {
                 fat: this.meals.reduce((a, m) => a + (Number(m.fat) || 0), 0)
             };
         },
-        totalsWorkouts() {
+
+        // Total workout statistics
+        totalWorkouts() {
             return {
                 minutes: this.workouts.reduce((a, w) => a + (Number(w.minutes) || 0), 0),
                 kcal: this.workouts.reduce((a, w) => a + (Number(w.kcal) || 0), 0)
             };
         },
+
+        // Net calories (meals - workouts)
         netCalories() {
-            return (this.totalsMeals.kcal || 0) - (this.totalsWorkouts.kcal || 0);
+            return (this.totalMeals.kcal || 0) - (this.totalWorkouts.kcal || 0);
         }
     },
 
     methods: {
+        // Load sleep and mood data
         async loadCurrentStatusFromFirestore() {
-            if (!this.userId) return;
+            if (!this.userId) {
+                return;
+            }
 
             try {
                 // Get stress level from latest mood log entry
@@ -181,12 +194,11 @@ export default {
                     orderBy('date', 'desc'),
                     limit(1)
                 );
+
                 const moodSnapshot = await getDocs(moodQuery);
                 let stressLevel = 'Unknown';
-
                 if (!moodSnapshot.empty) {
                     const mood = moodSnapshot.docs[0].data().mood;
-
                     const moodValue = Number(mood);
                     if (moodValue < 30) {
                         stressLevel = 'Low';
@@ -196,7 +208,6 @@ export default {
                         stressLevel = 'High';
                     }
                 }
-                console.log('Latest mood value:', moodSnapshot.empty ? 'No entries' : moodSnapshot.docs[0].data().mood);
 
                 // Get sleep quality from latest sleep log
                 const sleepQuery = query(
@@ -224,106 +235,7 @@ export default {
             }
         },
 
-        generateSuggestionsFromData() {
-            this.suggestions = [];
-            const suggestions = [];
-
-            // Study sessions
-            if (this.studySessionsToday === 0) {
-                suggestions.push({
-                    title: 'Start Your First Session',
-                    description: 'You haven\'t started studying yet today. Begin with a 25-minute Pomodoro session to build momentum.',
-                    icon: 'BookOpen'
-                });
-            } else if (this.studySessionsToday < 3) {
-                suggestions.push({
-                    title: 'Keep It Up',
-                    description: `You've had ${this.studySessionsToday} study session${this.studySessionsToday !== 1 ? 's' : ''}. Keep the momentum going with another focused session.`,
-                    icon: 'BookOpen'
-                });
-            }
-
-            // Break reminders
-            if (this.totalStudyTimeToday >= 240) {
-                suggestions.push({
-                    title: 'Take a Break',
-                    description: `You've been working for ${this.formatStudyTime(this.totalStudyTimeToday)}. Take a longer break to refresh.`,
-                    icon: 'BookOpen'
-                });
-            }
-
-            // Workout suggestions based on activity minutes
-            if (this.totalsWorkouts.minutes === 0) {
-                suggestions.push({
-                    title: 'Get Active',
-                    description: 'You haven\'t exercised today. Go for a 30 minute workout to boost your energy and burn some calories!',
-                    icon: 'Activity'
-                });
-            } else if (this.totalsWorkouts.minutes < 30) {
-                const remainingTime = 30 - this.totalsWorkouts.minutes;
-                suggestions.push({
-                    title: 'Quick Workout',
-                    description: `You need ${remainingTime} more minutes of exercise today. Go for a quick 5 - 10 minute session!`,
-                    icon: 'Activity'
-                });
-            } else if (this.totalsWorkouts.minutes >= 30) {
-                suggestions.push({
-                    title: 'Keep the Momentum',
-                    description: `Great job at keeping fit! You've exercised for ${this.totalsWorkouts.minutes} minutes.`,
-                    icon: 'Activity'
-                });
-            }
-
-            // Sleep quality
-            if (this.currentStatus.sleepQuality === 'Poor') {
-                suggestions.push({
-                    title: 'Improve Your Sleep',
-                    description: 'Your sleep quality was poor this week. Start by establishing a consistent bedtime routine.',
-                    icon: 'Clock'
-                });
-            } else if (this.currentStatus.sleepQuality === 'Fair') {
-                suggestions.push({
-                    title: 'Optimise Your Sleep',
-                    description: 'Your sleep was fair this week. You can improve it by reducing screen time before bed.',
-                    icon: 'Clock'
-                });
-            } else if (this.currentStatus.sleepQuality === 'Good') {
-                suggestions.push({
-                    title: 'Maintain Your Sleep Routine',
-                    description: 'Your sleep quality is excellent! Keep up your bedtime routine to maintain this positive trend.',
-                    icon: 'Clock'
-                });
-            }
-
-            // Stress management suggestions
-            if (this.currentStatus.stress === 'High') {
-                suggestions.push({
-                    title: 'Wind Down Routine',
-                    description: 'Your stress level is high. Consider a relaxing activity like meditation to help you unwind before bed.',
-                    icon: 'Heart'
-                });
-            } else {
-                suggestions.push({
-                    title: 'De-Stress Tips',
-                    description: 'To keep stress levels low, take short breaks during study sessions and talk to friends or family.',
-                    icon: 'Heart'
-                });
-            }
-
-            this.suggestions = suggestions;
-            console.log('Suggestions generated:', this.suggestions);
-        },
-
-        getStatusCardGradient(index) {
-            const gradients = [
-                'gradient-primary',
-                'gradient-wellness',
-                'gradient-energy',
-                'gradient-study'
-            ];
-            return gradients[index] || 'gradient-primary';
-        },
-
+        // Load stress factor count
         async loadStressFactorsCount() {
             if (!this.userId) return;
 
@@ -366,6 +278,7 @@ export default {
             }
         },
 
+        // Load average sleep quality
         async loadAverageSleepQuality() {
             if (!this.userId) {
                 return;
@@ -416,6 +329,172 @@ export default {
             }
         },
 
+        // Load study sessions 
+        async loadStudySessions() {
+            if (!this.userId) {
+                return;
+            }
+
+            try {
+                // Get today's date range (start and end of day)
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const todayEnd = new Date();
+                todayEnd.setHours(23, 59, 59, 999);
+
+                // Query study sessions from Firebase
+                const q = query(
+                    collection(db, 'studytimes'),
+                    where('userId', '==', this.userId)
+                );
+                const querySnapshot = await getDocs(q);
+
+                let sessionCount = 0;
+                let totalMinutes = 0;
+
+                querySnapshot.forEach((docSnap) => {
+                    const data = docSnap.data();
+
+                    // Convert Firebase Timestamp to Date
+                    const startTime = data.starttime?.toDate ? data.starttime.toDate() : new Date(data.starttime);
+
+                    // Check if session is from today
+                    if (startTime >= today && startTime <= todayEnd) {
+                        sessionCount++;
+
+                        // Calculate duration
+                        const endTime = data.endtime?.toDate ? data.endtime.toDate() : new Date(data.endtime);
+                        const durationMs = endTime - startTime;
+                        const durationMinutes = Math.round(durationMs / 60000);
+                        totalMinutes += durationMinutes;
+                    }
+                });
+
+                this.studySessionsToday = sessionCount;
+                this.totalStudyTimeToday = totalMinutes;
+
+                console.log(`Study sessions today: ${sessionCount}, Total time: ${totalMinutes} minutes`);
+            } catch (error) {
+                console.error('Error loading study sessions:', error);
+            }
+        },
+
+        // Generate suggestions based on user data
+        generateSuggestionsFromData() {
+            this.suggestions = [];
+            const suggestions = [];
+
+            // Study sessions
+            if (this.studySessionsToday === 0) {
+                suggestions.push({
+                    title: 'Start Your First Session',
+                    description: 'You haven\'t started studying yet today. Begin with a 25-minute Pomodoro session to build momentum.',
+                    icon: 'BookOpen'
+                });
+            } else if (this.studySessionsToday < 3) {
+                suggestions.push({
+                    title: 'Keep It Up',
+                    description: `You've had ${this.studySessionsToday} study session${this.studySessionsToday !== 1 ? 's' : ''}. Keep the momentum going with another focused session.`,
+                    icon: 'BookOpen'
+                });
+            }
+
+            // Break reminders
+            if (this.totalStudyTimeToday >= 240) {
+                suggestions.push({
+                    title: 'Take a Break',
+                    description: `You've been working for ${this.formatStudyTime(this.totalStudyTimeToday)}. Take a longer break to refresh.`,
+                    icon: 'BookOpen'
+                });
+            }
+
+            // Workout suggestions based on activity minutes
+            if (this.totalWorkouts.minutes === 0) {
+                suggestions.push({
+                    title: 'Get Active',
+                    description: 'You haven\'t exercised today. Go for a 30 minute workout to boost your energy and burn some calories!',
+                    icon: 'Activity'
+                });
+            } else if (this.totalWorkouts.minutes < 30) {
+                const remainingTime = 30 - this.totalWorkouts.minutes;
+                suggestions.push({
+                    title: 'Quick Workout',
+                    description: `You need ${remainingTime} more minutes of exercise today. Go for a quick 5 - 10 minute session!`,
+                    icon: 'Activity'
+                });
+            } else if (this.totalWorkouts.minutes >= 30) {
+                suggestions.push({
+                    title: 'Keep the Momentum',
+                    description: `Great job at keeping fit! You've exercised for ${this.totalWorkouts.minutes} minutes.`,
+                    icon: 'Activity'
+                });
+            }
+
+            // Sleep quality
+            if (this.currentStatus.sleepQuality === 'Poor') {
+                suggestions.push({
+                    title: 'Improve Your Sleep',
+                    description: 'Your sleep quality was poor this week. Start by establishing a consistent bedtime routine.',
+                    icon: 'Clock'
+                });
+            } else if (this.currentStatus.sleepQuality === 'Fair') {
+                suggestions.push({
+                    title: 'Optimise Your Sleep',
+                    description: 'Your sleep was fair this week. You can improve it by reducing screen time before bed.',
+                    icon: 'Clock'
+                });
+            } else if (this.currentStatus.sleepQuality === 'Good') {
+                suggestions.push({
+                    title: 'Maintain Your Sleep Routine',
+                    description: 'Your sleep quality is excellent! Keep up your bedtime routine to maintain this positive trend.',
+                    icon: 'Clock'
+                });
+            }
+
+            // Stress management suggestions
+            if (this.currentStatus.stress === 'High') {
+                suggestions.push({
+                    title: 'Wind Down Routine',
+                    description: 'Your stress level is high. Consider a relaxing activity like meditation to help you unwind before bed.',
+                    icon: 'Heart'
+                });
+            } else {
+                suggestions.push({
+                    title: 'De-Stress Tips',
+                    description: 'To keep stress levels low, take short breaks during study sessions and talk to friends or family.',
+                    icon: 'Heart'
+                });
+            }
+
+            this.suggestions = suggestions;
+            console.log('Suggestions generated:', this.suggestions);
+        },
+
+        // Get gradient class for status cards
+        getStatusCardGradient(index) {
+            const gradients = [
+                'gradient-primary',
+                'gradient-wellness',
+                'gradient-energy',
+                'gradient-study'
+            ];
+            return gradients[index] || 'gradient-primary';
+        },
+
+        // Format study time from minutes to hours and minutes
+        formatStudyTime(minutes) {
+            if (minutes < 60) {
+                return `${minutes} min${minutes !== 1 ? 's' : ''}`;
+            }
+            const hours = Math.floor(minutes / 60);
+            const mins = minutes % 60;
+            if (mins === 0) {
+                return `${hours} hour${hours !== 1 ? 's' : ''}`;
+            }
+            return `${hours} hour${hours !== 1 ? 's' : ''} ${mins} min${mins !== 1 ? 's' : ''}`;
+        },
+
+        // Load module progress
         async loadModuleProgress() {
             if (!this.userId) {
                 return;
@@ -465,67 +544,6 @@ export default {
             } catch (error) {
                 console.error('Error loading module progress:', error);
             }
-        },
-
-        async loadTodayStudySessions() {
-            if (!this.userId) {
-                return;
-            }
-
-            try {
-                // Get today's date range (start and end of day)
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-                const todayEnd = new Date();
-                todayEnd.setHours(23, 59, 59, 999);
-
-                // Query study sessions from Firebase
-                const q = query(
-                    collection(db, 'studytimes'),
-                    where('userId', '==', this.userId)
-                );
-                const querySnapshot = await getDocs(q);
-
-                let sessionCount = 0;
-                let totalMinutes = 0;
-
-                querySnapshot.forEach((docSnap) => {
-                    const data = docSnap.data();
-
-                    // Convert Firebase Timestamp to Date
-                    const startTime = data.starttime?.toDate ? data.starttime.toDate() : new Date(data.starttime);
-
-                    // Check if session is from today
-                    if (startTime >= today && startTime <= todayEnd) {
-                        sessionCount++;
-
-                        // Calculate duration
-                        const endTime = data.endtime?.toDate ? data.endtime.toDate() : new Date(data.endtime);
-                        const durationMs = endTime - startTime;
-                        const durationMinutes = Math.round(durationMs / 60000);
-                        totalMinutes += durationMinutes;
-                    }
-                });
-
-                this.studySessionsToday = sessionCount;
-                this.totalStudyTimeToday = totalMinutes;
-
-                console.log(`Study sessions today: ${sessionCount}, Total time: ${totalMinutes} minutes`);
-            } catch (error) {
-                console.error('Error loading study sessions:', error);
-            }
-        },
-
-        formatStudyTime(minutes) {
-            if (minutes < 60) {
-                return `${minutes} min${minutes !== 1 ? 's' : ''}`;
-            }
-            const hours = Math.floor(minutes / 60);
-            const mins = minutes % 60;
-            if (mins === 0) {
-                return `${hours} hour${hours !== 1 ? 's' : ''}`;
-            }
-            return `${hours} hour${hours !== 1 ? 's' : ''} ${mins} min${mins !== 1 ? 's' : ''}`;
         },
 
         // Google Calendar Toggle Handler
@@ -598,7 +616,7 @@ export default {
 
             this.syncInterval = setInterval(() => {
                 this.syncWithGoogle()
-            }, 1 * 60 * 1000)
+            }, 60000)
         },
 
         async initGoogle() {
@@ -928,6 +946,7 @@ export default {
             });
         },
 
+        // Get contrasting text color for mood badge
         getContrastColor(hexColor) {
             // Convert HEX to RGB
             const color = hexColor.replace('#', '')
@@ -942,6 +961,7 @@ export default {
             return brightness > 128 ? '#000000' : '#ffffff'
         },
 
+        // Journal entries subscription
         async subscribeToJournalEntries() {
             if (!this.userId) {
                 this.journalHistory = [];
@@ -979,6 +999,7 @@ export default {
             }
         },
 
+        // Get mood color class for mood badge
         getMoodColorClass(moodLabel) {
             const moodColors = {
                 'Great': 'bg-success',
@@ -988,6 +1009,7 @@ export default {
             return moodColors[moodLabel] || 'bg-secondary';
         },
 
+        // Get mood icon for journal entry
         getMoodIcon(moodLabel) {
             const moodIcons = {
                 'Great': '😊',
@@ -1051,6 +1073,7 @@ export default {
             }
         },
 
+        // Cleanup all listeners and data
         cleanupAllListeners() {
             this.userId = null;
 
@@ -1059,20 +1082,12 @@ export default {
                 this.syncInterval = null;
             }
 
-            if (this.unsubscribeJournal) {
-                this.unsubscribeJournal();
-                this.unsubscribeJournal = null;
-            }
-
-            if (this.unsubscribeMeals) {
-                this.unsubscribeMeals();
-                this.unsubscribeMeals = null;
-            }
-
-            if (this.unsubscribeWorkouts) {
-                this.unsubscribeWorkouts();
-                this.unsubscribeWorkouts = null;
-            }
+            ['unsubscribeJournal', 'unsubscribeMeals', 'unsubscribeWorkouts'].forEach(key => {
+                if (this[key]) {
+                    this[key]();
+                    this[key] = null;
+                }
+            });
 
             this.journalHistory = [];
             this.meals = [];
@@ -1099,7 +1114,7 @@ export default {
                 await this.loadAverageSleepQuality();
 
                 // Load today's study sessions from Firebase
-                await this.loadTodayStudySessions();
+                await this.loadStudySessions();
 
                 // Load nutrition data from Firebase
                 await this.bindNutritionData();
@@ -1152,7 +1167,7 @@ export default {
 <template>
     <div class="min-vh-100 container-color">
         <!-- Loading in progress -->
-        <div v-if="isLoading" class="d-flex align-items-center justify-content-center min-vh-100">
+        <div v-if="isLoading" class="loading-state d-flex align-items-center justify-content-center min-vh-100">
             <div class="text-center">
                 <div class="spinner-border spinner-text mb-3" role="status"></div>
                 <p class="spinner-text">Preparing your dashboard...</p>
@@ -1213,7 +1228,7 @@ export default {
                                 </div>
 
                                 <!-- Description -->
-                                <p class="mb-0 text-secondary">{{ suggestion.description }}</p>
+                                <p class="mb-0">{{ suggestion.description }}</p>
                             </div>
                         </div>
                     </div>
@@ -1238,8 +1253,8 @@ export default {
                                     </h5>
 
                                     <div class="ios-switch-container">
-                                        <input type="checkbox" id="weekGoogleSync" class="ios-switch-input"
-                                            v-model="syncEnabled" @change="toggleSync">
+                                        <input type="checkbox" v-model="syncEnabled" id="weekGoogleSync"
+                                            class="ios-switch-input" @change="toggleSync">
                                         <label class="ios-switch-label" for="weekGoogleSync">
                                             <span class="ios-switch-slider"></span>
                                         </label>
@@ -1340,7 +1355,7 @@ export default {
                                     <div v-for="m in modules" :key="m.name">
                                         <div class="d-flex justify-content-between mb-1">
                                             <span class="small fw-semibold">{{ m.name }}</span>
-                                            <span class="small text-secondary">{{ m.progress }}% ({{ m.completed }}/{{
+                                            <span class="small">{{ m.progress }}% ({{ m.completed }}/{{
                                                 m.total }})</span>
                                         </div>
                                         <div class="progress" style="height: 8px;">
@@ -1389,7 +1404,7 @@ export default {
                                             </span>
                                         </div>
 
-                                        <p class="mb-0 text-secondary" style="font-size: 0.95rem; line-height: 1.4;">
+                                        <p class="mb-0" style="font-size: 0.95rem; line-height: 1.4;">
                                             {{ entry.text.length > 100 ? entry.text.substring(0, 100) + '...' :
                                                 entry.text
                                             }}
@@ -1412,17 +1427,17 @@ export default {
                             <div class="card-body d-flex align-items-center justify-content-around">
                                 <div class="text-center">
                                     <Flame class="text-primary mb-2" :size="24" />
-                                    <div class="fw-bold">{{ totalsMeals.kcal }}</div>
+                                    <div class="fw-bold">{{ totalMeals.kcal }}</div>
                                     <div class="small">Meals kcal</div>
                                 </div>
                                 <div class="text-center">
                                     <Activity class="text-success mb-2" :size="24" />
-                                    <div class="fw-bold">{{ totalsWorkouts.minutes }}</div>
+                                    <div class="fw-bold">{{ totalWorkouts.minutes }}</div>
                                     <div class="small">Workout min</div>
                                 </div>
                                 <div class="text-center">
                                     <TrendingUp class="text-info mb-2" :size="24" />
-                                    <div class="fw-bold">{{ totalsWorkouts.kcal }}</div>
+                                    <div class="fw-bold">{{ totalWorkouts.kcal }}</div>
                                     <div class="small">Burned kcal</div>
                                 </div>
                                 <div class="text-center">
@@ -1441,14 +1456,6 @@ export default {
 
 
 <style scoped>
-.container {
-    color: black !important;
-}
-
-.card * {
-    color: black !important;
-}
-
 /* Cards */
 .card {
     border-radius: 0.75rem;
@@ -1468,6 +1475,7 @@ export default {
     text-transform: capitalize;
 }
 
+/* Container Background */
 .container-color {
     background: linear-gradient(135deg, #e5e5f2 0%, #d8d6f0 100%);
 }
@@ -1503,16 +1511,6 @@ export default {
 
 .gradient-study {
     background: linear-gradient(135deg, #fff3cc 0%, #fff9e6 100%);
-}
-
-/* Stat Cards */
-.stat-card {
-    border: 0;
-}
-
-/* Stat Card Body */
-.stat-card .card-body {
-    padding: 1rem 1.25rem;
 }
 
 /* Event Cards*/
@@ -1574,10 +1572,7 @@ export default {
 /* Switch Track (background) */
 .ios-switch-slider {
     position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    inset: 0;
     background-color: #e0e0e0;
     border-radius: 24px;
     transition: all 0.3s ease;
@@ -1702,18 +1697,14 @@ export default {
     outline-offset: 2px;
 }
 
-/* Loading Spinner */
-.min-vh-100 {
-    min-height: 100vh;
-}
-
+/* Spinner styling */
 .spinner-border {
     width: 3rem;
     height: 3rem;
 }
 
 /* Fade in animation after load */
-[v-if] {
+.loading-state {
     animation: fadeIn 0.3s ease-in;
 }
 
