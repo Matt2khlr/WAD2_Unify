@@ -108,27 +108,27 @@ export default {
             thisWeekEvents.forEach(event => {
                 const eventStart = new Date(event.start)
                 const eventEnd = new Date(event.end)
-                
+
                 // Group Ongoing Events under Today
                 let displayDate = eventStart >= today ? eventStart : today
-                
+
                 if (displayDate <= endOfWeek) {
-                const dateKey = displayDate.toDateString()
+                    const dateKey = displayDate.toDateString()
 
-                if (!grouped[dateKey]) {
-                    grouped[dateKey] = {
-                    date: displayDate,
-                    dayLabel: this.formatDayLabel(displayDate),
-                    events: []
+                    if (!grouped[dateKey]) {
+                        grouped[dateKey] = {
+                            date: displayDate,
+                            dayLabel: this.formatDayLabel(displayDate),
+                            events: []
+                        }
                     }
-                }
 
-                const eventWithStatus = {
-                    ...event,
-                    isOngoing: eventStart < today && eventEnd >= today
-                }
+                    const eventWithStatus = {
+                        ...event,
+                        isOngoing: eventStart < today && eventEnd >= today
+                    }
 
-                grouped[dateKey].events.push(eventWithStatus)
+                    grouped[dateKey].events.push(eventWithStatus)
                 }
             })
 
@@ -137,18 +137,18 @@ export default {
 
             Object.values(grouped).forEach(dayGroup => {
                 dayGroup.events.sort((a, b) => {
-                if (a.isOngoing && !b.isOngoing) return -1
-                if (!a.isOngoing && b.isOngoing) return 1
-                
-                const timeCompare = new Date(a.start) - new Date(b.start)
-                if (timeCompare !== 0) return timeCompare
-                return priorityOrder[a.priority] - priorityOrder[b.priority]
+                    if (a.isOngoing && !b.isOngoing) return -1
+                    if (!a.isOngoing && b.isOngoing) return 1
+
+                    const timeCompare = new Date(a.start) - new Date(b.start)
+                    if (timeCompare !== 0) return timeCompare
+                    return priorityOrder[a.priority] - priorityOrder[b.priority]
                 })
             })
 
             // Convert to Array & Sort by Date
             return Object.values(grouped).sort((a, b) => a.date - b.date)
-            },
+        },
 
         totalsMeals() {
             return {
@@ -165,7 +165,7 @@ export default {
             };
         },
         netCalories() {
-            return this.totalsMeals.kcal - this.totalsWorkouts.kcal;
+            return (this.totalsMeals.kcal || 0) - (this.totalsWorkouts.kcal || 0);
         }
     },
 
@@ -322,16 +322,6 @@ export default {
                 'gradient-study'
             ];
             return gradients[index] || 'gradient-primary';
-        },
-
-        getSuggestionIcon(iconName) {
-            const iconMap = {
-                'BookOpen': BookOpen,
-                'Heart': Heart,
-                'Activity': Activity,
-                'Clock': Clock,
-            };
-            return iconMap[iconName] || BookOpen;
         },
 
         async loadStressFactorsCount() {
@@ -874,11 +864,14 @@ export default {
 
         // Open Google Maps
         openMap(event) {
-            if (!event.location) return
-
-            const lat = event.location.latitude
-            const lng = event.location.longitude
-            window.open(`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`, '_blank');
+            if (event.location) {
+                const lat = event.location.latitude
+                const lng = event.location.longitude
+                window.open(`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`, '_blank');
+            } else if (event.locationName) {
+                const encodedAddress = encodeURIComponent(event.locationName);
+                window.open(`https://www.google.com/maps/search/?api=1&query=${encodedAddress}`, '_blank');
+            }
         },
 
         // Format Event Date
@@ -1126,7 +1119,6 @@ export default {
             } else {
                 this.userId = null;
                 this.modules = [];
-                this.tasks = [];
                 this.suggestions = [];
                 this.stressFactorsCount = 0;
                 this.avgSleepQuality = 0;
@@ -1152,18 +1144,7 @@ export default {
         if (this.syncInterval) {
             clearInterval(this.syncInterval);
         }
-        if (this.unsubscribeJournal) {
-            this.unsubscribeJournal();
-            this.unsubscribeJournal = null;
-        }
-        if (this.unsubscribeMeals) {
-            this.unsubscribeMeals();
-            this.unsubscribeMeals = null;
-        }
-        if (this.unsubscribeWorkouts) {
-            this.unsubscribeWorkouts();
-            this.unsubscribeWorkouts = null;
-        }
+        this.cleanupAllListeners();
     }
 }
 </script>
@@ -1207,9 +1188,9 @@ export default {
                                     <Clock v-else-if="status.key === 'sleep'" :size="24" />
                                 </div>
                                 <div>
-                                    <div class="small text-muted">{{ status.label }}</div>
+                                    <div class="small">{{ status.label }}</div>
                                     <div class="fs-5 fw-semibold mt-1">{{ status.value }}</div>
-                                    <div class="small text-muted">{{ status.subtext }}</div>
+                                    <div class="small">{{ status.subtext }}</div>
                                 </div>
                             </div>
                         </div>
@@ -1262,8 +1243,7 @@ export default {
                                         <label class="ios-switch-label" for="weekGoogleSync">
                                             <span class="ios-switch-slider"></span>
                                         </label>
-                                        <label class="small text-muted ms-2" for="weekGoogleSync"
-                                            style="cursor: pointer;">
+                                        <label class="small ms-2" for="weekGoogleSync" style="cursor: pointer;">
                                             <i class="mdi mdi-google"></i>
                                         </label>
                                     </div>
@@ -1338,9 +1318,9 @@ export default {
 
                                     <!-- Empty State -->
                                     <div v-else class="text-center py-5">
-                                        <i class="mdi mdi-calendar-blank-outline text-muted"
+                                        <i class="mdi mdi-calendar-blank-outline "
                                             style="font-size: 3rem; opacity: 0.3;"></i>
-                                        <p class="text-muted mt-2 mb-0">No Upcoming Events This Week</p>
+                                        <p class="mt-2 mb-0">No Upcoming Events This Week</p>
                                     </div>
                                 </div>
                             </div>
@@ -1370,7 +1350,7 @@ export default {
                                         </div>
                                     </div>
                                 </div>
-                                <div v-else class="text-center text-muted py-4">
+                                <div v-else class="text-center py-4">
                                     <i class="mdi mdi-school-outline" style="font-size: 3rem;"></i>
                                     <p class="mb-0 mt-2">No study topics yet</p>
                                     <small>Add topics in the Study Tools page to track your progress</small>
@@ -1380,13 +1360,13 @@ export default {
                     </div>
 
                     <div class="col-12 col-lg-6">
-                        <div class="card  h-100">
+                        <div class="card h-100">
                             <div class="card-body d-flex flex-column">
                                 <h5 class="mb-3 fw-semibold d-flex align-items-center gap-2">
                                     <i class="mdi mdi-book-open-variant"></i> Recent Journal Entries
                                 </h5>
 
-                                <div v-if="!userId" class="text-center text-muted py-4">
+                                <div v-if="!userId" class="text-center py-4">
                                     <i class="mdi mdi-lock-outline" style="font-size: 2rem; opacity: 0.3;"></i>
                                     <p class="mt-2 mb-0">Log in to load your journal history.</p>
                                 </div>
@@ -1397,9 +1377,9 @@ export default {
                                         style="border-color: #e0e0e0; background: #fafafa;">
 
                                         <div class="d-flex align-items-center justify-content-between mb-2">
-                                            <span class="small text-muted fw-semibold">
+                                            <span class="small fw-semibold">
                                                 <span v-if="entry.mood" class="me-2">{{ getMoodIcon(entry.mood)
-                                                }}</span>
+                                                    }}</span>
                                                 {{ entry.date }}
                                             </span>
                                             <span v-if="entry.mood" class="badge rounded-pill"
@@ -1418,7 +1398,7 @@ export default {
                                 </div>
 
                                 <div v-else
-                                    class="text-center text-muted py-4 flex-grow-1 d-flex flex-column justify-content-center">
+                                    class="text-center py-4 flex-grow-1 d-flex flex-column justify-content-center">
                                     <i class="mdi mdi-feather" style="font-size: 2rem; opacity: 0.3;"></i>
                                     <p class="mb-0 mt-2">No journal entries yet.</p>
                                     <small>Visit the Journal page to start writing!</small>
@@ -1433,22 +1413,22 @@ export default {
                                 <div class="text-center">
                                     <Flame class="text-primary mb-2" :size="24" />
                                     <div class="fw-bold">{{ totalsMeals.kcal }}</div>
-                                    <div class="small text-muted">Meals kcal</div>
+                                    <div class="small">Meals kcal</div>
                                 </div>
                                 <div class="text-center">
                                     <Activity class="text-success mb-2" :size="24" />
                                     <div class="fw-bold">{{ totalsWorkouts.minutes }}</div>
-                                    <div class="small text-muted">Workout min</div>
+                                    <div class="small">Workout min</div>
                                 </div>
                                 <div class="text-center">
                                     <TrendingUp class="text-info mb-2" :size="24" />
                                     <div class="fw-bold">{{ totalsWorkouts.kcal }}</div>
-                                    <div class="small text-muted">Burned kcal</div>
+                                    <div class="small">Burned kcal</div>
                                 </div>
                                 <div class="text-center">
                                     <Utensils class="text-dark mb-2" :size="24" />
                                     <div class="fw-bold">{{ netCalories }}</div>
-                                    <div class="small text-muted">Net kcal</div>
+                                    <div class="small">Net kcal</div>
                                 </div>
                             </div>
                         </div>
