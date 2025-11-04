@@ -95,28 +95,41 @@ export default {
             endOfWeek.setDate(today.getDate() + daysUntilSunday)
             endOfWeek.setHours(23, 59, 59, 999)
 
-            // Filter Events for Current Week
+            // Filter Events for Current Week (Including Ongoing Events)
             const thisWeekEvents = this.events.filter(event => {
-                const eventDate = new Date(event.start)
-                return eventDate >= today && eventDate <= endOfWeek
+                const eventStart = new Date(event.start)
+                const eventEnd = new Date(event.end)
+                return eventEnd >= today && eventStart <= endOfWeek
             })
 
             // Group Events by Day
             const grouped = {}
 
             thisWeekEvents.forEach(event => {
-                const eventDate = new Date(event.start)
-                const dateKey = eventDate.toDateString()
+                const eventStart = new Date(event.start)
+                const eventEnd = new Date(event.end)
+                
+                // Group Ongoing Events under Today
+                let displayDate = eventStart >= today ? eventStart : today
+                
+                if (displayDate <= endOfWeek) {
+                const dateKey = displayDate.toDateString()
 
                 if (!grouped[dateKey]) {
                     grouped[dateKey] = {
-                        date: eventDate,
-                        dayLabel: this.formatDayLabel(eventDate),
-                        events: []
+                    date: displayDate,
+                    dayLabel: this.formatDayLabel(displayDate),
+                    events: []
                     }
                 }
 
-                grouped[dateKey].events.push(event)
+                const eventWithStatus = {
+                    ...event,
+                    isOngoing: eventStart < today && eventEnd >= today
+                }
+
+                grouped[dateKey].events.push(eventWithStatus)
+                }
             })
 
             // Sort Events by Time and Priority
@@ -124,15 +137,18 @@ export default {
 
             Object.values(grouped).forEach(dayGroup => {
                 dayGroup.events.sort((a, b) => {
-                    const timeCompare = new Date(a.start) - new Date(b.start)
-                    if (timeCompare !== 0) return timeCompare
-                    return priorityOrder[a.priority] - priorityOrder[b.priority]
+                if (a.isOngoing && !b.isOngoing) return -1
+                if (!a.isOngoing && b.isOngoing) return 1
+                
+                const timeCompare = new Date(a.start) - new Date(b.start)
+                if (timeCompare !== 0) return timeCompare
+                return priorityOrder[a.priority] - priorityOrder[b.priority]
                 })
             })
 
             // Convert to Array & Sort by Date
             return Object.values(grouped).sort((a, b) => a.date - b.date)
-        },
+            },
 
         totalsMeals() {
             return {
