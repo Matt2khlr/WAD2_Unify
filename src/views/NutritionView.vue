@@ -423,13 +423,19 @@
     <section class="container py-3">
         <div class="d-flex align-items-center justify-content-between mb-3">
             <h1 class="h4 mb-0 fw-bold text-gradient">Fuel &amp; Move</h1>
-            <div class="d-flex align-items-center gap-2 bg-light rounded-3 px-2 py-1 border">
-                <button class="btn btn-sm btn-link text-decoration-none" @click="changeDate(-1)"><ChevronLeft :size="18" /></button>
+            <div class="nav-btn-group d-flex align-items-center">
+                <button class="btn btn-sm nav-btn" @click="changeDate(-1)">
+                    <ChevronLeft :size="18" />
+                </button>
+                
                 <div class="d-flex align-items-center gap-2 px-2">
                     <Calendar :size="16" class="text-secondary" />
                     <span class="fw-semibold small">{{ fmtDate(selectedDate) }}</span>
                 </div>
-                <button class="btn btn-sm btn-link text-decoration-none" @click="changeDate(1)"><ChevronRight :size="18" /></button>
+                
+                <button class="btn btn-sm nav-btn" @click="changeDate(1)">
+                    <ChevronRight :size="18" />
+                </button>
             </div>
         </div>
 
@@ -654,7 +660,7 @@
                         ({{ workoutForm.intensity }}) for <span class="fw-semibold">{{ previewMinutes || 0 }} min</span> ≈
                         <span class="fw-bold text-success">{{ previewKcal }} kcal</span>
                     </div>
-                    <button class="btn btn-success rounded-pill ms-auto" :disabled="!workoutForm.activity || !(previewMinutes || hasOverride)" @click="addWorkout">
+                    <button class="btn save-button ms-auto" :disabled="!workoutForm.activity || !(previewMinutes || hasOverride)" @click="addWorkout">
                         <Plus :size="16" class="me-1" /> Add
                     </button>
                 </div>
@@ -709,200 +715,224 @@
 </template>
 
 <style scoped>
-    /* :global(body) {
-        background: linear-gradient(135deg, #ebebf5 0%, #e0def5 100%);
-        background: linear-gradient(135deg, #e5e5f2 0%, #d8d6f0 100%);
-    } */
+/* :global(body) {
+    background: linear-gradient(135deg, #ebebf5 0%, #e0def5 100%);
+    background: linear-gradient(135deg, #e5e5f2 0%, #d8d6f0 100%);
+} */
 
-    .toast {
-        background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
-        color: #fff;
-    }
+.toast {
+    background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
+    color: #fff;
+}
 
-    .text-gradient {
-        background: linear-gradient(90deg, var(--bs-primary), #6c63ff);
-        -webkit-background-clip: text;
-        background-clip: text;
-        color: transparent;
-    }
+.text-gradient {
+    background: linear-gradient(90deg, var(--bs-primary), #6c63ff);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
 
-    /* Cards */
-    .card {
-        border-radius: 0.75rem;
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
-        background-color: #f5f5f5;
-    }
+/* Cards */
+.card {
+    border-radius: 0.75rem;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+    background-color: #f5f5f5;
+}
 
-    /* Card Hover Effect */
-    .card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.05);
-    }
+/* Card Hover Effect */
+.card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.05);
+}
 
-    input, li {
-        border: 1px solid black;
-    }
-    
-    /* CSS for Toggle Switch */
-    /* iOS Toggle Switch Container */
-    .ios-switch-container {
-        display: flex;
-        align-items: center;
-        margin-bottom: 0;
-    }
+input, li {
+    border: 1px solid black;
+}
 
-    /* Hide default checkbox */
-    .ios-switch-input {
-        display: none;
-    }
+/* CSS for Toggle Switch */
+/* iOS Toggle Switch Container */
+.ios-switch-container {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0;
+}
 
-    /* Switch Label/Track */
-    .ios-switch-label {
-        position: relative;
-        display: inline-block;
-        width: 42px;
-        height: 24px;
-        cursor: pointer;
-        margin: 0;
-    }
+/* Hide default checkbox */
+.ios-switch-input {
+    display: none;
+}
 
-    /* Switch Track (background) */
-    .ios-switch-slider {
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background-color: #e0e0e0;
-        border-radius: 24px;
-        transition: all 0.3s ease;
-        box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
-    }
+/* Switch Label/Track */
+.ios-switch-label {
+    position: relative;
+    display: inline-block;
+    width: 42px;
+    height: 24px;
+    cursor: pointer;
+    margin: 0;
+}
 
-    /* Switch Knob */
-    .ios-switch-slider::before {
-        content: '';
-        position: absolute;
-        height: 20px;
-        width: 20px;
-        left: 2px;
-        bottom: 2px;
-        background-color: white;
-        border-radius: 50%;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-    }
+/* Switch Track (background) */
+.ios-switch-slider {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #e0e0e0;
+    border-radius: 24px;
+    transition: all 0.3s ease;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+}
 
-    /* Checked State - Gradient Background */
-    .ios-switch-input:checked+.ios-switch-label .ios-switch-slider {
-        background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
-        box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
-    }
+/* Switch Knob */
+.ios-switch-slider::before {
+    content: '';
+    position: absolute;
+    height: 20px;
+    width: 20px;
+    left: 2px;
+    bottom: 2px;
+    background-color: white;
+    border-radius: 50%;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
 
-    /* Checked State - Move Knob */
-    .ios-switch-input:checked+.ios-switch-label .ios-switch-slider::before {
-        transform: translateX(18px);
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-    }
+/* Checked State - Gradient Background */
+.ios-switch-input:checked+.ios-switch-label .ios-switch-slider {
+    background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+}
 
-    /* Hover Effect */
-    .ios-switch-label:hover .ios-switch-slider {
-        box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
-    }
+/* Checked State - Move Knob */
+.ios-switch-input:checked+.ios-switch-label .ios-switch-slider::before {
+    transform: translateX(18px);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
 
-    /* Active/Pressed Effect */
-    .ios-switch-input:active+.ios-switch-label .ios-switch-slider::before {
-        width: 24px;
-    }
+/* Hover Effect */
+.ios-switch-label:hover .ios-switch-slider {
+    box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+}
 
-    /* Focus State */
-    .ios-switch-input:focus+.ios-switch-label .ios-switch-slider {
-        outline: 2px solid #667eea;
-        outline-offset: 2px;
-    }
+/* Active/Pressed Effect */
+.ios-switch-input:active+.ios-switch-label .ios-switch-slider::before {
+    width: 24px;
+}
 
-    /* Disabled State */
-    .ios-switch-input:disabled+.ios-switch-label {
-        opacity: 0.5;
-        cursor: not-allowed;
-    }
+/* Focus State */
+.ios-switch-input:focus+.ios-switch-label .ios-switch-slider {
+    outline: 2px solid #667eea;
+    outline-offset: 2px;
+}
 
-    /* Modal Styling */
-    .modal-header {
-        background: #667eea;
-        color: white;
-    }
-    
-    .modal input {
-        border: 1px solid black;
-        border-radius: 3px;
-        height: 50px;
-    }
-    
-    .modal textarea {
-        border: 1px solid black;
-        border-radius: 3px;
-    }
-    
-    .modal select {
-        border: 1px solid black;
-        border-radius: 3px;
-        height: 50px;
-    }
-    
-    .save-button {
-        background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border-radius: 20px;
-        transition: all 0.3s ease;
-    }
-    
-    .save-button:hover {
-        background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-        border: 1px solid lightgray;
-        box-shadow: 0 8px 16px rgba(102, 126, 234, 0.4);
-        transform: translateY(-3px);
-        transition: all 0.3s ease;
-    }
-    
-    .cancel-button {
-        background: linear-gradient(120deg, #ff6b6b 0%, #ee5a6f 100%);
-        color: white;
-        border-radius: 20px;
-        transition: all 0.3s ease;
-    }
-    
-    .cancel-button:hover {
-        background: linear-gradient(120deg, #ff6b6b 0%, #ee5a6f 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-        border: 1px solid lightgray;
-        box-shadow: 0 8px 16px rgba(102, 126, 234, 0.4);
-        transform: translateY(-3px);
-        transition: all 0.3s ease;
-    }
-    
-    .close-button {
-        background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
-        border: 1px solid black;
-        border-radius: 3px;
-        color: white;
-        transition: all 0.3s ease;
-    }
-    
-    .close-button:hover {
-        background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-        border: 1px solid black;
-        box-shadow: 0 8px 16px rgba(102, 126, 234, 0.4);
-        transform: translateY(-3px);
-        transition: all 0.3s ease;
-    }
+/* Disabled State */
+.ios-switch-input:disabled+.ios-switch-label {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Modal Styling */
+.modal-header {
+    background: #667eea;
+    color: white;
+}
+
+.modal input {
+    border: 1px solid black;
+    border-radius: 3px;
+    height: 50px;
+}
+
+.modal textarea {
+    border: 1px solid black;
+    border-radius: 3px;
+}
+
+.modal select {
+    border: 1px solid black;
+    border-radius: 3px;
+    height: 50px;
+}
+
+.save-button {
+    background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 20px;
+    transition: all 0.3s ease;
+}
+
+.save-button:hover {
+    background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    border: 1px solid lightgray;
+    box-shadow: 0 8px 16px rgba(102, 126, 234, 0.4);
+    transform: translateY(-3px);
+    transition: all 0.3s ease;
+}
+
+.cancel-button {
+    background: linear-gradient(120deg, #ff6b6b 0%, #ee5a6f 100%);
+    color: white;
+    border-radius: 20px;
+    transition: all 0.3s ease;
+}
+
+.cancel-button:hover {
+    background: linear-gradient(120deg, #ff6b6b 0%, #ee5a6f 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    border: 1px solid lightgray;
+    box-shadow: 0 8px 16px rgba(102, 126, 234, 0.4);
+    transform: translateY(-3px);
+    transition: all 0.3s ease;
+}
+
+.close-button {
+    background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
+    border: 1px solid black;
+    border-radius: 3px;
+    color: white;
+    transition: all 0.3s ease;
+}
+
+.close-button:hover {
+    background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    border: 1px solid black;
+    box-shadow: 0 8px 16px rgba(102, 126, 234, 0.4);
+    transform: translateY(-3px);
+    transition: all 0.3s ease;
+}
+
+/* CSS for Button Group */
+.nav-btn-group {
+border-radius: 20px;
+background: white;
+padding: 3px;
+box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.nav-btn {
+background: transparent;
+color: #667eea;
+border: none;
+padding: 0.375rem 0.75rem;
+font-weight: 500;
+transition: all 0.2s ease;
+border-radius: 6px;
+}
+
+.nav-btn:hover {
+background: #f3f4f6;
+color: #764ba2;
+}
+
 </style>
