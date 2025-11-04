@@ -28,4 +28,8 @@ const hideNavbar = computed(() => {
   font-family: 'Outfit', sans-serif !important;
 }
 
+#app {
+  background: linear-gradient(135deg, #ffffff 0%, #f0f4ff 100%);
+}
+
 </style>
