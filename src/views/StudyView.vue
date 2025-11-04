@@ -399,17 +399,57 @@
 									<span class="badge bg-danger">{{ dueCards.length }}</span> Due for Review
 								</span>
 							</h5>
-							<button class="btn btn-primary btn-lg" @click="startReview">
-								<i class="fas fa-play"></i> Start Review Session
-							</button>
+
+							<!-- Module and Topic Filters -->
+							<div class="row g-3 mb-3">
+								<div v-if="availableModulesInFlashcards.length > 0" class="col-md-6">
+									<label class="form-label">Filter Review by Module:</label>
+									<select class="form-select" v-model="selectedModuleFilter">
+										<option value="all">All Modules</option>
+										<option v-for="module in availableModulesInFlashcards" :key="module" :value="module">
+											{{ module }}
+										</option>
+									</select>
+								</div>
+								<div v-if="availableTopicsInFlashcards.length > 0" class="col-md-6">
+									<label class="form-label">Filter Review by Topic:</label>
+									<select class="form-select" v-model="selectedTopicFilter">
+										<option value="all">All Topics</option>
+										<option v-for="topic in availableTopicsInFlashcards" :key="topic" :value="topic">
+											{{ topic }}
+										</option>
+									</select>
+								</div>
+							</div>
+
+							<div class="d-flex gap-3 flex-wrap">
+								<button
+									class="btn btn-primary btn-lg"
+									@click="startReview"
+									:disabled="filteredDueCards.length === 0"
+								>
+									<i class="fas fa-play"></i> Review Due Cards ({{ filteredDueCards.length }})
+								</button>
+								<button
+									class="btn btn-secondary btn-lg"
+									@click="startAllCardsReview"
+								>
+									<i class="fas fa-layer-group"></i> Review All Cards ({{ filteredAllCards.length }})
+								</button>
+							</div>
 						</div>
 
 						<div v-else>
 							<div class="mb-3">
 								<h5>
-									Review Progress: {{ currentCardIndex + 1 }} / {{ allCards.length }}
+									<span v-if="singleCardMode">
+										<i class="fas fa-eye"></i> Reviewing Single Card
+									</span>
+									<span v-else>
+										Review Progress: {{ currentCardIndex + 1 }} / {{ reviewCards.length }}
+									</span>
 								</h5>
-								<div class="progress" style="height: 25px;">
+								<div v-if="!singleCardMode" class="progress" style="height: 25px;">
 									<div class="progress-bar" :style="{width: reviewProgress + '%'}">
 										{{ Math.round(reviewProgress) }}%
 									</div>
@@ -419,11 +459,13 @@
 							<div class="flashcard" :class="{ 'flipping': currentCard.isFlipping }" @click="flipCurrentCard">
 								<div class="flashcard-content">
 									<div v-if="!currentCard.flipped">
-										<strong>Question:</strong><br>{{ currentCard.question }}
+										<strong>Question:</strong><br>
+										<span class="preserve-newlines">{{ currentCard.question }}</span>
 										<p class="text-muted mt-3"><small>Click to reveal answer</small></p>
 									</div>
 									<div v-else>
-										<strong>Answer:</strong><br>{{ currentCard.answer }}
+										<strong>Answer:</strong><br>
+										<span class="preserve-newlines">{{ currentCard.answer }}</span>
 									</div>
 								</div>
 								<div v-if="currentCard.flipped" class="mt-3">
@@ -459,47 +501,118 @@
 
 <!-- All Flashcards List -->
 					<div v-if="!reviewMode && allCards.length > 0" class="mt-4">
-						<h5 class="mb-3">
-							All Flashcards
-						</h5>
+						<div class="d-flex justify-content-between align-items-center mb-3">
+							<h5 class="mb-0">
+								All Flashcards
+							</h5>
+							<button
+								class="btn btn-outline-secondary"
+								@click="showAllAnswers = !showAllAnswers"
+							>
+								<i class="fas" :class="showAllAnswers ? 'fa-eye-slash' : 'fa-eye'"></i>
+								{{ showAllAnswers ? 'Hide All Answers' : 'Show All Answers' }}
+							</button>
+						</div>
 						<div class="list-group">
 							<div
 								v-for="card in allCards"
 								:key="card.id"
 								class="list-group-item flashcard-list-item"
 							>
-								<div class="d-flex justify-content-between align-items-start mb-2">
-									<div class="flex-grow-1">
-										<div v-if="card.module || card.topic" class="small text-muted mb-1">
-											<span v-if="card.module" class="badge bg-secondary me-1">{{ card.module }}</span>
-											<span v-if="card.topic" class="badge bg-info">{{ card.topic }}</span>
+								<!-- Normal View -->
+								<div v-if="editingCardId !== card.id">
+									<div class="d-flex justify-content-between align-items-start mb-2">
+										<div class="flex-grow-1">
+											<div v-if="card.module || card.topic" class="small text-muted mb-1">
+												<span v-if="card.module" class="badge bg-secondary me-1">{{ card.module }}</span>
+												<span v-if="card.topic" class="badge bg-info">{{ card.topic }}</span>
+											</div>
+											<div class="mb-2">
+												<strong>Q:</strong> <span class="preserve-newlines">{{ card.question }}</span>
+											</div>
+											<div v-if="showAllAnswers" class="mb-2 text-success">
+												<strong>A:</strong> <span class="preserve-newlines">{{ card.answer }}</span>
+											</div>
+											<small class="text-muted d-block">
+												{{ card.nextReview <= new Date().toISOString().split('T')[0] ? 'Due for review' : 'Next review in ' + daysUntil(card.nextReview) + ' days' }}
+											</small>
 										</div>
-										<div class="mb-2">
-											<strong>{{ card.question }}</strong>
+										<div class="d-flex flex-column align-items-end gap-2 ms-3">
+											<span
+												class="badge review-badge"
+												:class="getBadgeClass(card.nextReview)"
+											>
+												{{ formatDate(card.nextReview) }}
+											</span>
+											<button
+												class="btn btn-primary btn-sm"
+												@click="startSingleCardReview(card.id)"
+											>
+												<i class="fas fa-play"></i> Use
+											</button>
+											<button
+												class="btn btn-warning btn-sm"
+												@click="startEditCard(card)"
+											>
+												<i class="fas fa-edit"></i> Edit
+											</button>
+											<button
+												class="btn btn-danger delete-module-btn"
+												@click="deleteCard(card.id)"
+												title="Delete this flashcard"
+											>
+												<span class="delete-x">X</span>
+											</button>
 										</div>
-										<small class="text-muted d-block">
-											{{ card.nextReview <= new Date().toISOString().split('T')[0] ? 'Due for review' : 'Next review in ' + daysUntil(card.nextReview) + ' days' }}
-										</small>
 									</div>
-									<div class="d-flex flex-column align-items-end gap-2 ms-3">
-										<span
-											class="badge review-badge"
-											:class="getBadgeClass(card.nextReview)"
+								</div>
+
+								<!-- Edit View -->
+								<div v-else class="edit-card-form">
+									<div class="row g-3 mb-3">
+										<div class="col-md-6">
+											<label class="form-label">Module:</label>
+											<select class="form-select" v-model="editForm.module">
+												<option value="">Select Module</option>
+												<option v-for="module in modules" :key="module" :value="module">
+													{{ module }}
+												</option>
+											</select>
+										</div>
+										<div class="col-md-6">
+											<label class="form-label">Topic:</label>
+											<select class="form-select" v-model="editForm.topic" :disabled="!editForm.module">
+												<option value="">Select Topic</option>
+												<option v-for="topic in getTopicsForModule(editForm.module)" :key="topic.id" :value="topic.name">
+													{{ topic.name }}
+												</option>
+											</select>
+										</div>
+									</div>
+									<div class="mb-3">
+										<label class="form-label">Question:</label>
+										<input
+											type="text"
+											class="form-control"
+											v-model="editForm.question"
+											placeholder="Enter question..."
 										>
-											{{ formatDate(card.nextReview) }}
-										</span>
-										<button
-											class="btn btn-primary btn-sm"
-											@click="startSingleCardReview(card.id)"
-										>
-											<i class="fas fa-play"></i> Use
+									</div>
+									<div class="mb-3">
+										<label class="form-label">Answer:</label>
+										<textarea
+											class="form-control"
+											v-model="editForm.answer"
+											rows="3"
+											placeholder="Enter answer..."
+										></textarea>
+									</div>
+									<div class="d-flex gap-2">
+										<button class="btn btn-success" @click="saveEditCard">
+											<i class="fas fa-save"></i> Save
 										</button>
-										<button
-											class="btn btn-danger delete-module-btn"
-											@click="deleteCard(card.id)"
-											title="Delete this flashcard"
-										>
-											<span class="delete-x">X</span>
+										<button class="btn btn-secondary" @click="cancelEditCard">
+											<i class="fas fa-times"></i> Cancel
 										</button>
 									</div>
 								</div>
@@ -636,10 +749,17 @@ export default {
 			newCard: { question: '', answer: '', module: '', topic: '' },
 			showAddCard: false,
 			reviewMode: false,
+			singleCardMode: false,
 			currentCardIndex: 0,
 			cardIdCounter: 1,
 			showExamDateModal: false,
-			examDate: ''
+			examDate: '',
+			reviewCards: [], // Array to hold cards being reviewed in current session
+			showAllAnswers: false, // Toggle to show/hide all answers in list view
+			selectedModuleFilter: 'all', // Filter for module selection in review
+			selectedTopicFilter: 'all', // Filter for topic selection in review
+			editingCardId: null, // ID of card currently being edited
+			editForm: { question: '', answer: '', module: '', topic: '' } // Form for editing cards
 		};
 	},
 	computed: {
@@ -687,11 +807,66 @@ export default {
 			return this.flashcards;
 		},
 		currentCard() {
-			return this.allCards[this.currentCardIndex] || null;
+			return this.reviewCards[this.currentCardIndex] || null;
 		},
 		reviewProgress() {
-			if (this.allCards.length === 0) return 0;
-			return ((this.currentCardIndex + 1) / this.allCards.length) * 100;
+			if (this.reviewCards.length === 0) return 0;
+			return ((this.currentCardIndex + 1) / this.reviewCards.length) * 100;
+		},
+		availableModulesInFlashcards() {
+			// Get unique modules from flashcards that have modules assigned
+			const modulesSet = new Set();
+			this.flashcards.forEach(card => {
+				if (card.module) {
+					modulesSet.add(card.module);
+				}
+			});
+			return Array.from(modulesSet).sort();
+		},
+		availableTopicsInFlashcards() {
+			// Get unique topics from flashcards that have topics assigned
+			// Filter by module if a module is selected
+			const topicsSet = new Set();
+			this.flashcards.forEach(card => {
+				if (card.topic) {
+					// Only include topics from the selected module
+					if (this.selectedModuleFilter === 'all' || card.module === this.selectedModuleFilter) {
+						topicsSet.add(card.topic);
+					}
+				}
+			});
+			return Array.from(topicsSet).sort();
+		},
+		filteredDueCards() {
+			const today = new Date().toISOString().split('T')[0];
+			let cards = this.flashcards.filter(card => card.nextReview <= today);
+
+			// Filter by module
+			if (this.selectedModuleFilter !== 'all') {
+				cards = cards.filter(card => card.module === this.selectedModuleFilter);
+			}
+
+			// Filter by topic
+			if (this.selectedTopicFilter !== 'all') {
+				cards = cards.filter(card => card.topic === this.selectedTopicFilter);
+			}
+
+			return cards;
+		},
+		filteredAllCards() {
+			let cards = this.flashcards;
+
+			// Filter by module
+			if (this.selectedModuleFilter !== 'all') {
+				cards = cards.filter(card => card.module === this.selectedModuleFilter);
+			}
+
+			// Filter by topic
+			if (this.selectedTopicFilter !== 'all') {
+				cards = cards.filter(card => card.topic === this.selectedTopicFilter);
+			}
+
+			return cards;
 		}
 	},
 	methods: {
@@ -1082,19 +1257,47 @@ export default {
 			card.flipped = !card.flipped;
 		},
 		startReview() {
+			// Start review session with only due cards (filtered by topic if selected)
+			if (this.filteredDueCards.length === 0) {
+				const message = this.selectedTopicFilter !== 'all'
+					? `No cards are due for review in topic "${this.selectedTopicFilter}"!`
+					: 'No cards are due for review right now!';
+				alert(message);
+				return;
+			}
+			this.reviewCards = [...this.filteredDueCards];
 			this.reviewMode = true;
+			this.singleCardMode = false;
 			this.currentCardIndex = 0;
 			// Reset all flipped states
-			this.allCards.forEach(card => card.flipped = false);
+			this.reviewCards.forEach(card => card.flipped = false);
+		},
+		startAllCardsReview() {
+			// Start review session with all cards (filtered by topic if selected)
+			if (this.filteredAllCards.length === 0) {
+				const message = this.selectedTopicFilter !== 'all'
+					? `No flashcards available in topic "${this.selectedTopicFilter}"!`
+					: 'No flashcards available!';
+				alert(message);
+				return;
+			}
+			this.reviewCards = [...this.filteredAllCards];
+			this.reviewMode = true;
+			this.singleCardMode = false;
+			this.currentCardIndex = 0;
+			// Reset all flipped states
+			this.reviewCards.forEach(card => card.flipped = false);
 		},
 		startSingleCardReview(cardId) {
-			// Find the card index in allCards
-			const cardIndex = this.allCards.findIndex(c => c.id === cardId);
-			if (cardIndex !== -1) {
-				this.currentCardIndex = cardIndex;
+			// Review only a single specific card
+			const card = this.allCards.find(c => c.id === cardId);
+			if (card) {
+				this.reviewCards = [card];
+				this.currentCardIndex = 0;
 				this.reviewMode = true;
-				// Reset all flipped states
-				this.allCards.forEach(card => card.flipped = false);
+				this.singleCardMode = true;
+				// Reset flipped state
+				card.flipped = false;
 			}
 		},
 		flipCurrentCard() {
@@ -1105,19 +1308,25 @@ export default {
 				// Toggle flipped state after half the flip animation
 				setTimeout(() => {
 					this.currentCard.flipped = !this.currentCard.flipped;
-				}, 300);
+				}, 200);
 
 				// Remove flipping class after animation completes
 				setTimeout(() => {
 					this.currentCard.isFlipping = false;
-				}, 600);
+				}, 400);
 			}
 		},
 		rateCurrentCard(difficulty) {
 			this.rateCard(this.currentCard, difficulty);
 
+			// If in single card mode, end the review immediately
+			if (this.singleCardMode) {
+				this.endReview();
+				return;
+			}
+
 			// Move to next card or end review
-			if (this.currentCardIndex < this.allCards.length - 1) {
+			if (this.currentCardIndex < this.reviewCards.length - 1) {
 				this.currentCardIndex++;
 			} else {
 				// End review silently
@@ -1126,8 +1335,10 @@ export default {
 		},
 		endReview() {
 			this.reviewMode = false;
+			this.singleCardMode = false;
 			this.currentCardIndex = 0;
-			this.allCards.forEach(card => card.flipped = false);
+			this.reviewCards.forEach(card => card.flipped = false);
+			this.reviewCards = [];
 		},
 		rateCard(cardOrId, difficulty) {
 			// Handle both card object (from review mode) and card ID (from list view)
@@ -1408,6 +1619,34 @@ export default {
 				this.saveData();
 				alert('All flashcards have been cleared.');
 			}
+		},
+		startEditCard(card) {
+			this.editingCardId = card.id;
+			this.editForm = {
+				question: card.question,
+				answer: card.answer,
+				module: card.module || '',
+				topic: card.topic || ''
+			};
+		},
+		cancelEditCard() {
+			this.editingCardId = null;
+			this.editForm = { question: '', answer: '', module: '', topic: '' };
+		},
+		saveEditCard() {
+			const card = this.flashcards.find(c => c.id === this.editingCardId);
+			if (card) {
+				if (!this.editForm.question || !this.editForm.answer) {
+					alert('Please fill in both question and answer');
+					return;
+				}
+				card.question = this.editForm.question;
+				card.answer = this.editForm.answer;
+				card.module = this.editForm.module;
+				card.topic = this.editForm.topic;
+				this.saveData();
+				this.cancelEditCard();
+			}
 		}
 
 	},
@@ -1687,12 +1926,20 @@ export default {
 	padding: 2rem;
 	margin: 1rem 0;
 	cursor: pointer;
-	transition: transform 0.3s;
 	box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+	transform-style: preserve-3d;
+	position: relative;
+	perspective: 1200px;
+	transition: box-shadow 0.3s ease;
 }
 
-.flashcard:hover {
-	transform: scale(1.02);
+.flashcard:hover:not(.flipping) {
+	box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+	transition: box-shadow 0.3s ease;
+}
+
+.flashcard.flipping {
+	animation: flipCard 0.4s cubic-bezier(0.4, 0.0, 0.2, 1);
 }
 
 .flashcard-content {
@@ -1703,6 +1950,9 @@ export default {
 	align-items: center;
 	justify-content: center;
 	text-align: center;
+	backface-visibility: hidden;
+	transform-style: preserve-3d;
+	-webkit-backface-visibility: hidden;
 }
 
 .review-badge {
@@ -1728,15 +1978,23 @@ export default {
 	animation: flipCard 0.6s ease-in-out;
 }
 
+/* Edit Card Form */
+.edit-card-form {
+	background-color: #f8f9fa;
+	padding: 1.5rem;
+	border-radius: 10px;
+	border: 2px solid #667eea;
+}
+
 @keyframes flipCard {
 	0% {
-		transform: rotateY(0deg);
+		transform: rotateY(0deg) scale(1);
 	}
 	50% {
-		transform: rotateY(90deg);
+		transform: rotateY(90deg) scale(0.95);
 	}
 	100% {
-		transform: rotateY(0deg);
+		transform: rotateY(180deg) scale(1);
 	}
 }
 
@@ -1897,5 +2155,13 @@ export default {
 .progress-bar {
 	font-weight: 600;
 	transition: width 0.6s ease;
+}
+
+/* Preserve Newlines in Text */
+.preserve-newlines {
+	white-space: pre-wrap;
+	word-wrap: break-word;
+	display: inline-block;
+	text-align: left;
 }
 </style>
