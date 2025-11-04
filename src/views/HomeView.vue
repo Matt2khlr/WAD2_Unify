@@ -95,28 +95,41 @@ export default {
             endOfWeek.setDate(today.getDate() + daysUntilSunday)
             endOfWeek.setHours(23, 59, 59, 999)
 
-            // Filter Events for Current Week
+            // Filter Events for Current Week (Including Ongoing Events)
             const thisWeekEvents = this.events.filter(event => {
-                const eventDate = new Date(event.start)
-                return eventDate >= today && eventDate <= endOfWeek
+                const eventStart = new Date(event.start)
+                const eventEnd = new Date(event.end)
+                return eventEnd >= today && eventStart <= endOfWeek
             })
 
             // Group Events by Day
             const grouped = {}
 
             thisWeekEvents.forEach(event => {
-                const eventDate = new Date(event.start)
-                const dateKey = eventDate.toDateString()
+                const eventStart = new Date(event.start)
+                const eventEnd = new Date(event.end)
+                
+                // Group Ongoing Events under Today
+                let displayDate = eventStart >= today ? eventStart : today
+                
+                if (displayDate <= endOfWeek) {
+                const dateKey = displayDate.toDateString()
 
                 if (!grouped[dateKey]) {
                     grouped[dateKey] = {
-                        date: eventDate,
-                        dayLabel: this.formatDayLabel(eventDate),
-                        events: []
+                    date: displayDate,
+                    dayLabel: this.formatDayLabel(displayDate),
+                    events: []
                     }
                 }
 
-                grouped[dateKey].events.push(event)
+                const eventWithStatus = {
+                    ...event,
+                    isOngoing: eventStart < today && eventEnd >= today
+                }
+
+                grouped[dateKey].events.push(eventWithStatus)
+                }
             })
 
             // Sort Events by Time and Priority
@@ -124,15 +137,18 @@ export default {
 
             Object.values(grouped).forEach(dayGroup => {
                 dayGroup.events.sort((a, b) => {
-                    const timeCompare = new Date(a.start) - new Date(b.start)
-                    if (timeCompare !== 0) return timeCompare
-                    return priorityOrder[a.priority] - priorityOrder[b.priority]
+                if (a.isOngoing && !b.isOngoing) return -1
+                if (!a.isOngoing && b.isOngoing) return 1
+                
+                const timeCompare = new Date(a.start) - new Date(b.start)
+                if (timeCompare !== 0) return timeCompare
+                return priorityOrder[a.priority] - priorityOrder[b.priority]
                 })
             })
 
             // Convert to Array & Sort by Date
             return Object.values(grouped).sort((a, b) => a.date - b.date)
-        },
+            },
 
         totalsMeals() {
             return {
@@ -158,19 +174,29 @@ export default {
             if (!this.userId) return;
 
             try {
-                // Get stress level from latest journal entry
-                const journalQuery = query(
-                    collection(db, 'journals'),
+                // Get stress level from latest mood log entry
+                const moodQuery = query(
+                    collection(db, 'moodLogs'),
                     where('userId', '==', this.userId),
                     orderBy('date', 'desc'),
                     limit(1)
                 );
-                const journalSnapshot = await getDocs(journalQuery);
+                const moodSnapshot = await getDocs(moodQuery);
                 let stressLevel = 'Unknown';
-                if (!journalSnapshot.empty) {
-                    const mood = journalSnapshot.docs[0].data().mood;
-                    stressLevel = mood === 'Stressed' ? 'High' : mood === 'Great' ? 'Low' : 'Moderate';
+
+                if (!moodSnapshot.empty) {
+                    const mood = moodSnapshot.docs[0].data().mood;
+
+                    const moodValue = Number(mood);
+                    if (moodValue < 30) {
+                        stressLevel = 'Low';
+                    } else if (moodValue < 70) {
+                        stressLevel = 'Moderate';
+                    } else {
+                        stressLevel = 'High';
+                    }
                 }
+                console.log('Latest mood value:', moodSnapshot.empty ? 'No entries' : moodSnapshot.docs[0].data().mood);
 
                 // Get sleep quality from latest sleep log
                 const sleepQuery = query(
@@ -179,6 +205,7 @@ export default {
                     orderBy('date', 'desc'),
                     limit(1)
                 );
+
                 const sleepSnapshot = await getDocs(sleepQuery);
                 let sleepQuality = 'Unknown';
                 if (!sleepSnapshot.empty) {
@@ -248,7 +275,7 @@ export default {
             }
 
             // Sleep quality
-             if (this.currentStatus.sleepQuality === 'Poor') {
+            if (this.currentStatus.sleepQuality === 'Poor') {
                 suggestions.push({
                     title: 'Improve Your Sleep',
                     description: 'Your sleep quality was poor this week. Start by establishing a consistent bedtime routine.',
@@ -312,29 +339,37 @@ export default {
 
             try {
                 // Fetch last 7 mood logs for this user
-                const moodLogQuery = query(
+                const moodCountQuery = query(
                     collection(db, 'moodLogs'),
                     where('userId', '==', this.userId),
                     orderBy('date', 'desc'),
-                    limit(7)
+                    limit(1)
                 );
 
-                const querySnapshot = await getDocs(moodLogQuery);
+                const querySnapshot = await getDocs(moodCountQuery);
 
-                // Aggregate factor count
-                const factorCount = {};
-                querySnapshot.forEach(doc => {
-                    const log = doc.data();
-                    if (Array.isArray(log.stressFactors)) {
-                        log.stressFactors.forEach(factor => {
-                            factorCount[factor] = (factorCount[factor] || 0) + 1;
-                        });
-                    }
-                });
+                if (querySnapshot.empty) {
+                    console.log('No mood logs found');
+                    this.stressFactorsCount = 0;
+                    return;
+                }
 
-                // Store the count of unique stress factors today
-                this.stressFactorsCount = Object.keys(factorCount).length;
-                console.log('Stress factors count:', this.stressFactorsCount);
+                // Get the latest mood log document
+                const latestMoodLog = querySnapshot.docs[0].data();
+                console.log('Latest mood log:', latestMoodLog);
+
+                // Extract stress factors array
+                const stressFactors = latestMoodLog.stressFactors || [];
+
+                if (!Array.isArray(stressFactors)) {
+                    console.log('No stress factors array found');
+                    this.stressFactorsCount = 0;
+                    return;
+                }
+
+                // Store the count of unique stress factors
+                this.stressFactorsCount = stressFactors.length;
+                console.log('Stress factors count:', this.stressFactorsCount, 'Factors:', stressFactors);
             } catch (error) {
                 console.error('Error loading stress factors:', error);
                 this.stressFactorsCount = 0;
@@ -342,7 +377,7 @@ export default {
         },
 
         async loadAverageSleepQuality() {
-            if (!this.userId) { 
+            if (!this.userId) {
                 return;
             }
 
@@ -362,15 +397,29 @@ export default {
                     return;
                 }
 
+                // Get the latest sleep log document
+                const latestLog = querySnapshot.docs[0].data();
+                console.log('Latest sleep log:', latestLog);
+
+                // Extract sleep data array
+                const sleepDataArray = latestLog.sleepData || [];
+
+                if (!Array.isArray(sleepDataArray) || sleepDataArray.length === 0) {
+                    console.log('No sleep data array found');
+                    this.avgSleepQuality = 0;
+                    return;
+                }
+
                 // Calculate average sleep hours
                 let totalHours = 0;
-                querySnapshot.forEach(doc => {
-                    const log = doc.data();
-                    totalHours += log.sleepHours || 0;
+                sleepDataArray.forEach(day => {
+                    totalHours += Number(day.hours) || 0;
                 });
 
-                this.avgSleepQuality = (totalHours / querySnapshot.size).toFixed(1);
-                console.log('Average sleep quality this week:', this.avgSleepQuality);
+                const averageHours = (totalHours / sleepDataArray.length).toFixed(1);
+                this.avgSleepQuality = averageHours;
+
+                console.log('Average sleep quality this week:', this.avgSleepQuality, 'hours');
             } catch (error) {
                 console.error('Error loading average sleep quality:', error);
                 this.avgSleepQuality = 0;
@@ -379,7 +428,6 @@ export default {
 
         async loadModuleProgress() {
             if (!this.userId) {
-                console.log('No user authenticated, skipping module progress load');
                 return;
             }
 
@@ -431,7 +479,6 @@ export default {
 
         async loadTodayStudySessions() {
             if (!this.userId) {
-                console.log('No user authenticated, skipping study sessions load');
                 return;
             }
 
@@ -886,7 +933,6 @@ export default {
                     end: doc.data().end.toDate(),
                 }))
             });
-            console.log(this.events);
         },
 
         getContrastColor(hexColor) {
@@ -1127,15 +1173,15 @@ export default {
         <!-- Loading in progress -->
         <div v-if="isLoading" class="d-flex align-items-center justify-content-center min-vh-100">
             <div class="text-center">
-                <div class="spinner-border text-white mb-3" role="status"></div>
-                <p class="text-white">Preparing your dashboard...</p>
+                <div class="spinner-border spinner-text mb-3" role="status"></div>
+                <p class="spinner-text">Preparing your dashboard...</p>
             </div>
         </div>
 
         <!-- Main content loaded-->
         <div v-else>
             <header>
-                <div class="container px-3 py-5">
+                <div class="container px-3 pt-5 pb-3">
                     <h1 class="display-6 fw-bold mb-2">Welcome back!</h1>
                     <p class="fs-5 mb-0">
                         Check out your recent activity and personalised recommendations.
@@ -1151,10 +1197,10 @@ export default {
 
                 <!-- Status cards -->
                 <div class="row g-3 mb-4 justify-content-center">
-                    <div class="col-6 col-md-3" v-for="(status, index, subtext) in statusList" :key="status.key">
+                    <div class="col-6 col-md-3" v-for="(status, index) in statusList" :key="status.key">
                         <div class="card h-100" :class="getStatusCardGradient(index)">
                             <div class="card-body d-flex">
-                                <div class="icon-wrap me-3">
+                                <div class="icon-wrap icon-status me-3">
                                     <BookOpen v-if="status.key === 'sessions'" :size="24" />
                                     <Heart v-else-if="status.key === 'stress'" :size="24" />
                                     <Activity v-else-if="status.key === 'activity'" :size="24" />
@@ -1175,7 +1221,7 @@ export default {
                     <div class="col-12 col-md-6 col-lg-4" v-for="suggestion in suggestions" :key="suggestion.title">
                         <div class="card h-100">
                             <div class="card-body d-flex flex-column">
-                               <div class="d-flex align-items-center mb-2">
+                                <div class="d-flex align-items-center mb-2">
                                     <div class="icon-wrap me-3">
                                         <BookOpen v-if="suggestion.icon === 'BookOpen'" :size="24" />
                                         <Heart v-else-if="suggestion.icon === 'Heart'" :size="24" />
@@ -1184,7 +1230,7 @@ export default {
                                     </div>
                                     <h6 class="mb-0">{{ suggestion.title }}</h6>
                                 </div>
-                                
+
                                 <!-- Description -->
                                 <p class="mb-0 text-secondary">{{ suggestion.description }}</p>
                             </div>
@@ -1192,60 +1238,18 @@ export default {
                     </div>
                 </div>
 
-                <!-- <div class="row g-4 mb-4">
-                <div class="col-12 col-md-4">
-                    <div class="card stat-card gradient-primary  h-100">
-                        <div class="card-body d-flex align-items-center">
-                            <div class="icon-wrap me-3">
-                                <BookOpen :size="24" />
-                            </div>
-                            <div>
-                                <div class="text-uppercase small fw-semibold opacity-75">Study Sessions Today</div>
-                                <div class="h3 mb-0">{{ studySessionsToday }}</div>
-                                <div class="small opacity-75">{{ formatStudyTime(totalStudyTimeToday) }} focused time
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-12 col-md-4">
-                    <div class="card stat-card gradient-wellness  h-100">
-                        <div class="card-body d-flex align-items-center">
-                            <div class="icon-wrap me-3">
-                                <Heart :size="24" />
-                            </div>
-                            <div>
-                                <div class="text-uppercase small fw-semibold opacity-75">Wellness Score</div>
-                                <div class="h3 mb-0">85%</div>
-                                <div class="small opacity-75">Great progress!</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-12 col-md-4">
-                    <div class="card stat-card gradient-energy  h-100">
-                        <div class="card-body d-flex align-items-center">
-                            <div class="icon-wrap me-3">
-                                <Dumbbell :size="24" />
-                            </div>
-                            <div>
-                                <div class="text-uppercase small fw-semibold opacity-75">Activity Minutes</div>
-                                <div class="h3 mb-0">45</div>
-                                <div class="small opacity-75">30 mins to goal</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div> -->
-
                 <!-- Dashboard section -->
-                <div class="row g-4 my-4">
+                <!-- Header -->
+                <div class="mt-5">
+                    <h2>Dashboard</h2>
+                    <p>Check out what's happening this week</p>
+                </div>
+
+                <!-- Dashboard content -->
+                <div class="row g-4 mb-2">
                     <div class="col-12 col-lg-6">
                         <div class="card h-100">
                             <div class="card-body d-flex flex-column">
-                                <!-- Header -->
                                 <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
                                     <h5 class="mb-0 fw-semibold d-flex align-items-center gap-2">
                                         <i class="mdi mdi-calendar-week"></i>
@@ -1347,9 +1351,9 @@ export default {
                         <div class="card  h-100">
                             <div class="card-body">
                                 <div class="d-flex justify-content-between align-items-center mb-3">
-                                    <h2 class="h5 mb-0 d-flex align-items-center gap-2">
-                                        <TrendingUp class="text-success" :size="20" /> Module Progress
-                                    </h2>
+                                    <h5 class="mb-0 fw-semibold d-flex align-items-center gap-2">
+                                        <TrendingUp /> Module Progress
+                                    </h5>
                                 </div>
 
                                 <div v-if="modules.length > 0" class="d-flex flex-column gap-3">
@@ -1395,7 +1399,7 @@ export default {
                                         <div class="d-flex align-items-center justify-content-between mb-2">
                                             <span class="small text-muted fw-semibold">
                                                 <span v-if="entry.mood" class="me-2">{{ getMoodIcon(entry.mood)
-                                                    }}</span>
+                                                }}</span>
                                                 {{ entry.date }}
                                             </span>
                                             <span v-if="entry.mood" class="badge rounded-pill"
@@ -1458,7 +1462,7 @@ export default {
 
 <style scoped>
 .container {
-    color: white !important;
+    color: black !important;
 }
 
 .card * {
@@ -1485,7 +1489,7 @@ export default {
 }
 
 .container-color {
-    background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #e5e5f2 0%, #d8d6f0 100%);
 }
 
 /* Icon wrapper */
@@ -1500,25 +1504,25 @@ export default {
 }
 
 /* Icon centering */
-.icon-wrap svg {
-    transform: translate(4px, 1px);
+.icon-status svg {
+    transform: translate(4px, 0);
 }
 
 /* Gradient Backgrounds */
 .gradient-primary {
-    background: linear-gradient(135deg, #e9f2ff 0%, #f5f9ff 100%);
+    background: linear-gradient(135deg, #d4e5ff 0%, #e8f4ff 100%);
 }
 
 .gradient-wellness {
-    background: linear-gradient(135deg, #eafaf1 0%, #f4fff8 100%);
+    background: linear-gradient(135deg, #d0f5e8 0%, #e8fdf5 100%);
 }
 
 .gradient-energy {
-    background: linear-gradient(135deg, #fff1e6 0%, #fff6ef 100%);
+    background: linear-gradient(135deg, #ffe0cc 0%, #fff3e0 100%);
 }
 
 .gradient-study {
-    background: linear-gradient(135deg, #fff9e6 0%, #fffaf0 100%);
+    background: linear-gradient(135deg, #fff3cc 0%, #fff9e6 100%);
 }
 
 /* Stat Cards */
@@ -1737,6 +1741,7 @@ export default {
     from {
         opacity: 0;
     }
+
     to {
         opacity: 1;
     }

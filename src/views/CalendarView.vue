@@ -1,7 +1,12 @@
 <template>
   <div class="container h-100">
 
-    <h2 class="my-3">Calendar</h2>
+    <div class="mt-2 mb-2 text-center">
+      <h1 class="display-4 fw-bold d-flex align-items-center gap-3">
+        Calendar
+      </h1>
+    </div>
+    
     <div class="row h-100">
 
       <!-- Calendar Section -->
@@ -247,7 +252,9 @@
       <div class="modal-dialog modal-lg">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title">Create Event</h5>
+            <h5 class="modal-title">
+              <i class="mdi mdi-calendar-plus me-2"></i>
+              Create Event</h5>
             <button type="button" class="btn-close btn-close-white" @click="closeCreateDialog"></button>
           </div>
           <div class="modal-body">
@@ -393,6 +400,7 @@
                   <option value="Assignment">Assignment</option>
                   <option value="CCA">CCA</option>
                   <option value="Work">Work</option>
+                  <option value="Fitness">Fitness</option>
                   <option value="Family">Family</option>
                   <option value="Friends">Friends</option>
                   <option value="Travel">Travel</option>
@@ -400,15 +408,6 @@
                 </select>
               </div>
             </div>
-            
-            <!-- <div class="mb-3">
-              <label class="form-label">Priority</label>
-              <select class="form-select" v-model="currentEvent.priority">
-                <option value="High">High</option>
-                <option value="Medium">Medium</option>
-                <option value="Low">Low</option>
-              </select>
-            </div> -->
             
             <div class="mb-3">
               <label class="form-label">Event Location</label>
@@ -646,6 +645,7 @@
                   <option value="Assignment">Assignment</option>
                   <option value="CCA">CCA</option>
                   <option value="Work">Work</option>
+                  <option value="Fitness">Fitness</option>
                   <option value="Family">Family</option>
                   <option value="Friends">Friends</option>
                   <option value="Travel">Travel</option>
@@ -718,6 +718,74 @@
       </div>
     </div>
 
+    <!-- Delete Confirmation Dialog -->
+    <div 
+      class="modal fade" 
+      :class="{ show: deleteConfirmDialog, 'd-block': deleteConfirmDialog }"
+      tabindex="-1"
+      style="background-color: rgba(0,0,0,0.5);"
+    >
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">
+              <i class="mdi mdi-alert-circle-outline me-2"></i>
+              Confirm Delete
+            </h5>
+            <button type="button" class="btn-close btn-close-white" @click="closeDeleteConfirm"></button>
+          </div>
+          <div class="modal-body">
+            <p v-if="currentEvent.isRecurring" class="mb-0">
+              <i class="mdi mdi-repeat me-2"></i>
+              This is a recurring event. Deleting it will remove <strong>all instances</strong>. Are you sure you want to continue?
+            </p>
+            <p v-else class="mb-0">
+              Are you sure you want to delete the event <strong>{{ currentEvent.name }}</strong>?
+            </p>
+          </div>
+          <div class="modal-footer">
+            <button class="btn save-button" @click="closeDeleteConfirm">
+              Cancel
+            </button>
+            <button class="btn cancel-button" @click="confirmDelete">
+              Delete
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- General Dialog -->
+    <div 
+      class="modal fade" 
+      :class="{ show: generalDialog, 'd-block': generalDialog }"
+      tabindex="-1"
+      style="background-color: rgba(0,0,0,0.5);"
+    >
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">
+              <i class="mdi mdi-message-alert-outline me-2"></i>
+              Message
+            </h5>
+            <button type="button" class="btn-close btn-close-white" @click="closeGeneralDialog"></button>
+          </div>
+          <div class="modal-body">
+            <p class="mb-0">
+              {{dialogMessage}}
+            </p>
+          </div>
+          <div class="modal-footer">
+            <button class="btn cancel-button" @click="closeGeneralDialog">
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast -->
     <div
       ref="toast"
       class="toast position-fixed bottom-0 start-50 translate-middle-x m-3"
@@ -746,6 +814,8 @@ export default {
       calendarView: 'month',
       createDialog: false,
       eventDialog: false,
+      deleteConfirmDialog: false,
+      generalDialog: false,
       toastMessage: '',
       editMode: false,
       events: [],
@@ -823,28 +893,38 @@ export default {
       const now = new Date()
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
       
-      // Filter Upcoming Events
+      // Filter Upcoming and Ongoing Events
       const upcomingEvents = this.allEvents.filter(event => {
-        const eventDate = new Date(event.start)
-        return eventDate >= today
+        const eventStart = new Date(event.start)
+        const eventEnd = new Date(event.end)
+        return eventEnd >= today
       })
 
       // Group Events by Day
       const grouped = {}
       
       upcomingEvents.forEach(event => {
-        const eventDate = new Date(event.start)
-        const dateKey = eventDate.toDateString()
+        const eventStart = new Date(event.start)
+        const eventEnd = new Date(event.end)
+        
+        // Group Ongoing Events under Today
+        let displayDate = eventStart >= today ? eventStart : today
+        const dateKey = displayDate.toDateString()
         
         if (!grouped[dateKey]) {
           grouped[dateKey] = {
-            date: eventDate,
-            dayLabel: this.formatDayLabel(eventDate),
+            date: displayDate,
+            dayLabel: this.formatDayLabel(displayDate),
             events: []
           }
         }
         
-        grouped[dateKey].events.push(event)
+        const eventWithStatus = {
+          ...event,
+          isOngoing: eventStart < today && eventEnd >= today
+        }
+        
+        grouped[dateKey].events.push(eventWithStatus)
       })
 
       // Sort Events by Time and Priority Level
@@ -852,6 +932,9 @@ export default {
       
       Object.values(grouped).forEach(dayGroup => {
         dayGroup.events.sort((a, b) => {
+          if (a.isOngoing && !b.isOngoing) return -1
+          if (!a.isOngoing && b.isOngoing) return 1
+          
           const timeCompare = new Date(a.start) - new Date(b.start)
           if (timeCompare !== 0) return timeCompare
           return (priorityOrder[a.priority] || 999) - (priorityOrder[b.priority] || 999)
@@ -927,6 +1010,7 @@ export default {
       this.focus = date
     },
 
+    // Show Toast
     showToast(message) {
       this.toastMessage = message;
       let toastEl = this.$refs.toast;
@@ -1228,7 +1312,7 @@ export default {
     // Connect to Google Account Login
     async connectGoogle() {
       if (!window.gapi || !window.google) {
-        alert('Error Connecting to Google Account Login. Please Try Again.');
+        this.showToast('Error Connecting to Google Account Login. Please Try Again.');
         this.syncEnabled = false;
         return;
       }
@@ -1685,7 +1769,7 @@ export default {
     },
 
     roundTime (time, down = true) {
-      const roundTo = 15 // minutes
+      const roundTo = 15 //Minutes
       const roundDownTime = roundTo * 60 * 1000
 
       return down
@@ -1739,7 +1823,7 @@ export default {
         recurringEventId: event.recurringEventId || null,
         instanceDate: event.instanceDate || null
       }
-      
+
       this.eventDialog = true
     },
 
@@ -1772,11 +1856,12 @@ export default {
 
     // Create or Update Event
     async saveEvent() {
-      const startDate = new Date(this.currentEvent.start).getTime()
-      const endDate = new Date(this.currentEvent.end).getTime()
+      const startDate = new Date(this.currentEvent.start).getTime();
+      const endDate = new Date(this.currentEvent.end).getTime();
 
       if (startDate >= endDate) {
-        alert('End Date Earlier than Start Date')
+        this.dialogMessage = 'End Date Earlier than Start Date!';
+        this.generalDialog = true;
         return
       }
 
@@ -1805,22 +1890,22 @@ export default {
       try {
         if (this.editMode) {
           // Update Event in Cloud Firestore
-          await updateDoc(doc(db, 'events', this.currentEvent.id), eventData)
+          await updateDoc(doc(db, 'events', this.currentEvent.id), eventData);
           
           // Update Event in Google Calendar (Syncing)
           if (this.syncEnabled && this.currentEvent.gEventId) {
-            await this.updateInGoogle(this.currentEvent.gEventId, eventData)
+            await this.updateInGoogle(this.currentEvent.gEventId, eventData);
           }
         } else {
           // Create New Event in Cloud Firestore
           eventData.synced = false
           eventData.gEventId = null
           
-          const docRef = await addDoc(collection(db, 'events'), eventData)
+          const docRef = await addDoc(collection(db, 'events'), eventData);
           
           // Create New Event in Google Calendar (Syncing)
           if (this.syncEnabled && this.accessToken) {
-            const googleEventId = await this.addToGoogle(eventData)
+            const googleEventId = await this.addToGoogle(eventData);
             if (googleEventId) {
               await updateDoc(doc(db, 'events', docRef.id), {
                 synced: true,
@@ -1836,10 +1921,10 @@ export default {
           this.closeCreateDialog();
         }
         this.editMode = false;
-        this.showToast(this.editMode ? 'Event Updated Successfully!' : 'Event Created Successfully');
+        this.showToast(this.editMode ? 'Event Updated Successfully!' : 'Event Created Successfully!');
       } catch (error) {
-        alert('Error Saving Event: ' + error.message);
-        //this.showToast('Error Saving Event. Please Try Again.');
+        //alert('Error Saving Event: ' + error.message);
+        this.showToast('Error Saving Event. Please Try Again.');
       }
     },
 
@@ -1938,7 +2023,29 @@ export default {
       await this.performDelete();
     },
 
-    // Delete Event
+    // Close General Dialog
+    closeGeneralDialog() {
+      this.generalDialog = false;
+      this.dialogMessage = '';
+    },
+
+    // Show Delete Confirmation Dialog
+    async deleteEvent() {
+      this.deleteConfirmDialog = true;
+    },
+
+    // Close Delete Confirmation Dialog
+    closeDeleteConfirm() {
+      this.deleteConfirmDialog = false;
+    },
+
+    // Confirm and Perform Delete
+    async confirmDelete() {
+      this.closeDeleteConfirm();
+      await this.performDelete();
+    },
+
+    // Backend Deletion
     async performDelete() {
       try {
         // Delete from Google Calendar
@@ -1948,19 +2055,21 @@ export default {
               calendarId: 'primary',
               eventId: this.currentEvent.gEventId
             });
-            console.log('Event Deleted from Google Calendar.');
+            console.log('Event deleted from Google Calendar.');
           } catch (error) {
-            console.error('Error Deleting Event from Google Calendar:', error);
+            console.error('Error deleting event from Google Calendar:', error);
           }
         }
         
         // Delete from Cloud Firestore
         await deleteDoc(doc(db, 'events', this.currentEvent.id));
-        console.log('Event Deleted from Firestore.');
+        console.log('Event deleted from Firestore.');
         
         this.closeEventDialog();
+        this.showToast('Event deleted successfully', 'success'); // Optional: Add toast notification
       } catch (error) {
-        alert('Error Deleting Event: ' + error.message);
+        this.showToast('Error deleting event: ' + error.message, 'error'); // Optional: Add toast notification
+        console.error('Error deleting event:', error);
       }
     },
 
@@ -2505,7 +2614,7 @@ export default {
 }
 
 .close-button {
-  background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(120deg, #ff6b6b 0%, #ee5a6f 100%);
   border: 1px solid black;
   border-radius: 3px;
   color: white;
@@ -2513,7 +2622,7 @@ export default {
 }
 
 .close-button:hover {
-  background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(120deg, #ff6b6b 0%, #ee5a6f 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
