@@ -344,21 +344,41 @@
 					</div>
 
 					<div v-if="showAddCard" class="mb-4 p-3 border rounded">
-						<div class="mb-3">
+						<div class="row g-3">
+							<div class="col-md-6">
+								<label class="form-label">Module:</label>
+								<select class="form-select" v-model="newCard.module">
+									<option value="">Select Module</option>
+									<option v-for="module in modules" :key="module" :value="module">
+										{{ module }}
+									</option>
+								</select>
+							</div>
+							<div class="col-md-6">
+								<label class="form-label">Topic:</label>
+								<select class="form-select" v-model="newCard.topic" :disabled="!newCard.module">
+									<option value="">Select Topic</option>
+									<option v-for="topic in getTopicsForModule(newCard.module)" :key="topic.id" :value="topic.name">
+										{{ topic.name }}
+									</option>
+								</select>
+							</div>
+						</div>
+						<div class="mb-3 mt-3">
 							<label class="form-label">Question/Front:</label>
-							<input 
-								type="text" 
-								class="form-control" 
-								v-model="newCard.question" 
+							<input
+								type="text"
+								class="form-control"
+								v-model="newCard.question"
 								placeholder="Enter question..."
 							>
 						</div>
 						<div class="mb-3">
 							<label class="form-label">Answer/Back:</label>
-							<textarea 
-								class="form-control" 
-								v-model="newCard.answer" 
-								rows="3" 
+							<textarea
+								class="form-control"
+								v-model="newCard.answer"
+								rows="3"
 								placeholder="Enter answer..."
 							></textarea>
 						</div>
@@ -396,7 +416,7 @@
 								</div>
 							</div>
 
-							<div class="flashcard" @click="flipCurrentCard">
+							<div class="flashcard" :class="{ 'flipping': currentCard.isFlipping }" @click="flipCurrentCard">
 								<div class="flashcard-content">
 									<div v-if="!currentCard.flipped">
 										<strong>Question:</strong><br>{{ currentCard.question }}
@@ -449,52 +469,37 @@
 								class="list-group-item flashcard-list-item"
 							>
 								<div class="d-flex justify-content-between align-items-start mb-2">
-									<div class="flex-grow-1 cursor-pointer" @click="toggleCardFlip(card.id)">
+									<div class="flex-grow-1">
+										<div v-if="card.module || card.topic" class="small text-muted mb-1">
+											<span v-if="card.module" class="badge bg-secondary me-1">{{ card.module }}</span>
+											<span v-if="card.topic" class="badge bg-info">{{ card.topic }}</span>
+										</div>
 										<div class="mb-2">
-											<strong>Q: {{ card.question }}</strong>
-											<i class="fas fa-chevron-down ms-2 text-muted" v-if="!card.showAnswer"></i>
-											<i class="fas fa-chevron-up ms-2 text-muted" v-else></i>
+											<strong>{{ card.question }}</strong>
 										</div>
-										<div v-if="card.showAnswer" class="answer-section p-3 bg-light rounded">
-											<strong>A:</strong> {{ card.answer }}
-											<div class="mt-3">
-												<p class="text-muted mb-2 small">How well did you know this?</p>
-												<button
-													class="btn btn-danger btn-sm me-2"
-													@click.stop="rateCard(card.id, 'hard')"
-												>
-													Hard (1 day)
-												</button>
-												<button
-													class="btn btn-warning btn-sm me-2"
-													@click.stop="rateCard(card.id, 'medium')"
-												>
-													Medium (3 days)
-												</button>
-												<button
-													class="btn btn-success btn-sm"
-													@click.stop="rateCard(card.id, 'easy')"
-												>
-													Easy (7 days)
-												</button>
-											</div>
-										</div>
-										<small class="text-muted d-block mt-2">
+										<small class="text-muted d-block">
 											{{ card.nextReview <= new Date().toISOString().split('T')[0] ? 'Due for review' : 'Next review in ' + daysUntil(card.nextReview) + ' days' }}
 										</small>
 									</div>
-									<div class="d-flex align-items-start ms-3">
+									<div class="d-flex flex-column align-items-end gap-2 ms-3">
 										<span
-											class="badge review-badge me-2"
+											class="badge review-badge"
 											:class="getBadgeClass(card.nextReview)"
 										>
 											{{ formatDate(card.nextReview) }}
 										</span>
 										<button
-											class="btn btn-danger btn-sm"
-											@click="deleteCard(card.id)"
+											class="btn btn-primary btn-sm"
+											@click="startSingleCardReview(card.id)"
 										>
-											<i class="fas fa-trash"></i>
+											<i class="fas fa-play"></i> Use
+										</button>
+										<button
+											class="btn btn-danger delete-module-btn"
+											@click="deleteCard(card.id)"
+											title="Delete this flashcard"
+										>
+											<span class="delete-x">X</span>
 										</button>
 									</div>
 								</div>
@@ -628,7 +633,7 @@ export default {
 			
 			// Flashcards
 			flashcards: [],
-			newCard: { question: '', answer: '' },
+			newCard: { question: '', answer: '', module: '', topic: '' },
 			showAddCard: false,
 			reviewMode: false,
 			currentCardIndex: 0,
@@ -1045,6 +1050,10 @@ export default {
 		},
 		
 		// Flashcard methods
+		getTopicsForModule(moduleName) {
+			if (!moduleName) return [];
+			return this.topics.filter(topic => topic.module === moduleName);
+		},
 		addFlashcard() {
 			if (!this.newCard.question || !this.newCard.answer) {
 				alert('Please fill in both question and answer');
@@ -1055,14 +1064,17 @@ export default {
 				id: this.cardIdCounter++,
 				question: this.newCard.question,
 				answer: this.newCard.answer,
+				module: this.newCard.module || '',
+				topic: this.newCard.topic || '',
 				nextReview: new Date().toISOString().split('T')[0],
 				interval: 1,
 				flipped: false,
-				showAnswer: false
+				showAnswer: false,
+				isFlipping: false
 			};
 
 			this.flashcards.push(card);
-			this.newCard = { question: '', answer: '' };
+			this.newCard = { question: '', answer: '', module: '', topic: '' };
 			this.showAddCard = false;
 			this.saveData();
 		},
@@ -1073,28 +1085,49 @@ export default {
 			this.reviewMode = true;
 			this.currentCardIndex = 0;
 			// Reset all flipped states
-			this.dueCards.forEach(card => card.flipped = false);
+			this.allCards.forEach(card => card.flipped = false);
+		},
+		startSingleCardReview(cardId) {
+			// Find the card index in allCards
+			const cardIndex = this.allCards.findIndex(c => c.id === cardId);
+			if (cardIndex !== -1) {
+				this.currentCardIndex = cardIndex;
+				this.reviewMode = true;
+				// Reset all flipped states
+				this.allCards.forEach(card => card.flipped = false);
+			}
 		},
 		flipCurrentCard() {
 			if (this.currentCard) {
-				this.currentCard.flipped = !this.currentCard.flipped;
+				// Add flipping animation
+				this.currentCard.isFlipping = true;
+
+				// Toggle flipped state after half the flip animation
+				setTimeout(() => {
+					this.currentCard.flipped = !this.currentCard.flipped;
+				}, 300);
+
+				// Remove flipping class after animation completes
+				setTimeout(() => {
+					this.currentCard.isFlipping = false;
+				}, 600);
 			}
 		},
 		rateCurrentCard(difficulty) {
 			this.rateCard(this.currentCard, difficulty);
-			
+
 			// Move to next card or end review
-			if (this.currentCardIndex < this.dueCards.length - 1) {
+			if (this.currentCardIndex < this.allCards.length - 1) {
 				this.currentCardIndex++;
 			} else {
-				alert('Review session complete! Great job! 🎉');
+				// End review silently
 				this.endReview();
 			}
 		},
 		endReview() {
 			this.reviewMode = false;
 			this.currentCardIndex = 0;
-			this.dueCards.forEach(card => card.flipped = false);
+			this.allCards.forEach(card => card.flipped = false);
 		},
 		rateCard(cardOrId, difficulty) {
 			// Handle both card object (from review mode) and card ID (from list view)
@@ -1133,12 +1166,6 @@ export default {
 			if (confirm('Delete this flashcard?')) {
 				this.flashcards = this.flashcards.filter(c => c.id !== id);
 				this.saveData();
-			}
-		},
-		toggleCardFlip(cardId) {
-			const card = this.flashcards.find(c => c.id === cardId);
-			if (card) {
-				card.showAnswer = !card.showAnswer;
 			}
 		},
 		formatDate(dateStr) {
@@ -1689,25 +1716,42 @@ export default {
 }
 
 .flashcard-list-item {
-	transition: background-color 0.2s;
+	transition: background-color 0.2s, transform 0.6s;
+	transform-style: preserve-3d;
 }
 
 .flashcard-list-item:hover {
 	background-color: #f8f9fa;
 }
 
-.answer-section {
-	animation: slideDown 0.3s ease-out;
+.flashcard-list-item.flipping {
+	animation: flipCard 0.6s ease-in-out;
 }
 
-@keyframes slideDown {
+@keyframes flipCard {
+	0% {
+		transform: rotateY(0deg);
+	}
+	50% {
+		transform: rotateY(90deg);
+	}
+	100% {
+		transform: rotateY(0deg);
+	}
+}
+
+.answer-section {
+	animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
 	from {
 		opacity: 0;
-		transform: translateY(-10px);
+		transform: scale(0.95);
 	}
 	to {
 		opacity: 1;
-		transform: translateY(0);
+		transform: scale(1);
 	}
 }
 
