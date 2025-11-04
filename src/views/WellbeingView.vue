@@ -1,9 +1,11 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import WordCloud from 'wordcloud';
 import { db, auth } from '../firebase.js';
 import { collection, where, addDoc, getDocs, query, orderBy, limit } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
+import bootstrap from 'bootstrap/dist/js/bootstrap.bundle';
+
 
 const sleepData = ref([
   { day: "Mon", hours: 7 },
@@ -32,50 +34,55 @@ const stressFactors = [
 
 const canvasRef = ref(null);
 
+const fetchedFactors = ref([]);
 
-// Average sleep
+const toastMessage = ref('');
+const toastRef = ref(null);
+
+
 const averageSleep = computed(() => {
   const total = sleepData.value.reduce((sum, d) => sum + d.hours, 0);
   return (total / sleepData.value.length).toFixed(1);
 });
 
 function updateStress() {
-  alert(`Stress level updated to ${stressLevel.value}`);
+  showToast(`Stress level updated to ${stressLevel.value}, stress factors logged.`);
 }
 
 async function logSleep() {
   const user = auth.currentUser;
   if (!user) {
-    alert('You must be logged in to log sleep.');
+    showToast('You must be logged in to log sleep.');
     return;
   }
   await addDoc(
-    collection(db, "sleepLogs"), 
+    collection(db, "sleepLogs"),
     {
-      userId: user.uid, 
+      userId: user.uid,
       sleepData: sleepData.value,
       date: new Date().toISOString()
     }
   );
-  alert('Sleep data logged!');
+  showToast('Sleep data logged!');
 }
 
 async function logMood() {
   const user = auth.currentUser;
   if (!user) {
-    alert('You must be logged in to log mood.');
+    showToast('You must be logged in to log mood.');
     return;
   }
   await addDoc(
-    collection(db, "moodLogs"), 
+    collection(db, "moodLogs"),
     {
       userId: user.uid,
       mood: stressLevel.value,
       stressFactors: selectedFactors.value,
       date: new Date().toISOString()
-    }
+    },
+   
   );
-  alert('Stress Level logged!');
+  window.location.reload();
 }
 
 async function fetchLatestSleepLog() {
@@ -83,7 +90,7 @@ async function fetchLatestSleepLog() {
   if (!user) return;
   const sleepLogQuery = query(
     collection(db, "sleepLogs"),
-    where("userId", "==", user.uid),             
+    where("userId", "==", user.uid),
     orderBy("date", "desc"),
     limit(1)
   );
@@ -99,7 +106,7 @@ async function fetchLatestSleepLog() {
 
 async function fetchStressFactorsWordCloud() {
   const user = auth.currentUser;
-  if (!user) return;
+  if (!user) return [];
 
   // Fetch last 7 mood logs for this user
   const moodLogQuery = query(
@@ -122,10 +129,7 @@ async function fetchStressFactorsWordCloud() {
     }
   });
 
-
-  const factorsArray = Object.entries(factorCount);
-
-  return factorsArray;
+  return Object.entries(factorCount);
 }
 
 const stressLabel = computed(() => {
@@ -135,9 +139,9 @@ const stressLabel = computed(() => {
 });
 
 const stressColorClass = computed(() => {
-  if (stressLevel.value < 30) return 'text-success';  
-  if (stressLevel.value < 70) return 'text-warning';  
-  return 'text-danger';  
+  if (stressLevel.value < 30) return 'text-success';
+  if (stressLevel.value < 70) return 'text-warning';
+  return 'text-danger';
 });
 
 const selectedFactors = ref([]);
@@ -152,29 +156,48 @@ function toggleFactor(factor) {
   }
 }
 
+// Function to draw the word cloud, clearing canvas before each draw
+function drawWordCloud(factors) {
+  if (!canvasRef.value) return;
+
+  const canvas = canvasRef.value;
+  const ctx = canvas.getContext('2d');
+
+  // Clear the canvas before redraw
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  WordCloud(canvas, {
+    list: factors.length ? factors : stressFactors,
+    gridSize: 5,
+    weightFactor: 10,
+    minFontSize: 8,
+    maxFontSize: 30,
+    fontFamily: 'Arial, sans-serif',
+    color: 'random-dark',
+    rotateRatio: 0.1,
+    ellipticity: 0.8,
+    backgroundColor: '#f0f0f0',
+    origin: [
+      canvas.getBoundingClientRect().width / 2,
+      canvas.getBoundingClientRect().height / 2
+    ],
+  });
+}
+
+
+function showToast(message) {
+  toastMessage.value = message;
+  if (!toastRef.value) return;
+  const toast = new bootstrap.Toast(toastRef.value);
+  toast.show();
+}
+
 onMounted(() => {
-  onAuthStateChanged(auth, async(user) => {
+  onAuthStateChanged(auth, async (user) => {
     if (user) {
-      fetchLatestSleepLog();
+      await fetchLatestSleepLog();
 
-      const cloudFactors = await fetchStressFactorsWordCloud();
-
-      WordCloud(canvasRef.value, {
-        list: cloudFactors.length ? cloudFactors : stressFactors,
-        gridSize: 5,
-        weightFactor: 10,
-        minFontSize: 8,
-        maxFontSize: 30,
-        fontFamily: 'Arial, sans-serif',
-        color: 'random-dark',
-        rotateRatio: 0.1,
-        ellipticity: 0.8,
-        backgroundColor: '#f0f0f0',
-        origin: [
-          canvasRef.value.getBoundingClientRect().width / 2,
-          canvasRef.value.getBoundingClientRect().height / 2
-        ],
-      });
+      fetchedFactors.value = await fetchStressFactorsWordCloud();
     }
   });
 
@@ -189,14 +212,31 @@ onMounted(() => {
 
   const ctx = canvas.getContext('2d');
   ctx.scale(dpr, dpr);
-
 });
 
+// Watch for changes in fetchedFactors and redraw word cloud automatically
+watch(fetchedFactors, (newFactors) => {
+  drawWordCloud(newFactors);
+}, { immediate: true, deep: true });
 
 </script>
 
+
 <template>
   <div class="min-vh-100 bg-light py-5">
+    <div
+    ref="toastRef"
+    class="toast position-fixed bottom-0 start-50 translate-middle-x m-3"
+    role="alert"
+    aria-live="assertive"
+    aria-atomic="true"
+    data-bs-delay="3000"
+  >
+    <div class="toast-body">
+      {{ toastMessage }}
+    </div>
+  </div>
+
     <div class="container">
       <!-- Header -->
       <div class="mb-4">
@@ -223,24 +263,12 @@ onMounted(() => {
 
             <!-- Interactive Sleep Tracker -->
             <div class="mb-3">
-              <div 
-                v-for="day in sleepData" 
-                :key="day.day" 
-                class="d-flex align-items-center gap-3 mb-2"
-              >
+              <div v-for="day in sleepData" :key="day.day" class="d-flex align-items-center gap-3 mb-2">
                 <div class="fw-medium" style="width: 50px;">
                   {{ day.day }}
                 </div>
-                <input
-                  type="range"
-                  min="0"
-                  max="14"
-                  step="0.5"
-                  v-model.number="day.hours"
-                  class="flex-grow-1"
-                  style="max-width: 400px;"
-                  :aria-label="`Sleep hours for ${day.day}`"
-                />
+                <input type="range" min="0" max="14" step="0.5" v-model.number="day.hours" class="flex-grow-1"
+                  style="max-width: 400px;" :aria-label="`Sleep hours for ${day.day}`" />
                 <div class="text-secondary" style="width: 45px;">{{ day.hours }}h</div>
               </div>
             </div>
@@ -260,37 +288,24 @@ onMounted(() => {
                 <div>Low</div>
                 <div>High</div>
               </div>
-              <input 
-                type="range" 
-                min="0" 
-                max="100" 
-                step="1" 
-                v-model="stressLevel"
-                class="form-range"
-                aria-label="Stress level slider"
-              />
+              <input type="range" min="0" max="100" step="1" v-model="stressLevel" class="form-range"
+                aria-label="Stress level slider" />
               <p :class="['text-center', 'fs-3', 'fw-bold', stressColorClass, 'mb-0']">{{ stressLabel }}</p>
             </div>
             <div class="bg-light rounded p-3 mb-3 flex-grow-1">
               <h4 class="fw-semibold mb-2">Stress Factors Today:</h4>
               <div class="d-flex flex-wrap gap-2">
-              <span
-                v-for="([factor]) in stressFactors"
-                :key="factor"
-                @click="toggleFactor(factor)"
-                :class="[
+                <span v-for="([factor]) in stressFactors" :key="factor" @click="toggleFactor(factor)" :class="[
                   'badge',
                   'badge-custom',
                   selectedFactors.includes(factor) ? 'bg-danger' : '',
                   'fw-semibold'
-                ]"
-                style="user-select: none;"
-              >
-                {{ factor }}
-              </span>
+                ]" style="user-select: none;">
+                  {{ factor }}
+                </span>
               </div>
             </div>
-            <button class="btn btn-secondary w-100" @click="[updateStress(), logMood()]" >Update Stress Level</button>
+            <button class="btn btn-secondary w-100" @click="[updateStress(), logMood()]">Update Stress Level</button>
           </div>
         </div>
       </div>
@@ -325,8 +340,8 @@ onMounted(() => {
           </div>
           <div class="card shadow p-4 mt-4">
             <h3 class="mb-3">Common Stress Factors this week</h3>
-          <canvas ref="canvasRef" width="600" height="300" style="width: 100%; height: 600px;"></canvas>
-        </div>
+            <canvas ref="canvasRef" width="600" height="300" style="width: 100%; height: 600px;"></canvas>
+          </div>
         </div>
       </div>
     </div>
@@ -342,7 +357,14 @@ onMounted(() => {
 }
 
 .badge-custom:hover {
-  background-color: blue; 
+  background-color: blue;
   color: white;
+}
+
+.toast {
+  background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  z-index: 1055; /* Bootstrap modals use 1050, so this ensures toast is higher */
+  position: fixed; /* Confirm fixed positioning */
 }
 </style>
