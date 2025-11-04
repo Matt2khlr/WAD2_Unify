@@ -661,7 +661,7 @@
                         <span class="fw-bold text-success">{{ previewKcal }} kcal</span>
                     </div>
                     <button class="btn save-button ms-auto" :disabled="!workoutForm.activity || !(previewMinutes || hasOverride)" @click="addWorkout">
-                        <Plus :size="16" class="me-1" /> Add
+                        <i class="mdi mdi-plus"></i> Add
                     </button>
                 </div>
             </div>
