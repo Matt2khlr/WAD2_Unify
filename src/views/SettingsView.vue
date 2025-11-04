@@ -6,21 +6,24 @@ import { useRouter } from 'vue-router';
 import { performLogout } from '@/utils/auth';
 
 const router = useRouter();
+
+// User data
 const user = ref(null);
 
-// Display name state
-const displayName = ref('');
-const displayNameLoading = ref(false);
-const displayNameError = ref(null);
-const displayNameSuccess = ref(false);
+// Toast notification
+const toast = ref(null);
+const toastMessage = ref('');
+
+// Username state
+const userName = ref('');
+const userNameLoading = ref(false);
 const isEditingName = ref(false);
 
-// Change password state
+// Password state
 const currentPassword = ref('');
 const newPassword = ref('');
 const confirmPassword = ref('');
 const passwordLoading = ref(false);
-const passwordError = ref(null);
 const passwordSuccess = ref(false);
 
 // Logout state
@@ -29,103 +32,143 @@ const logoutLoading = ref(false);
 // Load current user on mount
 onMounted(() => {
     user.value = auth.currentUser;
-    displayName.value = auth.currentUser?.displayName || '';
+    userName.value = auth.currentUser?.displayName || '';
 });
 
-// Update display name
-async function updateDisplayNameHandler() {
-    if (!displayName.value || displayName.value.trim().length === 0) {
-        displayNameError.value = 'Display name cannot be empty.';
+// Update username
+async function updateUserName() {
+    const uName = userName.value.trim();
+
+    if (!uName) {
+        showToast('Username cannot be empty.');
         return;
     }
 
-    if (displayName.value === user.value.displayName) {
+    if (uName === user.value.displayName) {
         isEditingName.value = false;
         return;
     }
 
-    displayNameLoading.value = true;
-    displayNameError.value = null;
-    displayNameSuccess.value = false;
+    userNameLoading.value = true;
+    isEditingName.value = true;
 
     try {
         await updateProfile(user.value, {
-            displayName: displayName.value.trim()
+            displayName: uName
         });
-        user.value = auth.currentUser;
         await auth.currentUser.reload();
+        user.value = auth.currentUser;
+
         window.dispatchEvent(new CustomEvent('profile-updated'));
-        displayNameSuccess.value = true;
+        showToast('Username updated successfully.');
         isEditingName.value = false;
-        setTimeout(() => displayNameSuccess.value = false, 3000);
     } catch (e) {
-        displayNameError.value = e?.message || 'Failed to update display name.';
+        showToast(e?.message || 'Failed to update username.');
     } finally {
-        displayNameLoading.value = false;
+        userNameLoading.value = false;
     }
 }
 
 // Cancel edit
 function cancelEditName() {
-    displayName.value = user.value?.displayName || '';
+    userName.value = user.value?.displayName || '';
     isEditingName.value = false;
-    displayNameError.value = null;
 }
 
-
 // Update password
-async function updatePasswordHandler() {
-    if (!currentPassword.value) {
-        passwordError.value = 'Current password is required.';
-        return;
-    }
-
-    if (!newPassword.value || newPassword.value.length < 6) {
-        passwordError.value = 'New password must be at least 6 characters.';
-        return;
-    }
-
-    if (newPassword.value !== confirmPassword.value) {
-        passwordError.value = 'Passwords do not match.';
+async function updateUserPassword() {
+    const validationError = validatePasswordInputs();
+    if (validationError) {
+        showToast(validationError);
         return;
     }
 
     passwordLoading.value = true;
-    passwordError.value = null;
-    passwordSuccess.value = false;
 
     try {
-        const credential = EmailAuthProvider.credential(user.value.email, currentPassword.value);
+        const credential = EmailAuthProvider.credential(
+            user.value.email,
+            currentPassword.value
+        );
+
         await reauthenticateWithCredential(user.value, credential);
         await updatePassword(user.value, newPassword.value);
+
+        resetPasswordForm();
+        showToast('Password updated successfully.');
+
         passwordSuccess.value = true;
-        currentPassword.value = '';
-        newPassword.value = '';
-        confirmPassword.value = '';
-        setTimeout(() => passwordSuccess.value = false, 3000);
-    } catch (e) {
-        const code = e?.code || '';
-        if (code === 'auth/wrong-password' || code === 'auth/invalid-credential') {
-            passwordError.value = 'Current password is incorrect.';
-        } else if (code === 'auth/weak-password') {
-            passwordError.value = 'Your password should be at least 6 characters.';
-        } else {
-            passwordError.value = e?.message || 'Failed to update password.';
-        }
+        setTimeout(() => {
+            passwordSuccess.value = false;
+        }, 3000);
+    } catch (error) {
+        handlePasswordError(error);
     } finally {
         passwordLoading.value = false;
     }
 }
 
-// Logout handler
-async function logout() {
+// Validate password inputs
+function validatePasswordInputs() {
+    if (!currentPassword.value) {
+        return 'Please enter your current password.';
+    }
+
+    if (!newPassword.value || newPassword.value.length < 6) {
+        return 'New password must be at least 6 characters.';
+    }
+
+    if (newPassword.value !== confirmPassword.value) {
+        return 'Passwords do not match.';
+    }
+
+    if (newPassword.value === currentPassword.value) {
+        return 'New password cannot be the same as the current password.';
+    }
+
+    return null;
+}
+
+// Handle password update errors
+function handlePasswordError(error) {
+    const errorCode = error?.code || '';
+
+    const errorMessages = {
+        'auth/wrong-password': 'Current password is incorrect.',
+        'auth/invalid-credential': 'Current password is incorrect.',
+        'auth/weak-password': 'Your password should be at least 6 characters.'
+    };
+
+    const message = errorMessages[errorCode] || error?.message || 'Failed to update password.';
+    showToast(message);
+}
+
+function resetPasswordForm() {
+    currentPassword.value = '';
+    newPassword.value = '';
+    confirmPassword.value = '';
+}
+
+// Logout function
+async function handleLogout() {
     logoutLoading.value = true;
+
     try {
         await performLogout(router);
-    } catch (e) {
-        console.error('Logout failed:', e);
+    } catch (error) {
+        showToast('Failed to logout. Please try again.');
+        console.error('Logout failed:', error);
     } finally {
         logoutLoading.value = false;
+    }
+}
+
+function showToast(message) {
+    toastMessage.value = message;
+
+    if (toast.value) {
+        const bsToast = new bootstrap.Toast(toast.value);
+        bsToast.show();
     }
 }
 </script>
@@ -137,40 +180,38 @@ async function logout() {
                 <h1 class="mb-4">Settings</h1>
 
                 <!-- Account Information Section -->
-                <div class="card card mb-4">
+                <div class="card mb-4">
                     <div class="card-body p-4">
-                        <!-- Display Name -->
-                        <h5 class="mb-2">Account Information</h5>
-                        <div class="mb-2">
-                            <label class="form-label small">Display Name</label>
+                        <h5 class="mb-3">Account Information</h5>
+
+                        <!-- Username -->
+                        <div class="mb-3">
+                            <label class="form-label small">Username</label>
+
                             <div v-if="!isEditingName" class="d-flex justify-content-between align-items-center">
-                                <div class="fw-semibold">{{ user?.displayName || '' }}</div>
+                                <div class="fw-semibold">{{ user?.displayName || 'Not set' }}</div>
                                 <button type="button" class="btn btn-sm btn-outline-primary"
                                     @click="isEditingName = true">
                                     Edit
                                 </button>
                             </div>
                             <div v-else class="d-flex gap-2">
-                                <input v-model="displayName" type="text" class="form-control form-control-sm"
-                                    placeholder="Enter your display name" />
-                                <button type="button" class="btn btn-sm btn-primary" @click="updateDisplayNameHandler"
-                                    :disabled="displayNameLoading">
+                                <input v-model="userName" type="text" class="form-control form-control-sm"
+                                    placeholder="Enter your username" />
+                                <button type="button" class="btn btn-sm btn-primary" @click="updateUserName"
+                                    :disabled="userNameLoading">
                                     Save
                                 </button>
                                 <button type="button" class="btn btn-sm btn-outline-secondary" @click="cancelEditName"
-                                    :disabled="displayNameLoading">
+                                    :disabled="userNameLoading">
                                     Cancel
                                 </button>
                             </div>
-                            <div v-if="displayNameSuccess" class="alert alert-success mt-2 mb-0 py-2">
-                                Display name updated successfully!
-                            </div>
-                            <div v-if="displayNameError" class="alert alert-danger mt-2 mb-0 py-2">
-                                {{ displayNameError }}
-                            </div>
                         </div>
-                        <div class="mb-0">
-                            <label class="form-label text-muted small">Email</label>
+
+                        <!-- Email -->
+                        <div>
+                            <label class="form-label small">Email</label>
                             <div class="fw-semibold">{{ user?.email }}</div>
                         </div>
                     </div>
@@ -178,17 +219,19 @@ async function logout() {
 
                 <!-- Change Password Section -->
                 <div class="card mb-4">
-                    <div class="card-body p-4 d-flex flex-column">
-                        <h2 class="mb-1">Change Password</h2>
-                        <p class="text-muted mb-3">Update your account password</p>
+                    <div class="card-body p-4">
+                        <h5 class="mb-1">Change Password</h5>
+                        <p class="mb-3">Update your account password</p>
 
-                        <form @submit.prevent="updatePasswordHandler()">
+                        <form @submit.prevent="updateUserPassword">
+                            <!-- Current Password -->
                             <div class="mb-3">
                                 <label for="current-password" class="form-label">Current Password</label>
                                 <input id="current-password" v-model="currentPassword" type="password"
                                     class="form-control" placeholder="Enter your current password"
                                     autocomplete="current-password" required />
                             </div>
+                            <!-- New Password -->
                             <div class="mb-3">
                                 <label for="new-password" class="form-label">New Password</label>
                                 <input id="new-password" v-model="newPassword" type="password" class="form-control"
@@ -196,31 +239,26 @@ async function logout() {
                                     required />
                                 <div class="form-text">Password must be at least 6 characters long.</div>
                             </div>
+                            <!-- Confirm Password -->
                             <div class="mb-3">
-                                <label for="confirm-password" class="form-label">Confirm password</label>
+                                <label for="confirm-password" class="form-label">Confirm Password</label>
                                 <input id="confirm-password" v-model="confirmPassword" type="password"
                                     class="form-control" placeholder="Confirm your new password"
                                     autocomplete="new-password" required />
                             </div>
+                            <!-- Update Password Button -->
                             <button type="submit" class="btn btn-primary w-100" :disabled="passwordLoading">
                                 <span v-if="passwordLoading" class="spinner-border spinner-border-sm me-2"></span>
                                 Update Password
                             </button>
                         </form>
-
-                        <div v-if="passwordSuccess" class="alert alert-success mt-3 mb-0">
-                            Password updated successfully!
-                        </div>
-                        <div v-if="passwordError" class="alert alert-danger mt-3 mb-0">
-                            {{ passwordError }}
-                        </div>
                     </div>
                 </div>
 
                 <!-- Logout Section -->
                 <div class="card">
-                    <div class="card-body p-4 d-flex flex-column">
-                        <button class="btn btn-outline-danger w-100" @click="logout" :disabled="logoutLoading">
+                    <div class="card-body p-4">
+                        <button class="btn btn-outline-danger w-100" :disabled="logoutLoading" @click="handleLogout">
                             <span v-if="logoutLoading" class="spinner-border spinner-border-sm me-2"></span>
                             Logout
                         </button>
@@ -229,10 +267,17 @@ async function logout() {
             </div>
         </div>
     </div>
+
+    <!-- Toast Notification -->
+    <div ref="toast" class="toast position-fixed bottom-0 start-50 translate-middle-x m-3" role="alert"
+        aria-live="assertive" aria-atomic="true" data-bs-delay="3000">
+        <div class="toast-body">
+            {{ toastMessage }}
+        </div>
+    </div>
 </template>
 
 <style scoped>
-/* Auth card */
 /* Cards */
 .card {
     border-radius: 0.75rem;
@@ -247,11 +292,17 @@ async function logout() {
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.05);
 }
 
-.btn-sm, .btn-primary{
+.btn-sm,
+.btn-primary {
     background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
     border: none;
     border-radius: 0.75rem;
     padding: 5px 10px;
+    color: white;
+}
+
+.toast {
+    background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
     color: white;
 }
 </style>
