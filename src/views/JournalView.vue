@@ -226,7 +226,7 @@ onMounted(() => {
         <p class="text-muted fs-5">Log your thoughts and reflections to manage your wellness.</p>
       </div>
       
-      <div class="card bg-primary text-white shadow mb-4 p-4">
+      <div class="card mood-card text-white shadow mb-5 p-4">
         <h2 class="mb-4">How are you feeling today?</h2>
         <div class="d-flex justify-content-center gap-4 mb-3">
           <button 
@@ -244,8 +244,8 @@ onMounted(() => {
         <p class="text-center text-white-75">Track your mood daily to identify patterns and improve wellbeing</p>
       </div>
 
-      <div class="card">
-        <div class="card-header">
+      <div class="card journal-card mb-5">
+        <div class="card-header card-header-style">
             <h3 class="h5 mb-0">
               <i class="mdi mdi-clock-outline me-2"></i> New Journal Entry
             </h3>
@@ -261,8 +261,8 @@ onMounted(() => {
         </div>
       </div>
       
-      <div class="card">
-        <div class="card-header">
+      <div class="card journal-card mb-4">
+        <div class="card-header card-header-style">
             <h3 class="h5 mb-0">
               <i class="mdi mdi-book-open-variant me-2"></i> Recent Entries
             </h3>
@@ -410,18 +410,41 @@ onMounted(() => {
 .card {
 	border-radius: 15px;
 	box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-	margin-bottom: 2rem;
-	overflow: visible;
-	position: relative;
+    /* CRITICAL FIX 1: Removes the default white card border */
+    border: none;
+    /* CRITICAL FIX 2: Ensures content is clipped to the outer border-radius */
+    overflow: hidden; 
 }
 
-.card-header {
-	background: #667eea;
-	color: white;
-	border-radius: 15px 15px 0 0 !important;
-	padding: 1.5rem;
-	font-weight: 600;
-	font-size: 1.3rem;
+/* 🟢 FIX for Mood Card Color */
+.mood-card {
+    background: linear-gradient(120deg, #667eea 0%, #764ba2 100%) !important;
+}
+
+.journal-card .card-header {
+    /* Ensures the header takes the top rounded corners */
+    border-radius: 15px 15px 0 0 !important;
+    border: none; 
+    border-bottom: none;
+    /* Spacing for content */
+    padding: 1.5rem;
+}
+
+.journal-card .card-header-style {
+    background: #667eea;
+    color: white;
+    font-weight: 600;
+    font-size: 1.3rem;
+}
+
+.journal-card .card-header-style h3 {
+    color: white !important;
+    font-weight: 600;
+    font-size: 1.3rem;
+}
+
+.journal-card .card-body {
+    padding: 1.5rem;
 }
 
 /* MODAL STYLING */
@@ -498,4 +521,3 @@ onMounted(() => {
     box-shadow: 0 2px 4px rgba(183, 28, 28, 0.2);
 }
 </style>
-
