@@ -93,7 +93,7 @@ async function logMood() {
       date: new Date().toISOString()
     }
   );
-  showToast('Stress level logged!');
+  showToast(`Stress level updated to ${stressLevel.value}, stress factors logged.`);
   resetStressInputs();
 }
 
@@ -289,7 +289,7 @@ watch(fetchedFactors, (newFactors) => {
                 </span>
               </div>
             </div>
-            <button class="btn btn-secondary w-100" @click="[updateStress(), logMood()]">Update Stress Level</button>
+            <button class="btn btn-secondary w-100" @click="[logMood()]">Update Stress Level</button>
           </div>
         </div>
       </div>
