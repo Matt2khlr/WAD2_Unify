@@ -27,7 +27,7 @@ function closeNav() {
 <template>
     <nav class="navbar navbar-dark navbar-expand-lg">
         <div class="container">
-            <RouterLink class="navbar-brand d-flex align-items-center" to="/">
+            <RouterLink class="navbar-brand d-flex align-items-center" to="/" @click="closeNav">
                 <img src="../assets/logo.png" class="navbar-logo" alt="Logo" />
             </RouterLink>
 

@@ -10,7 +10,7 @@ const journalEntry = ref('');
 const journalHistory = ref([]); 
 const editingEntry = ref(null); 
 
-// 🆕 TOAST/MODAL STATE
+// TOAST/MODAL STATE
 const toast = ref(null);
 const toastMessage = ref('');
 const generalDialog = ref(false);
@@ -39,7 +39,7 @@ function getMoodIcon(moodLabel) {
     return option ? option.icon : '';
 }
 
-// 🆕 DIALOG FUNCTIONS
+// DIALOG FUNCTIONS
 function showToast(message) {
   toastMessage.value = message;
   let toastEl = toast.value;
@@ -153,6 +153,7 @@ async function saveEntry() {
 
 // 1. Opens the editing form
 function openEditDialog(entry) {
+    // Create a copy so we modify the local copy, not the bound array directly
     editingEntry.value = { ...entry };
 }
 
@@ -170,6 +171,7 @@ async function saveEditedEntry(entry) {
 
         await updateDoc(entryRef, updatedData);
         
+        // Success: Close the editing state. onSnapshot updates the list.
         editingEntry.value = null;
         showToast('Entry successfully updated!');
         
@@ -257,7 +259,7 @@ onMounted(() => {
       
       <div class="p-4 shadow rounded bg-light mb-4">
           <h3 class="h5 mb-3 d-flex align-items-center gap-2">
-            <i class="bi bi-clock-history"></i> Recent Entries
+            <i class="bi bi-book me-2"></i> Recent Entries
           </h3>
           
           <div v-if="!userId" class="text-center text-muted py-3">
@@ -327,7 +329,10 @@ onMounted(() => {
                   </div>
               </div>
           </div>
-          <p v-else class="text-muted fst-italic">No entries saved yet. Start by writing your first journal entry above!</p>
+          <div v-else class="text-muted fst-italic">
+            <i class="bi bi-feather me-2" style="opacity: 0.5;"></i>
+            No entries saved yet. Start by writing your first journal entry above!
+          </div>
       </div>
 
     </div>
