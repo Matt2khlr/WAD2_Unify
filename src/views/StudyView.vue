@@ -58,9 +58,18 @@
 					<div class="exam-management mb-4">
 						<div class="d-flex justify-content-between align-items-center mb-3">
 							<h6 class="mb-0"><i class="fas fa-calendar-alt"></i> Exam Dates</h6>
-							<button class="btn btn-sm btn-primary" @click="showExamModal = true">
-								<i class="fas fa-plus"></i> Add Exam
-							</button>
+							<div class="d-flex gap-2">
+								<button class="btn btn-sm btn-primary" @click="showExamModal = true">
+									<i class="fas fa-plus"></i> Add Exam
+								</button>
+								<button
+									v-if="exams.length > 0"
+									class="btn btn-sm btn-danger"
+									@click="deleteAllExams"
+								>
+									<i class="fas fa-trash-alt"></i> Delete All
+								</button>
+							</div>
 						</div>
 						<div v-if="exams.length > 0" class="exams-list">
 							<div
@@ -626,6 +635,119 @@
 						></button>
 					</div>
 					<div class="modal-body">
+						<!-- Image Upload Section -->
+						<div class="mb-4 p-3 border rounded bg-light">
+							<label class="form-label fw-bold">
+								<i class="fas fa-image"></i> Upload Exam Timetable Image
+							</label>
+
+							<!-- Instructions -->
+							<div class="alert alert-info mb-3" role="alert">
+								<strong>How to use:</strong>
+								<ul class="mb-0 mt-2">
+									<li>Take a screenshot of your exam timetable (like the example below)</li>
+									<li>Upload the image file</li>
+									<li>The system will automatically extract all exam details</li>
+									<li>Review and add exams with a single click</li>
+								</ul>
+							</div>
+
+							<!-- Example Image -->
+							<div class="mb-3 p-2 border rounded bg-white">
+								<p class="text-muted small mb-2">
+									<strong>Example:</strong> Your exam timetable should look like this
+								</p>
+								<img
+									:src="exampleTimetableImage"
+									alt="Example exam timetable"
+									class="img-fluid rounded border"
+									style="max-height: 400px;"
+								>
+							</div>
+
+							<input
+								ref="examImageInput"
+								type="file"
+								class="form-control mb-2"
+								accept="image/*"
+								@change="handleImageUpload"
+								:disabled="isProcessingImage"
+							>
+							<small class="text-muted d-block mb-2">
+								<i class="fas fa-info-circle"></i> Upload a screenshot of your exam timetable to automatically extract exam details
+							</small>
+
+							<!-- Processing indicator -->
+							<div v-if="isProcessingImage" class="text-center my-3">
+								<div class="spinner-border text-primary" role="status">
+									<span class="visually-hidden">Processing...</span>
+								</div>
+								<p class="mt-2">Processing image... {{ ocrProgress }}%</p>
+							</div>
+
+							<!-- Preview uploaded image -->
+							<div v-if="uploadedImage && !isProcessingImage" class="mt-2">
+								<img :src="uploadedImage" class="img-fluid rounded" style="max-height: 200px;" alt="Uploaded timetable">
+							</div>
+
+							<!-- OCR Debug Output -->
+							<div v-if="ocrDebugText && parsedExams.length === 0" class="mt-3">
+								<details class="mb-2">
+									<summary class="text-muted" style="cursor: pointer;">
+										<small>Debug: Show OCR extracted text</small>
+									</summary>
+									<pre class="mt-2 p-2 bg-white border rounded" style="max-height: 200px; overflow-y: auto; font-size: 0.8rem;">{{ ocrDebugText }}</pre>
+								</details>
+							</div>
+
+							<!-- Parsed exams preview -->
+							<div v-if="parsedExams.length > 0" class="mt-3">
+								<p class="fw-bold text-success mb-2">
+									<i class="fas fa-check-circle"></i> Found {{ parsedExams.length }} exam(s)
+								</p>
+
+								<!-- Individual exam cards -->
+								<div class="parsed-exams-list">
+									<div
+										v-for="(exam, index) in parsedExams"
+										:key="index"
+										class="card mb-2 border-success"
+									>
+										<div class="card-body p-2">
+											<div class="d-flex justify-content-between align-items-start">
+												<div class="flex-grow-1">
+													<strong>{{ exam.module || 'No module' }}</strong>
+													<div class="small text-muted">
+														<span v-if="exam.date">Date: {{ exam.date }}</span>
+														<span v-else>No date</span>
+														<span v-if="exam.time" class="ms-2">Time: {{ exam.time }}</span>
+													</div>
+												</div>
+												<button
+													class="btn btn-sm btn-success ms-2"
+													@click="addSingleParsedExam(exam)"
+												>
+													<i class="fas fa-plus"></i> Add
+												</button>
+											</div>
+										</div>
+									</div>
+								</div>
+
+								<button
+									class="btn btn-sm btn-success w-100 mt-2"
+									@click="addAllParsedExams"
+								>
+									<i class="fas fa-plus"></i> Add All {{ parsedExams.length }} Exams
+								</button>
+							</div>
+						</div>
+
+						<div class="text-center mb-3">
+							<strong>- OR -</strong>
+						</div>
+
+						<!-- Manual Entry Section -->
 						<div class="mb-3">
 							<label class="form-label">Module:</label>
 							<select class="form-select" v-model="newExam.module">
@@ -671,6 +793,20 @@
 				</div>
 			</div>
 		</div>
+
+		<!-- Toast Notification -->
+		<div
+			ref="toast"
+			class="toast position-fixed bottom-0 start-50 translate-middle-x m-3"
+			role="alert"
+			aria-live="assertive"
+			aria-atomic="true"
+			data-bs-delay="3000"
+		>
+			<div class="toast-body">
+				{{ toastMessage }}
+			</div>
+		</div>
 	</div>
 </template>
 
@@ -678,11 +814,20 @@
 import { db, auth } from '../firebase';
 import { collection, doc, addDoc, getDocs, updateDoc, deleteDoc, query, where, onSnapshot, Timestamp } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
+import * as bootstrap from 'bootstrap';
+import Tesseract from 'tesseract.js';
+import exampleTimetableImage from '../assets/example exam schedule.jpeg';
 
 export default {
 	name: 'StudyApp',
 	data() {
 		return {
+			// Example image for instructions
+			exampleTimetableImage,
+
+			// Toast notification
+			toastMessage: '',
+
 			// User authentication
 			userId: null,
 			unsubscribeTopics: null,
@@ -707,6 +852,11 @@ export default {
 				date: '',
 				time: ''
 			},
+			uploadedImage: null,
+			isProcessingImage: false,
+			ocrProgress: 0,
+			parsedExams: [],
+			ocrDebugText: '',
 			
 			// Help tooltips
 			showPomodoroHelp: false,
@@ -854,7 +1004,7 @@ export default {
 		// Topics methods
 		async addTopic() {
 			if (!this.newTopic.name.trim()) {
-				alert('Please enter a topic name');
+				this.showToast('Please enter a topic name');
 				return;
 			}
 
@@ -862,7 +1012,7 @@ export default {
 
 			if (this.newTopic.module === 'custom') {
 				if (!this.customModuleName.trim()) {
-					alert('Please enter a custom module name');
+					this.showToast('Please enter a custom module name');
 					return;
 				}
 				moduleName = this.customModuleName;
@@ -871,7 +1021,7 @@ export default {
 					this.modules.splice(this.modules.length, 0, moduleName);
 				}
 			} else if (!moduleName) {
-				alert('Please select a module');
+				this.showToast('Please select a module');
 				return;
 			}
 
@@ -890,7 +1040,7 @@ export default {
 					// The real-time listener will automatically add it to this.topics
 				} catch (error) {
 					console.error('Error saving topic to Firebase:', error);
-					alert('Error saving topic. Please try again.');
+					this.showToast('Error saving topic. Please try again.');
 					return;
 				}
 			} else {
@@ -1117,7 +1267,7 @@ export default {
 		},
 		setCustomTimer() {
 			if (this.customStudy < 1 || this.customBreak < 1) {
-				alert('Please enter valid times');
+				this.showToast('Please enter valid times');
 				return;
 			}
 			this.studyTime = this.customStudy;
@@ -1172,10 +1322,6 @@ export default {
 			this.minutes = this.isBreak ? this.breakTime : this.studyTime;
 			this.seconds = 0;
 
-			const message = this.isBreak ?
-				'Great work! Time for a break ☕' :
-				'Break is over! Ready to study? 📚';
-			alert(message);
 		},
 		async saveStudySession() {
 			if (!this.userId || !this.studySessionStartTime) {
@@ -1212,7 +1358,7 @@ export default {
 		},
 		addFlashcard() {
 			if (!this.newCard.question || !this.newCard.answer) {
-				alert('Please fill in both question and answer');
+				this.showToast('Please fill in both question and answer');
 				return;
 			}
 
@@ -1243,7 +1389,7 @@ export default {
 				const message = this.selectedTopicFilter !== 'all'
 					? `No cards are due for review in topic "${this.selectedTopicFilter}"!`
 					: 'No cards are due for review right now!';
-				alert(message);
+				this.showToast(message);
 				return;
 			}
 			this.reviewCards = [...this.filteredDueCards];
@@ -1259,7 +1405,7 @@ export default {
 				const message = this.selectedTopicFilter !== 'all'
 					? `No flashcards available in topic "${this.selectedTopicFilter}"!`
 					: 'No flashcards available!';
-				alert(message);
+				this.showToast(message);
 				return;
 			}
 			this.reviewCards = [...this.filteredAllCards];
@@ -1380,9 +1526,22 @@ export default {
 		},
 		// Exam Management Methods
 		async addExam() {
-			if (!this.newExam.module || !this.newExam.date || !this.newExam.time) {
-				alert('Please fill in all fields');
-				return;
+			// When adding from parsed image, require at least module and date
+			// When manually entering, require all fields
+			const isParsedFromImage = this.parsedExams.length > 0;
+
+			if (isParsedFromImage) {
+				// For parsed exams, require at least module and date
+				if (!this.newExam.module || !this.newExam.date) {
+					this.showToast('Module and date are required');
+					return;
+				}
+			} else {
+				// For manual entry, require all fields
+				if (!this.newExam.module || !this.newExam.date || !this.newExam.time) {
+					this.showToast('Please fill in all fields');
+					return;
+				}
 			}
 
 			// Save to Firebase if user is authenticated
@@ -1426,7 +1585,7 @@ export default {
 					this.saveExamsToLocalStorage();
 				} catch (error) {
 					console.error('Error saving exam to Firebase:', error);
-					alert('Error saving exam: ' + error.message);
+					this.showToast('Error saving exam: ' + error.message);
 					return;
 				}
 			} else {
@@ -1468,9 +1627,306 @@ export default {
 			this.exams = this.exams.filter(e => e.id !== examId);
 			this.saveExamsToLocalStorage();
 		},
+		async deleteAllExams() {
+			if (this.exams.length === 0) {
+				this.showToast('No exams to delete');
+				return;
+			}
+
+			if (!confirm(`Are you sure you want to delete all ${this.exams.length} exam(s)? This action cannot be undone.`)) {
+				return;
+			}
+
+			// Delete all from Firebase
+			if (this.userId) {
+				try {
+					const deletePromises = [];
+					for (const exam of this.exams) {
+						if (exam.firebaseId) {
+							deletePromises.push(deleteDoc(doc(db, 'exams', exam.firebaseId)));
+							// Also remove from calendar if it was added
+							deletePromises.push(this.removeExamFromCalendar(exam));
+						}
+					}
+					await Promise.all(deletePromises);
+					console.log('All exams deleted from Firebase');
+				} catch (error) {
+					console.error('Error deleting exams from Firebase:', error);
+					this.showToast('Error deleting some exams. Please try again.');
+				}
+			}
+
+			// Clear local array
+			this.exams = [];
+			this.saveExamsToLocalStorage();
+			this.showToast('All exams deleted successfully');
+		},
+		async handleImageUpload(event) {
+			const file = event.target.files[0];
+			if (!file) return;
+
+			// Create preview
+			const reader = new FileReader();
+			reader.onload = (e) => {
+				this.uploadedImage = e.target.result;
+			};
+			reader.readAsDataURL(file);
+
+			// Process with OCR
+			this.isProcessingImage = true;
+			this.ocrProgress = 0;
+			this.parsedExams = [];
+
+			try {
+				const { data: { text } } = await Tesseract.recognize(
+					file,
+					'eng',
+					{
+						logger: (m) => {
+							if (m.status === 'recognizing text') {
+								this.ocrProgress = Math.round(m.progress * 100);
+							}
+						}
+					}
+				);
+
+				// Debug: Log and store the extracted text
+				console.log('OCR Extracted Text:', text);
+				console.log('OCR Text Lines:', text.split('\n'));
+				this.ocrDebugText = text;
+
+				// Parse the extracted text
+				this.parsedExams = this.parseExamTable(text);
+
+				console.log('Parsed Exams:', this.parsedExams);
+
+				if (this.parsedExams.length === 0) {
+					this.showToast('No exam data found in image. Please check console for OCR output.');
+				} else {
+					this.showToast(`Found ${this.parsedExams.length} exam(s) in the image`);
+				}
+			} catch (error) {
+				console.error('OCR Error:', error);
+				this.showToast('Error processing image. Please try again or enter manually.');
+			} finally {
+				this.isProcessingImage = false;
+			}
+		},
+		parseExamTable(text) {
+			const exams = [];
+			const lines = text.split('\n').filter(line => line.trim());
+
+			// Skip header lines
+			let dataStart = 0;
+			for (let i = 0; i < lines.length; i++) {
+				if (lines[i].includes('Code') || lines[i].includes('Description')) {
+					dataStart = i + 1;
+					break;
+				}
+			}
+
+			// Process lines for exam data
+			const dataLines = lines.slice(dataStart);
+
+			for (let i = 0; i < dataLines.length; i++) {
+				const line = dataLines[i].trim();
+
+				// Skip empty lines or lines that are just dividers
+				if (!line || line === '-' || /^[\s\-]+$/.test(line)) {
+					continue;
+				}
+
+				// Look for course code pattern at the start of the line
+				// Handle OCR errors: 1S -> IS, 15 -> IS, 1s -> IS (lowercase)
+				let codeMatch = line.match(/^([A-Z]{2,3}\d{3,4})/);
+
+				// If no match, try to fix OCR errors (1 -> I, lowercase -> uppercase)
+				if (!codeMatch) {
+					// Try replacing leading 1 or 15 with I, or 1S/1s with IS
+					let fixedLine = line;
+
+					// Convert to uppercase for easier processing
+					fixedLine = fixedLine.toUpperCase();
+
+					// Handle patterns like "15213" -> "IS213" (both digits are wrong)
+					fixedLine = fixedLine.replace(/^15(\d{3,4})/, 'IS$1');
+
+					// Handle patterns like "1S215" or "1s215" -> "IS215" (first digit is wrong)
+					fixedLine = fixedLine.replace(/^1([A-Z])/, 'I$1');
+
+					// Try to match again
+					codeMatch = fixedLine.match(/^([A-Z]{2,3}\d{3,4})/);
+
+					if (codeMatch) {
+						// Use the fixed code
+						const exam = {
+							module: codeMatch[1],
+							date: '',
+							time: ''
+						};
+
+						// Extract date from the line
+						const dateMatch = fixedLine.match(/(\d{1,2}[-\/]\w+[-\/]\d{4})|(\d{1,2}\s\w+\s\d{4})/);
+						if (dateMatch) {
+							exam.date = this.normalizeDate(dateMatch[0]);
+						}
+
+						// Extract time from the line (first time is start time)
+						const timeMatches = fixedLine.match(/(\d{1,2}):(\d{2})/g);
+						if (timeMatches && timeMatches.length > 0) {
+							exam.time = timeMatches[0];
+						}
+
+						// Add exam if we have at least module
+						if (exam.module) {
+							exams.push(exam);
+						}
+					}
+				} else {
+					// Course code found directly
+					const exam = {
+						module: codeMatch[1],
+						date: '',
+						time: ''
+					};
+
+					// Extract date from the line
+					const dateMatch = line.match(/(\d{1,2}[-\/]\w+[-\/]\d{4})|(\d{1,2}\s\w+\s\d{4})/);
+					if (dateMatch) {
+						exam.date = this.normalizeDate(dateMatch[0]);
+					}
+
+					// Extract time from the line (first time is start time)
+					const timeMatches = line.match(/(\d{1,2}):(\d{2})/g);
+					if (timeMatches && timeMatches.length > 0) {
+						exam.time = timeMatches[0];
+					}
+
+					// Add exam if we have at least module
+					if (exam.module) {
+						exams.push(exam);
+					}
+				}
+			}
+
+			return exams;
+		},
+		normalizeDate(dateStr) {
+			// Try to parse various date formats and convert to YYYY-MM-DD
+			const dateObj = new Date(dateStr);
+
+			if (!isNaN(dateObj.getTime())) {
+				const year = dateObj.getFullYear();
+				const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+				const day = String(dateObj.getDate()).padStart(2, '0');
+				return `${year}-${month}-${day}`;
+			}
+
+			// If parsing fails, return original
+			return dateStr;
+		},
+		async addSingleParsedExam(exam) {
+			// Add a single parsed exam directly
+			if (!exam.module) {
+				this.showToast('Exam must have at least a module code');
+				return;
+			}
+
+			try {
+				// Save to Firebase if user is authenticated
+				if (this.userId) {
+					const examsRef = collection(db, 'exams');
+					const docRef = await addDoc(examsRef, {
+						userId: this.userId,
+						module: exam.module,
+						date: exam.date || '',
+						time: exam.time || '',
+						createdAt: new Date().toISOString()
+					});
+
+					// Create exam object with Firebase ID
+					const newExam = {
+						id: this.examIdCounter++,
+						firebaseId: docRef.id,
+						module: exam.module,
+						date: exam.date || '',
+						time: exam.time || ''
+					};
+
+					this.exams.push(newExam);
+					this.showToast(`Added exam for ${exam.module}`);
+
+					// Remove from parsed exams list
+					const index = this.parsedExams.indexOf(exam);
+					if (index > -1) {
+						this.parsedExams.splice(index, 1);
+					}
+
+					// If no more parsed exams, clear the image
+					if (this.parsedExams.length === 0) {
+						this.uploadedImage = null;
+						this.ocrDebugText = '';
+						// Clear the file input
+						if (this.$refs.examImageInput) {
+							this.$refs.examImageInput.value = '';
+						}
+					}
+				} else {
+					// Local storage fallback
+					const newExam = {
+						id: this.examIdCounter++,
+						module: exam.module,
+						date: exam.date || '',
+						time: exam.time || ''
+					};
+
+					this.exams.push(newExam);
+					this.saveExamsToLocalStorage();
+					this.showToast(`Added exam for ${exam.module}`);
+
+					// Remove from parsed exams list
+					const index = this.parsedExams.indexOf(exam);
+					if (index > -1) {
+						this.parsedExams.splice(index, 1);
+					}
+
+					// If no more parsed exams, clear the image
+					if (this.parsedExams.length === 0) {
+						this.uploadedImage = null;
+						this.ocrDebugText = '';
+						// Clear the file input
+						if (this.$refs.examImageInput) {
+							this.$refs.examImageInput.value = '';
+						}
+					}
+				}
+			} catch (error) {
+				console.error('Error adding exam:', error);
+				this.showToast('Error adding exam. Please try again.');
+			}
+		},
+		async addAllParsedExams() {
+			if (this.parsedExams.length === 0) {
+				this.showToast('No exams to add');
+				return;
+			}
+
+			const examsToAdd = [...this.parsedExams];
+			for (const exam of examsToAdd) {
+				await this.addSingleParsedExam(exam);
+			}
+		},
 		closeExamModal() {
 			this.showExamModal = false;
 			this.newExam = { module: '', date: '', time: '' };
+			this.uploadedImage = null;
+			this.parsedExams = [];
+			this.ocrProgress = 0;
+			this.ocrDebugText = '';
+			// Clear the file input
+			if (this.$refs.examImageInput) {
+				this.$refs.examImageInput.value = '';
+			}
 		},
 		formatExamDate(dateStr) {
 			const date = new Date(dateStr);
@@ -1598,7 +2054,7 @@ export default {
 				this.reviewMode = false;
 				this.currentCardIndex = 0;
 				this.saveData();
-				alert('All flashcards have been cleared.');
+				this.showToast('All flashcards have been cleared.');
 			}
 		},
 		startEditCard(card) {
@@ -1618,7 +2074,7 @@ export default {
 			const card = this.flashcards.find(c => c.id === this.editingCardId);
 			if (card) {
 				if (!this.editForm.question || !this.editForm.answer) {
-					alert('Please fill in both question and answer');
+					this.showToast('Please fill in both question and answer');
 					return;
 				}
 				card.question = this.editForm.question;
@@ -1628,6 +2084,12 @@ export default {
 				this.saveData();
 				this.cancelEditCard();
 			}
+		},
+		showToast(message) {
+			this.toastMessage = message;
+			const toastEl = this.$refs.toast;
+			const toastBs = new bootstrap.Toast(toastEl);
+			toastBs.show();
 		}
 
 	},
@@ -2236,5 +2698,20 @@ export default {
 	box-shadow: 0 8px 16px rgba(102, 126, 234, 0.4);
 	transform: translateY(-3px);
 	transition: all 0.3s ease;
+}
+
+/* Toast Notification Styles */
+.toast {
+	background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
+	color: white;
+	border: none;
+	border-radius: 10px;
+	box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+	z-index: 9999;
+}
+
+.toast-body {
+	padding: 1rem;
+	font-weight: 500;
 }
 </style>
