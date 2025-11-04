@@ -1,14 +1,15 @@
 <script setup>
 import { ref, onMounted } from 'vue'; 
 import { db, auth } from '@/firebase'; 
-import { collection, addDoc, query, orderBy, onSnapshot, where } from 'firebase/firestore'; 
+import { collection, addDoc, query, orderBy, onSnapshot, where, doc, deleteDoc, updateDoc } from 'firebase/firestore'; 
 import { onAuthStateChanged } from 'firebase/auth'; 
 
 const userId = ref(null); 
 const journalEntry = ref('');
 const journalHistory = ref([]); 
+const editingEntry = ref(null); 
 
-// Mood tracking logic remains the same
+// MOOD TRACKING STATE AND LOGIC
 const moodOptions = [
   { label: "Great", color: "bg-success", icon: "😊" },
   { label: "Okay", color: "bg-warning", icon: "😐" },
@@ -30,12 +31,13 @@ function getMoodIcon(moodLabel) {
     return option ? option.icon : '';
 }
 
+// FIREBASE READ FUNCTION (Real-time Listener)
 function subscribeToJournalEntries() {
     if (!userId.value) return; 
 
     const q = query(
         collection(db, 'journals'), 
-        where('userId', '==', userId.value), // Filter by the actual user UID
+        where('userId', '==', userId.value), 
         orderBy('date', 'desc') 
     );
 
@@ -44,10 +46,10 @@ function subscribeToJournalEntries() {
             const data = doc.data();
             
             return {
-                id: doc.id,
+                id: doc.id, 
                 text: data.text,
                 date: data.date.toDate().toLocaleString(),
-                mood: data.mood || null,
+                mood: data.mood || null, 
                 moodIcon: getMoodIcon(data.mood), 
                 isSaving: false 
             }
@@ -59,9 +61,8 @@ function subscribeToJournalEntries() {
 }
 
 
-// Saves new entry with mood)
+// Saves new entry
 async function saveEntry() {
-  // Ensure user is logged in
   const user = auth.currentUser;
   if (!user) {
       alert('You must be logged in to save a journal entry.');
@@ -78,7 +79,6 @@ async function saveEntry() {
       return; 
   }
 
-  // Prepare data for Firestore
   const newEntryData = {
       userId: user.uid, 
       text: journalEntry.value.trim(),
@@ -113,15 +113,61 @@ async function saveEntry() {
   }
 }
 
+// EDITING AND DELETION FUNCTIONS
+
+// 1. Opens the editing form
+function openEditDialog(entry) {
+    // Create a copy so we modify the local copy, not the bound array directly
+    editingEntry.value = { ...entry };
+}
+
+// 2. Saves the edited entry to Firestore
+async function saveEditedEntry(entry) {
+    if (!editingEntry.value || !editingEntry.value.id || !entry.text.trim()) return;
+    
+    try {
+        const entryRef = doc(db, 'journals', editingEntry.value.id);
+        
+        const updatedData = {
+            text: entry.text.trim(),
+            mood: entry.mood,
+        };
+
+        await updateDoc(entryRef, updatedData);
+        
+        // Success: Close the editing state. onSnapshot updates the list.
+        editingEntry.value = null;
+    } catch (error) {
+        console.error("Error updating entry:", error);
+        alert('Failed to save changes to the journal entry.');
+    }
+}
+
+// 3. Deletes the entry from Firestore
+async function deleteJournalEntry(id) {
+    if (!confirm('Are you sure you want to delete this journal entry? This action cannot be undone.')) {
+        return;
+    }
+    
+    try {
+        const entryRef = doc(db, 'journals', id);
+        await deleteDoc(entryRef);
+        
+        // Success: onSnapshot handles removal from the list automatically.
+    } catch (error) {
+        console.error("Error deleting entry:", error);
+        alert('Failed to delete the journal entry.');
+    }
+}
+
 onMounted(() => {
-    // get the user's ID securely
     onAuthStateChanged(auth, (user) => {
         if (user) {
             userId.value = user.uid; 
             subscribeToJournalEntries(); 
         } else {
             userId.value = null;
-            journalHistory.value = []; // Clear history
+            journalHistory.value = []; 
         }
     });
 });
@@ -184,15 +230,60 @@ onMounted(() => {
                 class="card card-body mb-2 p-3"
                 :class="{'opacity-75 bg-light-subtle': entry.isSaving}"
               >
-                  <span class="small text-muted mb-1 d-block fw-semibold">
-                      <span v-if="entry.moodIcon" class="me-2">{{ entry.moodIcon }}</span>
-                      {{ entry.date }} 
-                      <i v-if="entry.isSaving" class="bi bi-cloud-arrow-up-fill text-warning ms-2"></i>
-                  </span>
-                  <p class="mb-0">{{ entry.text }}</p>
-                  <span v-if="entry.mood" class="badge rounded-pill mt-2 align-self-start" :class="getMoodColorClass(entry.mood)">
-                      {{ entry.mood }}
-                  </span>
+              
+                  <div v-if="editingEntry && editingEntry.id === entry.id">
+                      <h5 class="fw-bold mb-2">Editing Entry ({{ entry.date }})</h5>
+                      <textarea v-model="editingEntry.text" class="form-control mb-3" rows="4"></textarea>
+                      
+                      <div class="d-flex gap-2 mb-3 align-items-center">
+                        <span class="fw-semibold me-2">Mood:</span>
+                        <button 
+                            v-for="option in moodOptions" 
+                            :key="option.label" 
+                            :class="['btn btn-sm', editingEntry.mood === option.label ? option.color : 'btn-outline-secondary']"
+                            @click="editingEntry.mood = option.label"
+                        >
+                            {{ option.icon }} {{ option.label }}
+                        </button>
+                      </div>
+
+                      <div class="d-flex justify-content-end">
+                          <button class="btn btn-sm btn-secondary me-2" @click="editingEntry = null">Cancel</button>
+                          <button class="btn btn-sm btn-success" @click="saveEditedEntry(editingEntry)">Save Changes</button>
+                      </div>
+                  </div>
+                  
+                  <div v-else>
+                      <div class="d-flex justify-content-between align-items-start mb-2">
+                          <span class="small text-muted d-block fw-semibold">
+                              <span v-if="entry.moodIcon" class="me-2">{{ entry.moodIcon }}</span>
+                              {{ entry.date }} 
+                              <i v-if="entry.isSaving" class="bi bi-cloud-arrow-up-fill text-warning ms-2"></i>
+                          </span>
+
+                          <div class="btn-group btn-group-sm" role="group" v-if="!entry.isSaving">
+                              <button 
+                                  type="button" 
+                                  class="btn btn-outline-info"
+                                  @click="openEditDialog(entry)"
+                              >
+                                  <i class="bi bi-pencil"></i> Edit
+                              </button>
+                              <button 
+                                  type="button" 
+                                  class="btn btn-outline-danger"
+                                  @click="deleteJournalEntry(entry.id)"
+                              >
+                                  <i class="bi bi-trash"></i> Delete
+                              </button>
+                          </div>
+                      </div>
+                      
+                      <p class="mb-0">{{ entry.text }}</p>
+                      <span v-if="entry.mood" class="badge rounded-pill mt-2 align-self-start" :class="getMoodColorClass(entry.mood)">
+                          {{ entry.mood }}
+                      </span>
+                  </div>
               </div>
           </div>
           <p v-else class="text-muted fst-italic">No entries saved yet. Start by writing your first journal entry above!</p>
