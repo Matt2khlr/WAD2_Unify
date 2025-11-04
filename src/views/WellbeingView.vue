@@ -214,7 +214,8 @@ watch(fetchedFactors, (newFactors) => {
 </script>
 
 <template>
-  <div class="min-vh-100 py-5 px-4">
+  <div class="min-vh-100 py-5">
+    <div class="container">
     <div
       ref="toastRef"
       class="toast position-fixed bottom-0 start-50 translate-middle-x m-3"
@@ -301,7 +302,8 @@ watch(fetchedFactors, (newFactors) => {
   <div class="card-body p-4">
     <canvas ref="canvasRef" width="600" height="300" style="width: 100%; height: 600px;"></canvas>
   </div>
-</div>
+  </div>
+  </div>
   </div>
 </template>
 
