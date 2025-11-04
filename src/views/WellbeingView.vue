@@ -6,6 +6,7 @@ import { collection, where, addDoc, query, orderBy, limit, onSnapshot, getDocs }
 import { onAuthStateChanged } from "firebase/auth";
 import bootstrap from 'bootstrap/dist/js/bootstrap.bundle';
 
+// Data for sleep tracking
 const sleepData = ref([
   { day: "Mon", hours: 7 },
   { day: "Tue", hours: 6.5 },
@@ -16,9 +17,10 @@ const sleepData = ref([
   { day: "Sun", hours: 8.5 },
 ]);
 
+// Stress level slider value
 const stressLevel = ref(40);
 
-// Default stress factors (used if no data)
+// Default stress factors
 const stressFactors = [
   ['Deadlines', 12],
   ['Homework', 9],
@@ -32,8 +34,9 @@ const stressFactors = [
 ];
 
 const canvasRef = ref(null);
-const fetchedFactors = ref([]);  // Reactive factors from Firestore
+const fetchedFactors = ref([]);  // Will hold dynamically fetched stress factors
 
+// Toast message management
 const toastMessage = ref('');
 const toastRef = ref(null);
 
@@ -42,6 +45,7 @@ const averageSleep = computed(() => {
   return (total / sleepData.value.length).toFixed(1);
 });
 
+// Show toast notification
 function showToast(message) {
   toastMessage.value = message;
   if (!toastRef.value) return;
@@ -49,10 +53,13 @@ function showToast(message) {
   toast.show();
 }
 
-function updateStress() {
-  showToast(`Stress level updated to ${stressLevel.value}, stress factors logged.`);
+// Reset stress level and factors after logging
+function resetStressInputs() {
+  stressLevel.value = 40;
+  selectedFactors.value = [];
 }
 
+// Log sleep data
 async function logSleep() {
   const user = auth.currentUser;
   if (!user) {
@@ -70,6 +77,7 @@ async function logSleep() {
   showToast('Sleep data logged!');
 }
 
+// Log mood/stress
 async function logMood() {
   const user = auth.currentUser;
   if (!user) {
@@ -83,43 +91,41 @@ async function logMood() {
       mood: stressLevel.value,
       stressFactors: selectedFactors.value,
       date: new Date().toISOString()
-    },
+    }
   );
-
-
-  stressLevel.value = 40;        
-  selectedFactors.value = [];    
+  showToast('Stress level logged!');
+  resetStressInputs();
 }
 
+// Fetch latest sleep log for the user
 async function fetchLatestSleepLog() {
   const user = auth.currentUser;
   if (!user) return;
-  const sleepLogQuery = query(
+  const sleepQuery = query(
     collection(db, "sleepLogs"),
     where("userId", "==", user.uid),
     orderBy("date", "desc"),
     limit(1)
   );
-  const querySnapshot = await getDocs(sleepLogQuery);
-  if (!querySnapshot.empty) {
-    const latestLog = querySnapshot.docs[0].data();
-    if (latestLog.sleepData) {
-      sleepData.value = latestLog.sleepData;
-      console.log("Fetched sleep log:", latestLog.sleepData);
+  const snapshot = await getDocs(sleepQuery);
+  if (!snapshot.empty) {
+    const latest = snapshot.docs[0].data();
+    if (latest.sleepData) {
+      sleepData.value = latest.sleepData;
+      console.log("Fetched latest sleep:", latest.sleepData);
     }
   }
 }
 
-// Real-time listener for moodLogs to update fetchedFactors reactively
+// Real-time listener for stress factors from moodLogs
 function subscribeToStressFactorsRealtime(userId) {
-  const moodLogQuery = query(
+  const q = query(
     collection(db, "moodLogs"),
     where("userId", "==", userId),
     orderBy("date", "desc"),
     limit(7)
   );
-
-  return onSnapshot(moodLogQuery, (querySnapshot) => {
+  return onSnapshot(q, (querySnapshot) => {
     const factorCount = {};
     querySnapshot.forEach(doc => {
       const log = doc.data();
@@ -133,6 +139,7 @@ function subscribeToStressFactorsRealtime(userId) {
   });
 }
 
+// Computed for stress label display
 const stressLabel = computed(() => {
   if (stressLevel.value < 30) return 'Low';
   if (stressLevel.value < 70) return 'Moderate';
@@ -147,6 +154,7 @@ const stressColorClass = computed(() => {
 
 const selectedFactors = ref([]);
 
+// Toggle stress factor selection
 function toggleFactor(factor) {
   const idx = selectedFactors.value.indexOf(factor);
   if (idx === -1) {
@@ -156,15 +164,12 @@ function toggleFactor(factor) {
   }
 }
 
+// Draws the word cloud
 function drawWordCloud(factors) {
   if (!canvasRef.value) return;
-
   const canvas = canvasRef.value;
   const ctx = canvas.getContext('2d');
-
-  // Clear the canvas before redraw
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-
   WordCloud(canvas, {
     list: factors.length ? factors : stressFactors,
     gridSize: 5,
@@ -183,76 +188,63 @@ function drawWordCloud(factors) {
   });
 }
 
+// On mount, setup auth, subscriptions, canvas size
 onMounted(() => {
   onAuthStateChanged(auth, async (user) => {
     if (user) {
       await fetchLatestSleepLog();
-
-      // Subscribe to live mood log updates for word cloud
+      // Subscribe for real-time stress factors updates
       subscribeToStressFactorsRealtime(user.uid);
     }
   });
-
+  // Canvas setup for dpr
   const canvas = canvasRef.value;
   if (!canvas) return;
-
   const dpr = window.devicePixelRatio || 1;
   const rect = canvas.getBoundingClientRect();
-
   canvas.width = rect.width * dpr;
   canvas.height = rect.height * dpr;
-
   const ctx = canvas.getContext('2d');
   ctx.scale(dpr, dpr);
 });
 
-// Draw word cloud whenever fetchedFactors changes
+// Watch fetchedFactors reactively redraws word cloud
 watch(fetchedFactors, (newFactors) => {
   drawWordCloud(newFactors);
 }, { immediate: true, deep: true });
 </script>
 
-
 <template>
   <div class="min-vh-100 py-5">
     <div
-    ref="toastRef"
-    class="toast position-fixed bottom-0 start-50 translate-middle-x m-3"
-    role="alert"
-    aria-live="assertive"
-    aria-atomic="true"
-    data-bs-delay="3000"
-  >
-    <div class="toast-body">
-      {{ toastMessage }}
+      ref="toastRef"
+      class="toast position-fixed bottom-0 start-50 translate-middle-x m-3"
+      role="alert"
+      aria-live="assertive"
+      aria-atomic="true"
+      data-bs-delay="3000"
+    >
+      <div class="toast-body">{{ toastMessage }}</div>
     </div>
-  </div>
 
-    <div class="container">
-      <!-- Header -->
-      <div class="mb-4">
-        <h1 class="d-flex align-items-center gap-3 mb-2">
-          Wellness Tracker
-        </h1>
-        <p class="text-muted">Monitor your mental health and sleep patterns</p>
-      </div>
+    <div class="mb-5 text-center">
+      <h1 class="display-4 fw-bold d-flex justify-content-center align-items-center gap-3">
+        <i class="bi bi-journal-text"></i> Wellbeing Tracker
+      </h1>
+      <p class="text-muted fs-5">Monitor your sleep and mental health.</p>
+    </div>
 
+    <div class="row mb-4 g-4">
+      <!-- Sleep Tracker -->
+      <div class="col-12 col-lg-6">
+        <div class="card shadow h-100">
+          <div class="card-header">
+            Sleep Tracking
+          </div>
+          <div class="card-body p-4">
+            <p class="mb-1 text-secondary small">Average this week</p>
+            <p class="fs-2 fw-bold text-info">{{ averageSleep }} hrs</p>
 
-      <div class="row mb-4 g-4">
-        <!-- Sleep Tracker -->
-        <div class="col-12 col-lg-6">
-          <div class="card shadow p-4 h-100">
-            <div class="d-flex align-items-center justify-content-between mb-3">
-              <h3 class="d-flex align-items-center gap-2 mb-0">
-                Sleep Tracking
-              </h3>
-            </div>
-            <div class="mb-3">
-              <p class="mb-1 text-secondary small">Average this week</p>
-              <p class="fs-2 fw-bold text-info">{{ averageSleep }} hrs</p>
-            </div>
-
-            <!-- Interactive Sleep Tracker -->
             <div class="mb-3">
               <div v-for="day in sleepData" :key="day.day" class="d-flex align-items-center gap-3 mb-2">
                 <div class="fw-medium" style="width: 50px;">
@@ -266,14 +258,15 @@ watch(fetchedFactors, (newFactors) => {
             <button class="btn btn-info w-100 mt-3" @click="logSleep">Log Sleep</button>
           </div>
         </div>
+      </div>
 
-        <!-- Stress Level -->
-        <div class="col-12 col-lg-6">
-          <div class="card shadow p-4 h-100 d-flex flex-column">
-            <h3 class="mb-3 d-flex align-items-center gap-2">
-              <!--<span class="fs-5 text-warning">✨</span>-->
-              Current Stress Level
-            </h3>
+      <!-- Stress Level -->
+      <div class="col-12 col-lg-6">
+        <div class="card shadow h-100 d-flex flex-column">
+          <div class="card-header">
+            Current Stress Level
+          </div>
+          <div class="card-body p-4 flex-grow-1 d-flex flex-column">
             <div class="mb-3">
               <div class="d-flex justify-content-between small text-muted mb-2">
                 <div>Low</div>
@@ -283,7 +276,7 @@ watch(fetchedFactors, (newFactors) => {
                 aria-label="Stress level slider" />
               <p :class="['text-center', 'fs-3', 'fw-bold', stressColorClass, 'mb-0']">{{ stressLabel }}</p>
             </div>
-            <div class="bg-light rounded p-3 mb-3 flex-grow-1">
+            <div class="rounded p-3 mb-3 flex-grow-1 bg-light">
               <h4 class="fw-semibold mb-2">Stress Factors Today:</h4>
               <div class="d-flex flex-wrap gap-2">
                 <span v-for="([factor]) in stressFactors" :key="factor" @click="toggleFactor(factor)" :class="[
@@ -300,31 +293,35 @@ watch(fetchedFactors, (newFactors) => {
           </div>
         </div>
       </div>
+    </div>
 
-      <!-- Wellness Tips -->
-      <div class="card shadow p-4 bg-gradient rounded">
-        <h3 class="mb-4"><!--🧘 -->Wellness Recommendations</h3>
+    <!-- Wellness Tips -->
+    <div class="card shadow bg-gradient rounded">
+      <div class="card-header">
+        Wellness Recommendations
+      </div>
+      <div class="card-body p-4">
         <div class="row g-4">
           <div class="col-12 col-md-6">
-            <div class="p-3 bg-white rounded shadow-sm">
+            <div class="p-3 rounded shadow-sm bg-white">
               <h5 class="fw-medium mb-2">Better Sleep Hygiene</h5>
               <p class="text-muted mb-0">Aim for 7-9 hours of sleep. Keep a consistent sleep schedule.</p>
             </div>
           </div>
           <div class="col-12 col-md-6">
-            <div class="p-3 bg-white rounded shadow-sm">
+            <div class="p-3 rounded shadow-sm bg-white">
               <h5 class="fw-medium mb-2">Manage Stress</h5>
               <p class="text-muted mb-0">Try meditation, deep breathing, or short walks between study sessions.</p>
             </div>
           </div>
           <div class="col-12 col-md-6">
-            <div class="p-3 bg-white rounded shadow-sm">
+            <div class="p-3 rounded shadow-sm bg-white">
               <h5 class="fw-medium mb-2">Stay Social</h5>
               <p class="text-muted mb-0">Connect with friends and family regularly for emotional support.</p>
             </div>
           </div>
           <div class="col-12 col-md-6">
-            <div class="p-3 bg-white rounded shadow-sm">
+            <div class="p-3 rounded shadow-sm bg-white">
               <h5 class="fw-medium mb-2">Take Breaks</h5>
               <p class="text-muted mb-0">Regular breaks improve focus and reduce mental fatigue.</p>
             </div>
@@ -340,6 +337,29 @@ watch(fetchedFactors, (newFactors) => {
 </template>
 
 <style scoped>
+.card {
+  border-radius: 15px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+  margin-bottom: 2rem;
+  overflow: visible;
+  position: relative;
+}
+
+.card-header {
+  background: #667eea;
+  color: white;
+  border-radius: 15px 15px 0 0 !important;
+  padding: 1.5rem;
+  font-weight: 600;
+  font-size: 1.3rem;
+}
+
+.card-body {
+  padding: 1.5rem;
+  background: white;
+  border-radius: 0 0 15px 15px;
+}
+
 .badge-custom {
   background-color: #6c757d;
   color: white;
