@@ -1341,7 +1341,12 @@ export default {
           
           this.accessToken = response.access_token;
           sessionStorage.setItem('google_token', this.accessToken);
-          
+
+          // Bind OAuth token to gapi so subsequent calls use Authorization: Bearer
+          if (window.gapi?.client) {
+            gapi.client.setToken({ access_token: this.accessToken });
+          }
+
           await this.waitForGoogleAPI();
           await this.syncWithGoogle();
           this.startAutoSync();
@@ -1363,32 +1368,65 @@ export default {
     },
 
     // Auto Sync with Google Calendar
-    startAutoSync() {
-      if (this.syncInterval) {
-        clearInterval(this.syncInterval);
-      }
+    // startAutoSync() {
+    //   if (this.syncInterval) {
+    //     clearInterval(this.syncInterval);
+    //   }
       
-      this.syncInterval = setInterval(() => {
-        this.syncWithGoogle()
-      }, 1 * 60 * 1000)
+    //   this.syncInterval = setInterval(() => {
+    //     this.syncWithGoogle()
+    //   }, 1 * 60 * 1000)
+    // },
+
+    startAutoSync() {
+      if (this.syncInterval) clearInterval(this.syncInterval);
+      this.syncInterval = setInterval(async () => {
+        try {
+          await this.syncWithGoogle();
+        } catch (e) {
+          console.warn('Auto-sync attempt failed:', e?.message || e);
+        }
+      }, 60 * 1000);
     },
 
+    // async initGoogle() {
+    //   try {
+    //     // Load Google Calendar API Client
+    //     await new Promise((resolve) => {
+    //       gapi.load('client', resolve)
+    //     })
+
+    //     // Initialise Google Calendar Client
+    //     await gapi.client.init({
+    //       apiKey: import.meta.env.VITE_GOOGLE_API_KEY,
+    //       discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest']
+    //     })
+
+    //     console.log('Google Calendar API Initialised')
+    //   } catch (error) {
+    //     console.error('Error Initialising Google Calendar API:', error)
+    //   }
+    // },
     async initGoogle() {
       try {
-        // Load Google Calendar API Client
-        await new Promise((resolve) => {
-          gapi.load('client', resolve)
-        })
+        // Load Google API client
+        await new Promise((resolve) => gapi.load('client', resolve));
 
-        // Initialise Google Calendar Client
+        // Initialize only with discoveryDocs to load Calendar API surface
         await gapi.client.init({
-          apiKey: import.meta.env.VITE_GOOGLE_API_KEY,
-          discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest']
-        })
+          discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest'],
+          // no apiKey here to prevent key-based fallback
+        });
 
-        console.log('Google Calendar API Initialised')
+        // If a token exists (e.g., after refresh), bind it to gapi now
+        const saved = sessionStorage.getItem('google_token');
+        if (saved) {
+          gapi.client.setToken({ access_token: saved });
+        }
+
+        console.log('Google Calendar API initialized');
       } catch (error) {
-        console.error('Error Initialising Google Calendar API:', error)
+        console.error('Error initializing Google Calendar API:', error);
       }
     },
 
@@ -1397,8 +1435,14 @@ export default {
         console.log('Google Calendar API not initialised yet.');
         return;
       }
-      if (!this.accessToken) {
-        console.log('No Access Token.');
+
+      // Ensure gapi holds an access token (not just an API key)
+      const token = gapi.client.getToken?.();
+      if (!token?.access_token && this.accessToken) {
+        gapi.client.setToken({ access_token: this.accessToken });
+      }
+      if (!gapi.client.getToken?.()?.access_token) {
+        console.log('No OAuth access token bound; skipping sync.');
         return;
       }
 
@@ -1582,65 +1626,30 @@ export default {
       })
     },
 
-    // Convert Location to GeoPoint
     async geocodeLocation(address) {
       try {
-        const { PlacesService } = await google.maps.importLibrary("places");
-        const { Geocoder } = await google.maps.importLibrary("geocoding");
+        const { Place } = await google.maps.importLibrary("places");
         
-        const geocoder = new Geocoder();
+        const request = {
+          textQuery: address,
+          fields: ['displayName', 'formattedAddress', 'location'],
+          maxResultCount: 1
+        };
+
+        const { places } = await Place.searchByText(request);
         
-        return new Promise((resolve) => {
-          // Geocode Location
-          geocoder.geocode({ address: address }, async (results, status) => {
-            if (status === 'OK' && results[0]) {
-              const loc = results[0].geometry.location;
-              let displayName = address;
-              
-              // Get Place Details
-              if (results[0].place_id) {
-                try {
-                  const service = new PlacesService(document.createElement('div'));
-                  
-                  service.getDetails(
-                    { placeId: results[0].place_id },
-                    (place, placeStatus) => {
-                      if (placeStatus === 'OK' && place) {
-                        displayName = place.name 
-                          ? `${place.name}, ${place.formatted_address}`
-                          : place.formatted_address || address;
-                      } 
-                      else {
-                        displayName = address;
-                      }
-                      
-                      resolve({
-                        geopoint: new GeoPoint(loc.lat(), loc.lng()),
-                        name: displayName
-                      });
-                    }
-                  );
-                } 
-                catch (err) {
-                  resolve({
-                    geopoint: new GeoPoint(loc.lat(), loc.lng()),
-                    name: address
-                  });
-                }
-              } 
-              else {
-                resolve({
-                  geopoint: new GeoPoint(loc.lat(), loc.lng()),
-                  name: address
-                });
-              }
-            } 
-            else {
-              resolve(null);
-            }
-          });
-        });
-      } 
+        if (places && places.length > 0) {
+          const place = places[0];
+          const loc = place.location;
+          
+          return {
+            geopoint: new GeoPoint(loc.lat, loc.lng),
+            name: place.displayName ? `${place.displayName}, ${place.formattedAddress}` : place.formattedAddress
+          };
+        } else {
+          return null;
+        }
+      }
       catch (err) {
         return null;
       }
@@ -2233,20 +2242,46 @@ export default {
     },
   },
 
+  // async mounted() {
+  //   await loadGoogleMaps()
+  //   this.listenToEvents();
+  //   await this.initGoogle();
+    
+  //   // Check for Saved Session
+  //   const savedToken = sessionStorage.getItem('google_token')
+  //   if (savedToken) {
+  //     this.syncEnabled = true;
+  //     this.accessToken = savedToken;
+      
+  //     await this.waitForGoogleAPI()
+  //     await this.syncWithGoogle()
+  //     this.startAutoSync()
+  //   }
+  // },
+
   async mounted() {
-    await loadGoogleMaps()
+    await loadGoogleMaps();
     this.listenToEvents();
     await this.initGoogle();
-    
-    // Check for Saved Session
-    const savedToken = sessionStorage.getItem('google_token')
+
+    const savedToken = sessionStorage.getItem('google_token');
     if (savedToken) {
       this.syncEnabled = true;
       this.accessToken = savedToken;
-      
-      await this.waitForGoogleAPI()
-      await this.syncWithGoogle()
-      this.startAutoSync()
+
+      // Bind the token first, then wait for API, then sync
+      if (window.gapi?.client) {
+        gapi.client.setToken({ access_token: savedToken });
+      }
+
+      await this.waitForGoogleAPI();
+      try {
+        await this.syncWithGoogle();
+        this.startAutoSync();
+      } catch (e) {
+        console.error('Initial sync failed:', e);
+        this.syncEnabled = false;
+      }
     }
   },
 
