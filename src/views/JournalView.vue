@@ -244,25 +244,31 @@ onMounted(() => {
         <p class="text-center text-white-75">Track your mood daily to identify patterns and improve wellbeing</p>
       </div>
 
-      <div class="p-4 shadow rounded bg-light mb-5">
-        <h3 class="h5 mb-3 d-flex align-items-center gap-2">
-          <i class="bi bi-pencil-square"></i> New Journal Entry
-        </h3>
-        <textarea 
-          class="form-control" 
-          rows="6" 
-          placeholder="Write about your day, your focus, or any stress you're feeling..."
-          v-model="journalEntry"
-          @keyup.enter="saveEntry" ></textarea>
-        <button class="btn btn-primary mt-3" @click="saveEntry">Save Journal Entry</button>
+      <div class="card journal-card shadow rounded mb-5">
+        <div class="card-header card-header-style">
+            <h3 class="h5 mb-0">
+                <i class="mdi mdi-clock-outline me-2"></i> New Journal Entry
+            </h3>
+        </div>
+        <div class="card-body">
+            <textarea 
+              class="form-control" 
+              rows="6" 
+              placeholder="Write about your day, your focus, or any stress you're feeling..."
+              v-model="journalEntry"
+              @keyup.enter="saveEntry" ></textarea>
+            <button class="btn btn-primary mt-3" @click="saveEntry">Save Journal Entry</button>
+        </div>
       </div>
       
-      <div class="p-4 shadow rounded bg-light mb-4">
-          <h3 class="h5 mb-3 d-flex align-items-center gap-2">
-            <i class="bi bi-book me-2"></i> Recent Entries
-          </h3>
-          
-          <div v-if="!userId" class="text-center text-muted py-3">
+      <div class="card journal-card shadow rounded mb-4">
+        <div class="card-header card-header-style">
+            <h3 class="h5 mb-0">
+                <i class="mdi mdi-book-open-variant me-2"></i> Recent Entries
+            </h3>
+        </div>
+        <div class="card-body">
+            <div v-if="!userId" class="text-center text-muted py-3">
              <i class="bi bi-lock fa-2x mb-2"></i>
              <p>Log in to load your journal history.</p>
           </div>
@@ -329,10 +335,11 @@ onMounted(() => {
                   </div>
               </div>
           </div>
-          <div v-else class="text-muted fst-italic">
+          <div v-else class="text-muted fst-italic ps-2">
             <i class="bi bi-feather me-2" style="opacity: 0.5;"></i>
             No entries saved yet. Start by writing your first journal entry above!
           </div>
+        </div>
       </div>
 
     </div>
@@ -387,6 +394,33 @@ onMounted(() => {
 <style scoped>
 .bg-gradient {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+/* 🆕 Replicating StudyView Card Header Style */
+.journal-card .card-header-style {
+    background: #667eea;
+    color: white;
+    border-radius: 15px 15px 0 0 !important;
+    padding: 1.5rem;
+    font-weight: 600;
+    font-size: 1.3rem;
+}
+
+.journal-card .card-header-style h3 {
+    color: white !important; /* Ensure header text is white */
+    font-weight: 600;
+    font-size: 1.3rem;
+}
+
+.journal-card .card-body {
+    padding: 1.5rem;
+}
+
+/* Base Card Styles */
+.card {
+	border-radius: 15px;
+	box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    /* Removed default card-header padding and color to allow custom style */
 }
 
 /* TOAST STYLING */
