@@ -26,10 +26,8 @@ export default {
             userId: null,
 
             // Recommendations
-            currentStatus: {
-                stress: '',
-                sleepQuality: ''
-            },
+            stress: 'No data',
+            sleepQuality: 'No data',
             stressFactorsCount: 0,
             avgSleepQuality: 0,
             studySessionsToday: 0,
@@ -44,6 +42,8 @@ export default {
             accessToken: null,
             syncInterval: null,
             events: [],
+            syncErrorCount: 0,
+            maxSyncErrors: 5,
 
             // Journal data
             journalHistory: [],
@@ -64,9 +64,9 @@ export default {
         statusList() {
             return [
                 { key: 'sessions', label: 'Study Sessions Today', value: this.studySessionsToday, subtext: `${this.formatStudyTime(this.totalStudyTimeToday)} focused time` },
-                { key: 'stress', label: 'Stress Level', value: this.currentStatus.stress, subtext: `${this.stressFactorsCount} stress factor${this.stressFactorsCount !== 1 ? 's' : ''} identified` },
+                { key: 'stress', label: 'Stress Level', value: this.stress, subtext: `${this.stressFactorsCount} stress factor${this.stressFactorsCount !== 1 ? 's' : ''} identified` },
                 { key: 'activity', label: 'Activity Minutes', value: `${this.totalWorkouts.minutes} min`, subtext: `${this.totalWorkouts.kcal} kcal burned` },
-                { key: 'sleep', label: 'Sleep Quality', value: this.currentStatus.sleepQuality, subtext: `${this.avgSleepQuality} hrs average this week` }
+                { key: 'sleep', label: 'Sleep Quality', value: this.sleepQuality, subtext: `${this.avgSleepQuality} hrs average this week` }
             ];
         },
 
@@ -180,8 +180,8 @@ export default {
     },
 
     methods: {
-        // Load sleep and mood data
-        async loadCurrentStatusFromFirestore() {
+        // Load mood data
+        async loadStressLevel() {
             if (!this.userId) {
                 return;
             }
@@ -196,90 +196,41 @@ export default {
                 );
 
                 const moodSnapshot = await getDocs(moodQuery);
-                let stressLevel = 'Unknown';
                 if (!moodSnapshot.empty) {
                     const mood = moodSnapshot.docs[0].data().mood;
                     const moodValue = Number(mood);
                     if (moodValue < 30) {
-                        stressLevel = 'Low';
+                        this.stress = 'Low';
                     } else if (moodValue < 70) {
-                        stressLevel = 'Moderate';
+                        this.stress = 'Moderate';
                     } else {
-                        stressLevel = 'High';
+                        this.stress = 'High';
                     }
                 }
 
-                // Get sleep quality from latest sleep log
-                const sleepQuery = query(
-                    collection(db, 'sleepLogs'),
-                    where('userId', '==', this.userId),
-                    orderBy('date', 'desc'),
-                    limit(1)
-                );
-
-                const sleepSnapshot = await getDocs(sleepQuery);
-                let sleepQuality = 'Unknown';
-                if (!sleepSnapshot.empty) {
-                    const sleepHours = sleepSnapshot.docs[0].data().sleepHours;
-                    sleepQuality = sleepHours >= 7 ? 'Good' : sleepHours >= 5 ? 'Fair' : 'Poor';
-                }
-
-                this.currentStatus = {
-                    stress: stressLevel,
-                    sleepQuality: sleepQuality
-                };
-
-                console.log('Current status loaded:', this.currentStatus);
-            } catch (error) {
-                console.error('Error loading current status:', error);
-            }
-        },
-
-        // Load stress factor count
-        async loadStressFactorsCount() {
-            if (!this.userId) return;
-
-            try {
-                // Fetch last 7 mood logs for this user
-                const moodCountQuery = query(
-                    collection(db, 'moodLogs'),
-                    where('userId', '==', this.userId),
-                    orderBy('date', 'desc'),
-                    limit(1)
-                );
-
-                const querySnapshot = await getDocs(moodCountQuery);
-
-                if (querySnapshot.empty) {
-                    console.log('No mood logs found');
-                    this.stressFactorsCount = 0;
-                    return;
-                }
-
                 // Get the latest mood log document
-                const latestMoodLog = querySnapshot.docs[0].data();
-                console.log('Latest mood log:', latestMoodLog);
+                const latestMoodLog = moodSnapshot.docs[0].data();
 
                 // Extract stress factors array
                 const stressFactors = latestMoodLog.stressFactors || [];
 
                 if (!Array.isArray(stressFactors)) {
                     console.log('No stress factors array found');
-                    this.stressFactorsCount = 0;
                     return;
                 }
 
                 // Store the count of unique stress factors
                 this.stressFactorsCount = stressFactors.length;
+
                 console.log('Stress factors count:', this.stressFactorsCount, 'Factors:', stressFactors);
+                console.log('Current status loaded:', this.stress);
             } catch (error) {
-                console.error('Error loading stress factors:', error);
-                this.stressFactorsCount = 0;
+                console.error('Error loading stress:', error);
             }
         },
 
-        // Load average sleep quality
-        async loadAverageSleepQuality() {
+        // Load sleep quality
+        async loadSleepQuality() {
             if (!this.userId) {
                 return;
             }
@@ -293,23 +244,20 @@ export default {
                     limit(7)
                 );
 
-                const querySnapshot = await getDocs(sleepQuery);
-
-                if (querySnapshot.empty) {
-                    this.avgSleepQuality = 0;
+                const sleepSnapshot = await getDocs(sleepQuery);
+                if (sleepSnapshot.empty) {
+                    console.log('No sleep logs found');
                     return;
                 }
 
                 // Get the latest sleep log document
-                const latestLog = querySnapshot.docs[0].data();
-                console.log('Latest sleep log:', latestLog);
+                const latestLog = sleepSnapshot.docs[0].data();
 
                 // Extract sleep data array
                 const sleepDataArray = latestLog.sleepData || [];
 
                 if (!Array.isArray(sleepDataArray) || sleepDataArray.length === 0) {
                     console.log('No sleep data array found');
-                    this.avgSleepQuality = 0;
                     return;
                 }
 
@@ -322,10 +270,14 @@ export default {
                 const averageHours = (totalHours / sleepDataArray.length).toFixed(1);
                 this.avgSleepQuality = averageHours;
 
+                // Determine sleep quality based on average hours
+                const avgHoursNum = Number(averageHours);
+                this.sleepQuality = avgHoursNum >= 7 ? 'Good' : avgHoursNum >= 5 ? 'Fair' : 'Poor';
+
+                console.log('Current sleep quality:', this.sleepQuality);
                 console.log('Average sleep quality this week:', this.avgSleepQuality, 'hours');
             } catch (error) {
                 console.error('Error loading average sleep quality:', error);
-                this.avgSleepQuality = 0;
             }
         },
 
@@ -431,19 +383,19 @@ export default {
             }
 
             // Sleep quality
-            if (this.currentStatus.sleepQuality === 'Poor') {
+            if (this.sleepQuality === 'Poor') {
                 suggestions.push({
                     title: 'Improve Your Sleep',
                     description: 'Your sleep quality was poor this week. Start by establishing a consistent bedtime routine.',
                     icon: 'Clock'
                 });
-            } else if (this.currentStatus.sleepQuality === 'Fair') {
+            } else if (this.sleepQuality === 'Fair') {
                 suggestions.push({
                     title: 'Optimise Your Sleep',
                     description: 'Your sleep was fair this week. You can improve it by reducing screen time before bed.',
                     icon: 'Clock'
                 });
-            } else if (this.currentStatus.sleepQuality === 'Good') {
+            } else if (this.sleepQuality === 'Good') {
                 suggestions.push({
                     title: 'Maintain Your Sleep Routine',
                     description: 'Your sleep quality is excellent! Keep up your bedtime routine to maintain this positive trend.',
@@ -452,7 +404,7 @@ export default {
             }
 
             // Stress management suggestions
-            if (this.currentStatus.stress === 'High') {
+            if (this.stress === 'High') {
                 suggestions.push({
                     title: 'Wind Down Routine',
                     description: 'Your stress level is high. Consider a relaxing activity like meditation to help you unwind before bed.',
@@ -697,19 +649,30 @@ export default {
                         synced: true,
                         gEventId: item.id
                     };
-
-                    if (gEventIdToDocIdMap.has(item.id)) {
-                        const firestoreDocId = gEventIdToDocIdMap.get(item.id);
-                        console.log(`Updating Firestore Event ${firestoreDocId} with Google Calendar Event ${item.id}`);
-                        await updateDoc(doc(db, 'events', firestoreDocId), eventData);
-                    } else {
-                        eventData.colour = '#9FE1E7';
-                        eventData.source = 'google';
-                        eventData.priority = 'Low';
-                        console.log(`Creating New Firestore Document for Google Calendar Event ${item.id}`);
-                        await setDoc(doc(db, 'events', item.id), eventData);
+                    try {
+                        if (gEventIdToDocIdMap.has(item.id)) {
+                            const firestoreDocId = gEventIdToDocIdMap.get(item.id);
+                            console.log(`Updating Firestore Event ${firestoreDocId} with Google Calendar Event ${item.id}`);
+                            await updateDoc(doc(db, 'events', firestoreDocId), eventData);
+                        } else {
+                            eventData.colour = '#9FE1E7';
+                            eventData.source = 'google';
+                            eventData.priority = 'Low';
+                            console.log(`Creating New Firestore Document for Google Calendar Event ${item.id}`);
+                            await setDoc(doc(db, 'events', item.id), eventData);
+                        }
+                    } catch (err) {
+                        console.error('Error Syncing Event from Google Calendar to Firestore:', err);
+                        this.syncErrorCount++;
+                        if (this.syncErrorCount >= this.maxSyncErrors) {
+                            console.error('Maximum Sync Errors Reached. Disconnecting Google Calendar Sync.');
+                            this.disconnectGoogle();
+                        }
                     }
                 }
+
+                // Reset Sync Error Count on Successful Sync
+                this.syncErrorCount = 0;
 
                 // Remove Deleted Google Calendar Events from Cloud Firestore
                 const localGoogleEvents = this.events.filter(event => event.source === 'google');
@@ -1109,9 +1072,8 @@ export default {
                 await this.loadModuleProgress();
 
                 // Load recommendations from Firebase
-                await this.loadCurrentStatusFromFirestore();
-                await this.loadStressFactorsCount();
-                await this.loadAverageSleepQuality();
+                await this.loadStressLevel();
+                await this.loadSleepQuality();
 
                 // Load today's study sessions from Firebase
                 await this.loadStudySessions();
@@ -1394,7 +1356,7 @@ export default {
                                         <div class="d-flex align-items-center justify-content-between mb-2">
                                             <span class="small fw-semibold">
                                                 <span v-if="entry.mood" class="me-2">{{ getMoodIcon(entry.mood)
-                                                    }}</span>
+                                                }}</span>
                                                 {{ entry.date }}
                                             </span>
                                             <span v-if="entry.mood" class="badge rounded-pill"

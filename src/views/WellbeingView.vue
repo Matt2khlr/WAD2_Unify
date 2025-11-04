@@ -1,10 +1,9 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue';
 import WordCloud from 'wordcloud';
-import { db, auth } from '../firebase.js';
 import { collection, where, addDoc, query, orderBy, limit, onSnapshot, getDocs } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
-import bootstrap from 'bootstrap/dist/js/bootstrap.bundle';
+import { db, auth } from '@/firebase';
 
 // Default sleep data
 const sleepData = ref([
@@ -34,7 +33,7 @@ const stressFactors = [
 ];
 
 const canvasRef = ref(null);
-const fetchedFactors = ref([]);  
+const fetchedFactors = ref([]);
 
 
 const toastMessage = ref('');
@@ -192,11 +191,11 @@ onMounted(() => {
   onAuthStateChanged(auth, async (user) => {
     if (user) {
       await fetchLatestSleepLog();
-      
+
       subscribeToStressFactorsRealtime(user.uid);
     }
   });
-  
+
   const canvas = canvasRef.value;
   if (!canvas) return;
   const dpr = window.devicePixelRatio || 1;
@@ -216,102 +215,95 @@ watch(fetchedFactors, (newFactors) => {
 <template>
   <div class="min-vh-100 py-5">
     <div class="container">
-    <div
-      ref="toastRef"
-      class="toast position-fixed bottom-0 start-50 translate-middle-x m-3"
-      role="alert"
-      aria-live="assertive"
-      aria-atomic="true"
-      data-bs-delay="3000"
-    >
-      <div class="toast-body">{{ toastMessage }}</div>
-    </div>
+      <div ref="toastRef" class="toast position-fixed bottom-0 start-50 translate-middle-x m-3" role="alert"
+        aria-live="assertive" aria-atomic="true" data-bs-delay="3000">
+        <div class="toast-body">{{ toastMessage }}</div>
+      </div>
 
-    <div class="mb-5 text-center">
-      <h1 class="display-4 fw-bold d-flex justify-content-center align-items-center gap-3">
-        <i class="bi bi-journal-text"></i> Wellbeing Tracker
-      </h1>
-      <p class="text-muted fs-5">Monitor your sleep and mental health.</p>
-    </div>
+      <div class="mb-5 text-center">
+        <h1 class="display-4 fw-bold d-flex justify-content-center align-items-center gap-3">
+          <i class="bi bi-journal-text"></i> Wellbeing Tracker
+        </h1>
+        <p class="text-muted fs-5">Monitor your sleep and mental health.</p>
+      </div>
 
-    <div class="row mb-4 g-4">
-      <!-- Sleep -->
-      <div class="col-12 col-lg-6">
-        <div class="card shadow h-100">
-          <div class="card-header">
-            Sleep Tracking
-          </div>
-          <div class="card-body p-4">
-            <p class="mb-1 text-secondary small">Average this week</p>
-            <p class="fs-2 fw-bold text-info">{{ averageSleep }} hrs</p>
+      <div class="row mb-4 g-4">
+        <!-- Sleep -->
+        <div class="col-12 col-lg-6">
+          <div class="card shadow h-100">
+            <div class="card-header">
+              Sleep Tracking
+            </div>
+            <div class="card-body p-4">
+              <p class="mb-1 text-secondary small">Average this week</p>
+              <p class="fs-2 fw-bold text-info">{{ averageSleep }} hrs</p>
 
-            <div class="mb-3">
-              <div v-for="day in sleepData" :key="day.day" class="d-flex align-items-center gap-3 mb-2">
-                <div class="fw-medium" style="width: 50px;">
-                  {{ day.day }}
+              <div class="mb-3">
+                <div v-for="day in sleepData" :key="day.day" class="d-flex align-items-center gap-3 mb-2">
+                  <div class="fw-medium" style="width: 50px;">
+                    {{ day.day }}
+                  </div>
+                  <input type="range" min="0" max="14" step="0.5" v-model.number="day.hours" class="flex-grow-1"
+                    style="max-width: 400px;" :aria-label="`Sleep hours for ${day.day}`" />
+                  <div class="text-secondary" style="width: 45px;">{{ day.hours }}h</div>
                 </div>
-                <input type="range" min="0" max="14" step="0.5" v-model.number="day.hours" class="flex-grow-1"
-                  style="max-width: 400px;" :aria-label="`Sleep hours for ${day.day}`" />
-                <div class="text-secondary" style="width: 45px;">{{ day.hours }}h</div>
               </div>
+              <button class="btn btn-info w-100 mt-3" @click="logSleep">Log Sleep</button>
             </div>
-            <button class="btn btn-info w-100 mt-3" @click="logSleep">Log Sleep</button>
+          </div>
+        </div>
+
+        <!-- Stress Level -->
+        <div class="col-12 col-lg-6">
+          <div class="card shadow h-100 d-flex flex-column">
+            <div class="card-header">
+              Current Stress Level
+            </div>
+            <div class="card-body p-4 flex-grow-1 d-flex flex-column">
+              <div class="mb-3">
+                <div class="d-flex justify-content-between small text-muted mb-2">
+                  <div>Low</div>
+                  <div>High</div>
+                </div>
+                <input type="range" min="0" max="100" step="1" v-model="stressLevel" class="form-range"
+                  aria-label="Stress level slider" />
+                <p :class="['text-center', 'fs-3', 'fw-bold', stressColorClass, 'mb-0']">{{ stressLabel }}</p>
+              </div>
+              <div class="rounded p-3 mb-3 flex-grow-1 bg-light">
+                <h4 class="fw-semibold mb-2">Stress Factors Today:</h4>
+                <div class="d-flex flex-wrap gap-2">
+                  <span v-for="([factor]) in stressFactors" :key="factor" @click="toggleFactor(factor)" :class="[
+                    'badge',
+                    'badge-custom',
+                    selectedFactors.includes(factor) ? 'bg-danger' : '',
+                    'fw-semibold'
+                  ]" style="user-select: none;">
+                    {{ factor }}
+                  </span>
+                </div>
+              </div>
+              <button class="btn btn-secondary w-100" @click="[logMood()]">Update Stress Level</button>
+            </div>
           </div>
         </div>
       </div>
 
-      <!-- Stress Level -->
-      <div class="col-12 col-lg-6">
-        <div class="card shadow h-100 d-flex flex-column">
-          <div class="card-header">
-            Current Stress Level
-          </div>
-          <div class="card-body p-4 flex-grow-1 d-flex flex-column">
-            <div class="mb-3">
-              <div class="d-flex justify-content-between small text-muted mb-2">
-                <div>Low</div>
-                <div>High</div>
-              </div>
-              <input type="range" min="0" max="100" step="1" v-model="stressLevel" class="form-range"
-                aria-label="Stress level slider" />
-              <p :class="['text-center', 'fs-3', 'fw-bold', stressColorClass, 'mb-0']">{{ stressLabel }}</p>
-            </div>
-            <div class="rounded p-3 mb-3 flex-grow-1 bg-light">
-              <h4 class="fw-semibold mb-2">Stress Factors Today:</h4>
-              <div class="d-flex flex-wrap gap-2">
-                <span v-for="([factor]) in stressFactors" :key="factor" @click="toggleFactor(factor)" :class="[
-                  'badge',
-                  'badge-custom',
-                  selectedFactors.includes(factor) ? 'bg-danger' : '',
-                  'fw-semibold'
-                ]" style="user-select: none;">
-                  {{ factor }}
-                </span>
-              </div>
-            </div>
-            <button class="btn btn-secondary w-100" @click="[logMood()]">Update Stress Level</button>
-          </div>
+      <div class="card bg-gradient">
+        <div class="card-header">
+          Common Stress Factors
+        </div>
+        <div class="card-body p-4">
+          <canvas ref="canvasRef" width="600" height="300" style="width: 100%; height: 600px;"></canvas>
         </div>
       </div>
     </div>
-
-  <div class="card bg-gradient">
-  <div class="card-header">
-    Common Stress Factors
-  </div>
-  <div class="card-body p-4">
-    <canvas ref="canvasRef" width="600" height="300" style="width: 100%; height: 600px;"></canvas>
-  </div>
-  </div>
-  </div>
   </div>
 </template>
 
 <style scoped>
-
 .card {
   border-radius: 15px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
   margin-bottom: 2rem;
   overflow: hidden;
   position: relative;
@@ -347,9 +339,7 @@ watch(fetchedFactors, (newFactors) => {
 .toast {
   background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
   color: white;
-  z-index: 1055; 
-  position: fixed; 
+  z-index: 1055;
+  position: fixed;
 }
-
-
 </style>
