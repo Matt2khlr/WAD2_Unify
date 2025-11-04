@@ -72,7 +72,7 @@ const closeNav = () => {
                         <RouterLink class="nav-link" to="/calendar" @click="closeNav()">Calendar</RouterLink>
                     </li>
                     <li class="nav-item">
-                        <RouterLink class="nav-link" to="/settings" @click="closeNav()">{{ userName }}</RouterLink>
+                        <RouterLink class="nav-link user-name" to="/settings" @click="closeNav()">{{ userName }}</RouterLink>
                     </li>
                 </ul>
             </div>
@@ -113,5 +113,21 @@ nav {
 
 .router-link-active {
     color: wheat !important;
+}
+
+.user-name {
+    background: linear-gradient(120deg, #ffd700 0%, #ffed4e 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    font-weight: bold;
+    display: inline-block;
+}
+
+.user-name:hover {
+    background: linear-gradient(120deg, #ffed4e 0%, #ffd700 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 </style>
