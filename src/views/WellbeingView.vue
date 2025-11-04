@@ -22,15 +22,15 @@ const stressLevel = ref(40);
 
 // Default stress factors
 const stressFactors = [
-  ['Deadlines', 12],
-  ['Homework', 9],
-  ['Exams', 15],
-  ['Sleep', 7],
-  ['Lack of support', 6],
-  ['Social', 8],
-  ['Fear of future', 10],
-  ['Health', 5],
-  ['Environment', 4]
+  ['Deadlines', 0],
+  ['Homework', 0],
+  ['Exams', 0],
+  ['Sleep', 0],
+  ['Lack of support', 0],
+  ['Social', 0],
+  ['Fear of future', 0],
+  ['Health', 0],
+  ['Environment', 0]
 ];
 
 const canvasRef = ref(null);
