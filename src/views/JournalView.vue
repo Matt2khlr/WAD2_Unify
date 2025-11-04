@@ -397,7 +397,6 @@ onMounted(() => {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
 
-/* TOAST STYLING */
 .toast {
   background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
   color: white;
@@ -406,27 +405,21 @@ onMounted(() => {
   box-shadow: 0 4px 12px rgba(0,0,0,0.2);
 }
 
-/* 🟢 CARD HEADER STYLING (Fixes White Gap) */
 .card {
 	border-radius: 15px;
 	box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-    /* CRITICAL FIX 1: Removes the default white card border */
     border: none;
-    /* CRITICAL FIX 2: Ensures content is clipped to the outer border-radius */
     overflow: hidden; 
 }
 
-/* 🟢 FIX for Mood Card Color */
 .mood-card {
     background: linear-gradient(120deg, #667eea 0%, #764ba2 100%) !important;
 }
 
 .journal-card .card-header {
-    /* Ensures the header takes the top rounded corners */
     border-radius: 15px 15px 0 0 !important;
     border: none; 
     border-bottom: none;
-    /* Spacing for content */
     padding: 1.5rem;
 }
 
@@ -447,7 +440,6 @@ onMounted(() => {
     padding: 1.5rem;
 }
 
-/* MODAL STYLING */
 .modal-header {
   background: #667eea;
   color: white;
@@ -483,7 +475,7 @@ onMounted(() => {
   transform: translateY(-3px);
 }
 
-/* ACTION BUTTON STYLING (Edit/Delete on list) */
+
 .action-buttons {
     display: flex;
     gap: 8px;
