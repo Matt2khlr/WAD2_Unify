@@ -1,9 +1,12 @@
 <template>
 	<div class="study-app">
 		<div class="container main-container">
-			<h1 class="text-center text-black mb-4">
-				<i class="fas fa-graduation-cap"></i> Study Tools
-			</h1>
+			<div class="mb-5 text-center">
+				<h1 class="display-4 fw-bold d-flex justify-content-center align-items-center gap-3">
+					<i class="fas fa-graduation-cap"></i> Study Tools
+				</h1>
+				<p class="text-muted fs-5">Manage your study topics, focus sessions, and flashcards.</p>
+			</div>
 
 			<!-- Topics Management Section -->
 			<div class="card">
@@ -51,37 +54,6 @@
 						</div>
 					</div>
 
-					<!-- Module Management Section -->
-					<div v-if="modules.length > 0" class="module-management mb-4">
-						<div class="d-flex justify-content-between align-items-center mb-2">
-							<h6 class="mb-0"><i class="fas fa-cog"></i> Manage Modules</h6>
-							<button
-								class="btn btn-sm btn-outline-secondary"
-								@click="showModuleList = !showModuleList"
-							>
-								{{ showModuleList ? 'Hide' : 'Show' }}
-							</button>
-						</div>
-						<div v-if="showModuleList" class="module-list-container p-3 border rounded">
-							<div
-								v-for="module in modules"
-								:key="module"
-								class="module-item d-flex justify-content-between align-items-center mb-2 p-2"
-							>
-								<span class="module-name">
-									<i class="fas fa-folder me-2"></i>{{ module }}
-								</span>
-								<button
-									class="btn btn-danger delete-module-btn"
-									@click="deleteModule(module)"
-									title="Delete this module"
-								>
-									<span class="delete-x">X</span>
-								</button>
-							</div>
-						</div>
-					</div>
-
 					<!-- Exam Dates Section -->
 					<div class="exam-management mb-4">
 						<div class="d-flex justify-content-between align-items-center mb-3">
@@ -104,11 +76,11 @@
 									</small>
 								</div>
 								<button
-									class="btn btn-danger delete-module-btn"
+									class="cancel-button"
 									@click="deleteExam(exam.id)"
 									title="Delete this exam"
 								>
-									<span class="delete-x">X</span>
+									Delete
 								</button>
 							</div>
 						</div>
@@ -144,10 +116,19 @@
 
 						<!-- Topics grouped by module -->
 						<div v-for="module in topicsByModule" :key="module.name" class="module-group mb-3">
-							<h6 class="module-header">
-								<i class="fas fa-folder"></i> {{ module.name }}
-								<span class="badge bg-secondary ms-2">{{ module.topics.length }}</span>
-							</h6>
+							<div class="module-header d-flex justify-content-between align-items-center">
+								<h6 class="mb-0">
+									<i class="fas fa-folder"></i> {{ module.name }}
+									<span class="badge bg-secondary ms-2">{{ module.topics.length }}</span>
+								</h6>
+								<button
+									class="cancel-button"
+									@click="deleteModule(module.name)"
+									title="Delete this module and all its topics"
+								>
+									Delete
+								</button>
+							</div>
 							<div class="topic-list">
 								<div 
 									v-for="topic in module.topics" 
@@ -174,11 +155,11 @@
 											{{ formatTopicDate(topic.addedDate) }}
 										</small>
 										<button
-											class="btn btn-danger delete-topic-btn"
+											class="cancel-button"
 											@click="deleteTopic(topic.id, topic.name)"
 											title="Delete this topic"
 										>
-											<span class="delete-x">X</span>
+											Delete
 										</button>
 									</div>
 								</div>
@@ -545,23 +526,23 @@
 												{{ formatDate(card.nextReview) }}
 											</span>
 											<button
-												class="btn btn-primary btn-sm"
+												class="use-button"
 												@click="startSingleCardReview(card.id)"
 											>
-												<i class="fas fa-play"></i> Use
+												Use
 											</button>
 											<button
-												class="btn btn-warning btn-sm"
+												class="edit-button"
 												@click="startEditCard(card)"
 											>
-												<i class="fas fa-edit"></i> Edit
+												Edit
 											</button>
 											<button
-												class="btn btn-danger delete-module-btn"
+												class="cancel-button"
 												@click="deleteCard(card.id)"
 												title="Delete this flashcard"
 											>
-												<span class="delete-x">X</span>
+												Delete
 											</button>
 										</div>
 									</div>
@@ -1709,6 +1690,10 @@ export default {
 	padding-bottom: 20rem;
 }
 
+.study-app h1 {
+	color: black;
+}
+
 .card {
 	border-radius: 15px;
 	box-shadow: 0 10px 30px rgba(0,0,0,0.2);
@@ -1818,11 +1803,14 @@ export default {
 }
 
 .module-header {
-	color: #667eea;
-	font-weight: 600;
 	margin-bottom: 1rem;
 	padding-bottom: 0.5rem;
 	border-bottom: 2px solid #dee2e6;
+}
+
+.module-header h6 {
+	color: #667eea;
+	font-weight: 600;
 }
 
 .topic-list {
@@ -2163,5 +2151,90 @@ export default {
 	word-wrap: break-word;
 	display: inline-block;
 	text-align: left;
+}
+
+/* Gradient Button Styles */
+.save-button {
+	background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
+	color: white;
+	border-radius: 20px;
+	transition: all 0.3s ease;
+}
+
+.save-button:hover {
+	background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
+	-webkit-background-clip: text;
+	-webkit-text-fill-color: transparent;
+	background-clip: text;
+	border: 1px solid lightgray;
+	box-shadow: 0 8px 16px rgba(102, 126, 234, 0.4);
+	transform: translateY(-3px);
+	transition: all 0.3s ease;
+}
+
+.cancel-button {
+	background: linear-gradient(120deg, #ff6b6b 0%, #ee5a6f 100%);
+	color: white;
+	border-radius: 20px;
+	transition: all 0.3s ease;
+	border: none;
+	padding: 0.2rem 0.2rem;
+	font-size: 0.9rem;
+	min-width: 70px;
+}
+
+.cancel-button:hover {
+	background: linear-gradient(120deg, #ff6b6b 0%, #ee5a6f 100%);
+	-webkit-background-clip: text;
+	-webkit-text-fill-color: transparent;
+	background-clip: text;
+	border: 1px solid lightgray;
+	box-shadow: 0 8px 16px rgba(255, 107, 107, 0.4);
+	transform: translateY(-3px);
+	transition: all 0.3s ease;
+}
+
+.edit-button {
+	background: linear-gradient(120deg, #ffa500 0%, #ff8c00 100%);
+	color: white;
+	border-radius: 20px;
+	transition: all 0.3s ease;
+	border: none;
+	padding: 0.2rem 0.2rem;
+	font-size: 0.9rem;
+	min-width: 70px;
+}
+
+.edit-button:hover {
+	background: linear-gradient(120deg, #ffa500 0%, #ff8c00 100%);
+	-webkit-background-clip: text;
+	-webkit-text-fill-color: transparent;
+	background-clip: text;
+	border: 1px solid lightgray;
+	box-shadow: 0 8px 16px rgba(255, 165, 0, 0.4);
+	transform: translateY(-3px);
+	transition: all 0.3s ease;
+}
+
+.use-button {
+	background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
+	color: white;
+	border-radius: 20px;
+	transition: all 0.3s ease;
+	border: none;
+	padding: 0.2rem 0.2rem;
+	font-size: 0.9rem;
+	min-width: 70px;
+}
+
+.use-button:hover {
+	background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
+	-webkit-background-clip: text;
+	-webkit-text-fill-color: transparent;
+	background-clip: text;
+	border: 1px solid lightgray;
+	box-shadow: 0 8px 16px rgba(102, 126, 234, 0.4);
+	transform: translateY(-3px);
+	transition: all 0.3s ease;
 }
 </style>
