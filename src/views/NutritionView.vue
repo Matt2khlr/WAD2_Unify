@@ -17,9 +17,17 @@
     const digitsOnly = (s) => (s ?? "").replace(/\D+/g, "");
     const n = (x) => (Number.isFinite(Number(x)) ? Number(x) : 0);
 
-    const METS = { Walking: { easy: 2.8, moderate: 3.3, vigorous: 4.5 }, Running: { easy: 7, moderate: 8.3, vigorous: 11 }, Cycling: { easy: 4, moderate: 6, vigorous: 8.5 }, Swimming: { easy: 6, moderate: 7, vigorous: 9.8 }, Gym: { easy: 3, moderate: 5, vigorous: 6 }, Yoga: { easy: 2, moderate: 2.5, vigorous: 3 } };
+    const METS = {
+        walking: { easy: 2.8, moderate: 3.3, vigorous: 4.5 },
+        running: { easy: 7, moderate: 8.3, vigorous: 11 },
+        cycling: { easy: 4, moderate: 6, vigorous: 8.5 },
+        swimming: { easy: 6, moderate: 7, vigorous: 9.8 },
+        gym: { easy: 3, moderate: 5, vigorous: 6 },
+        yoga: { easy: 2, moderate: 2.5, vigorous: 3 },
+        golf: { easy: 3.5, moderate: 4.3, vigorous: 4.8 }
+    };
     function metFor(activity, intensity = "moderate") {
-        return METS[activity]?.[intensity] ?? 3.5;
+        return METS[(activity || "").toLowerCase()]?.[intensity] ?? 3.5;
     }
     function kcalFrom(activity, intensity, kg, minutes) {
         const met = metFor(activity, intensity);
@@ -128,7 +136,7 @@
         return Math.round(p * 4.1 + c * 4.1 + f * 9.3);
     });
 
-    const workoutForm = ref({ activity: "", minutes: "", intensity: "moderate" });
+    const workoutForm = ref({ activity: "", minutes: "", intensity: "moderate", kcalOverride: "" });
     const workouts = ref([]); let unsubWorkouts = null;
 
     const mealsSorted = computed(() => [...meals.value].sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
@@ -144,6 +152,14 @@
     const previewMinutes = computed(() => {
         const m = Number(String(workoutForm.value.minutes).trim());
         return Number.isFinite(m) && m > 0 ? m : 0;
+    });
+    const hasOverride = computed(() => n(workoutForm.value.kcalOverride) > 0);
+    const safeWeight = computed(() => n(targets.value.weightKg) || 70);
+    const previewKcal = computed(() => {
+        if (hasOverride.value) return n(workoutForm.value.kcalOverride);
+        const mins = previewMinutes.value;
+        if (!workoutForm.value.activity || !mins) return 0;
+        return kcalFrom(workoutForm.value.activity, workoutForm.value.intensity, safeWeight.value, mins);
     });
 
     onMounted(() => { onAuthStateChanged(auth, (u) => { userId.value = u?.uid ?? null; bindAll(); }); });
@@ -239,17 +255,21 @@
 
     async function addWorkout() {
         if (!userId.value) return;
-        const mins = Math.max(0, Number(String(workoutForm.value.minutes).trim()));
         const activity = (workoutForm.value.activity || "").trim();
-        if (!activity || !Number.isFinite(mins) || mins <= 0) return;
-        const kg = n(targets.value.weightKg) || 70;
+        const minsRaw = Number(String(workoutForm.value.minutes).trim());
+        const minutes = Number.isFinite(minsRaw) && minsRaw > 0 ? minsRaw : 0;
+        const override = n(workoutForm.value.kcalOverride);
+        const hasKcal = override > 0;
+        if (!activity) return;
+        if (!hasKcal && minutes <= 0) return;
+        const kg = safeWeight.value;
         const met = metFor(activity, workoutForm.value.intensity);
-        const kcal = Math.round((met * 3.5 * kg / 200) * mins);
+        const kcal = hasKcal ? override : Math.round((met * 3.5 * kg / 200) * minutes);
         const refCol = collection(db, "workouts");
         await addDoc(refCol, {
             userId: userId.value,
             activity,
-            minutes: mins,
+            minutes,
             intensity: workoutForm.value.intensity,
             met,
             kcal,
@@ -257,7 +277,7 @@
             createdAt: serverTimestamp()
         });
         showToast("Workout added");
-        workoutForm.value = { activity: "", minutes: "", intensity: "moderate" };
+        workoutForm.value = { activity: "", minutes: "", intensity: "moderate", kcalOverride: "" };
     }
 
     async function removeWorkout(id) {
@@ -593,66 +613,10 @@
         <div class="card shadow-sm mb-3 border-0 rounded-3">
             <div class="card-body">
                 <h6 class="mb-3 d-flex align-items-center gap-2">
-                    <Utensils class="text-primary" :size="18" />
-                    <span>Add Meal</span>
-                </h6>
-                <div class="row g-3 align-items-end">
-                    <div class="col-12 col-md-3">
-                        <label class="form-label small text-muted">Meal Type</label>
-                        <select class="form-select rounded-pill" v-model="mealForm.type">
-                            <option>Breakfast</option><option>Lunch</option><option>Dinner</option><option>Snack</option>
-                        </select>
-                    </div>
-                    <div class="col-12 col-md-4">
-                        <label class="form-label small text-muted">Meal Name</label>
-                        <input class="form-control rounded-pill" placeholder="e.g., Chicken Rice" v-model.trim="mealForm.name" />
-                    </div>
-                    <div class="col-4 col-md-1">
-                        <label class="form-label small text-muted">kcal (auto)</label>
-                        <input type="number" class="form-control text-center rounded-pill bg-light" placeholder="0" :value="calculatedCalories" readonly />
-                    </div>
-                    <div class="col-4 col-md-1">
-                        <label class="form-label small text-muted">P (g)</label>
-                        <input type="number" class="form-control text-center rounded-pill" v-model="mealForm.protein" />
-                    </div>
-                    <div class="col-4 col-md-1">
-                        <label class="form-label small text-muted">C (g)</label>
-                        <input type="number" class="form-control text-center rounded-pill" v-model="mealForm.carbs" />
-                    </div>
-                    <div class="col-4 col-md-1">
-                        <label class="form-label small text-muted">F (g)</label>
-                        <input type="number" class="form-control text-center rounded-pill" v-model="mealForm.fat" />
-                    </div>
-                    <div class="col-12 col-md-1 d-grid">
-                        <button class="btn btn-dark rounded-pill" :disabled="!mealForm.name || calculatedCalories <= 0" @click="addMeal">
-                            <Plus :size="16" class="me-1" /> Add
-                        </button>
-                    </div>
-                </div>
-                <div class="form-text mt-2 text-muted">Tip: use “Use” from templates or search OpenFoodFacts to auto-fill.</div>
-            </div>
-        </div>
-
-        <div class="card shadow-sm mb-3">
-            <div class="card-body">
-                <h6 class="mb-3 d-flex align-items-center gap-2"><Utensils class="text-secondary" :size="18" />Today's Meals</h6>
-                <div v-if="!userId" class="text-muted">Sign in to log meals.</div>
-                <div v-else-if="mealsSorted.length===0" class="text-muted">No meals yet.</div>
-                <ul class="list-group">
-                    <li v-for="m in mealsSorted" :key="m.id" class="list-group-item d-flex justify-content-between align-items-center">
-                        <div><div class="fw-semibold">{{ m.name }}</div><div class="small text-secondary">{{ m.type }} • {{ m.kcal }} kcal • {{ m.protein }}g Protein • {{ m.carbs }}g Carbs • {{ m.fat }}g Fat</div></div>
-                        <button class="btn btn-sm cancel-button" @click="removeMeal(m.id)">Delete</button>
-                    </li>
-                </ul>
-            </div>
-        </div>
-
-        <div class="card shadow-sm mb-3 border-0 rounded-3">
-            <div class="card-body">
-                <h6 class="mb-3 d-flex align-items-center gap-2">
                     <Activity class="text-secondary" :size="18" />
                     <span>Add Workout</span>
                 </h6>
+
                 <div class="mb-3">
                     <label class="form-label small text-muted">Select Activity</label>
                     <div class="d-flex flex-wrap gap-2">
@@ -661,6 +625,7 @@
                         </button>
                     </div>
                 </div>
+
                 <div class="mb-2">
                     <label class="form-label small text-muted">Intensity</label>
                     <div class="d-flex gap-2">
@@ -669,22 +634,27 @@
                         <button class="btn btn-sm rounded-pill" :class="workoutForm.intensity==='vigorous'?'btn-outline-secondary active':'btn-outline-secondary'" @click="workoutForm.intensity='vigorous'">Vigorous</button>
                     </div>
                 </div>
+
                 <div class="mb-3">
-                    <label class="form-label small text-muted">Duration (minutes)</label>
+                    <label class="form-label small text-muted">Duration (minutes) and kcal (optional)</label>
                     <div class="d-flex gap-2 flex-wrap align-items-center">
                         <button v-for="d in QUICK_DURATIONS" :key="d" class="btn btn-sm rounded-pill" :class="String(workoutForm.minutes)===String(d)?'btn-secondary':'btn-outline-secondary'" @click="workoutForm.minutes=String(d)">{{ d }} min</button>
                         <div class="input-group w-auto">
-                            <input type="text" inputmode="numeric" class="form-control form-control-sm rounded-pill text-center" placeholder="Custom" :value="workoutForm.minutes" @input="e=>workoutForm.minutes=digitsOnly(e.target.value)" style="width:90px;" />
+                            <input type="text" inputmode="numeric" class="form-control form-control-sm rounded-pill text-center" placeholder="Custom min" :value="workoutForm.minutes" @input="e=>workoutForm.minutes=digitsOnly(e.target.value)" style="width:110px;" />
+                        </div>
+                        <div class="input-group w-auto">
+                            <input type="text" inputmode="numeric" class="form-control form-control-sm rounded-pill text-center" placeholder="kcal (optional)" :value="workoutForm.kcalOverride" @input="e=>workoutForm.kcalOverride=digitsOnly(e.target.value)" style="width:130px;" />
                         </div>
                     </div>
                 </div>
+
                 <div class="d-flex justify-content-between align-items-center mt-2 flex-wrap">
-                    <div class="small text-muted" v-if="workoutForm.activity && previewMinutes">
+                    <div class="small text-muted" v-if="workoutForm.activity && (previewMinutes || hasOverride)">
                         <span class="fw-semibold text-dark">{{ workoutForm.activity }}</span>
-                        ({{ workoutForm.intensity }}) for <span class="fw-semibold">{{ previewMinutes }} min</span> ≈
-                        <span class="fw-bold text-success">{{ kcalFrom(workoutForm.activity, workoutForm.intensity, Number(targets.weightKg), previewMinutes) }} kcal</span>
+                        ({{ workoutForm.intensity }}) for <span class="fw-semibold">{{ previewMinutes || 0 }} min</span> ≈
+                        <span class="fw-bold text-success">{{ previewKcal }} kcal</span>
                     </div>
-                    <button class="btn btn-success rounded-pill ms-auto" :disabled="!workoutForm.activity || !previewMinutes" @click="addWorkout">
+                    <button class="btn btn-success rounded-pill ms-auto" :disabled="!workoutForm.activity || !(previewMinutes || hasOverride)" @click="addWorkout">
                         <Plus :size="16" class="me-1" /> Add
                     </button>
                 </div>

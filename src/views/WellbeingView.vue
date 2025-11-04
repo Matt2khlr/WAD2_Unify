@@ -2,10 +2,9 @@
 import { ref, computed, onMounted, watch } from 'vue';
 import WordCloud from 'wordcloud';
 import { db, auth } from '../firebase.js';
-import { collection, where, addDoc, getDocs, query, orderBy, limit } from "firebase/firestore";
+import { collection, where, addDoc, query, orderBy, limit, onSnapshot, getDocs } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import bootstrap from 'bootstrap/dist/js/bootstrap.bundle';
-
 
 const sleepData = ref([
   { day: "Mon", hours: 7 },
@@ -19,7 +18,7 @@ const sleepData = ref([
 
 const stressLevel = ref(40);
 
-// Stress factors 
+// Default stress factors (used if no data)
 const stressFactors = [
   ['Deadlines', 12],
   ['Homework', 9],
@@ -33,17 +32,22 @@ const stressFactors = [
 ];
 
 const canvasRef = ref(null);
-
-const fetchedFactors = ref([]);
+const fetchedFactors = ref([]);  // Reactive factors from Firestore
 
 const toastMessage = ref('');
 const toastRef = ref(null);
-
 
 const averageSleep = computed(() => {
   const total = sleepData.value.reduce((sum, d) => sum + d.hours, 0);
   return (total / sleepData.value.length).toFixed(1);
 });
+
+function showToast(message) {
+  toastMessage.value = message;
+  if (!toastRef.value) return;
+  const toast = new bootstrap.Toast(toastRef.value);
+  toast.show();
+}
 
 function updateStress() {
   showToast(`Stress level updated to ${stressLevel.value}, stress factors logged.`);
@@ -80,9 +84,11 @@ async function logMood() {
       stressFactors: selectedFactors.value,
       date: new Date().toISOString()
     },
-   
   );
-  window.location.reload();
+
+
+  stressLevel.value = 40;        
+  selectedFactors.value = [];    
 }
 
 async function fetchLatestSleepLog() {
@@ -104,32 +110,27 @@ async function fetchLatestSleepLog() {
   }
 }
 
-async function fetchStressFactorsWordCloud() {
-  const user = auth.currentUser;
-  if (!user) return [];
-
-  // Fetch last 7 mood logs for this user
+// Real-time listener for moodLogs to update fetchedFactors reactively
+function subscribeToStressFactorsRealtime(userId) {
   const moodLogQuery = query(
     collection(db, "moodLogs"),
-    where("userId", "==", user.uid),
+    where("userId", "==", userId),
     orderBy("date", "desc"),
     limit(7)
   );
 
-  const querySnapshot = await getDocs(moodLogQuery);
-
-  // Aggregate factors
-  const factorCount = {};
-  querySnapshot.forEach(doc => {
-    const log = doc.data();
-    if (Array.isArray(log.stressFactors)) {
-      log.stressFactors.forEach(factor => {
-        factorCount[factor] = (factorCount[factor] || 0) + 1;
-      });
-    }
+  return onSnapshot(moodLogQuery, (querySnapshot) => {
+    const factorCount = {};
+    querySnapshot.forEach(doc => {
+      const log = doc.data();
+      if (Array.isArray(log.stressFactors)) {
+        log.stressFactors.forEach(factor => {
+          factorCount[factor] = (factorCount[factor] || 0) + 1;
+        });
+      }
+    });
+    fetchedFactors.value = Object.entries(factorCount);
   });
-
-  return Object.entries(factorCount);
 }
 
 const stressLabel = computed(() => {
@@ -146,7 +147,6 @@ const stressColorClass = computed(() => {
 
 const selectedFactors = ref([]);
 
-// Toggle selection of a stress factor
 function toggleFactor(factor) {
   const idx = selectedFactors.value.indexOf(factor);
   if (idx === -1) {
@@ -156,7 +156,6 @@ function toggleFactor(factor) {
   }
 }
 
-// Function to draw the word cloud, clearing canvas before each draw
 function drawWordCloud(factors) {
   if (!canvasRef.value) return;
 
@@ -184,20 +183,13 @@ function drawWordCloud(factors) {
   });
 }
 
-
-function showToast(message) {
-  toastMessage.value = message;
-  if (!toastRef.value) return;
-  const toast = new bootstrap.Toast(toastRef.value);
-  toast.show();
-}
-
 onMounted(() => {
   onAuthStateChanged(auth, async (user) => {
     if (user) {
       await fetchLatestSleepLog();
 
-      fetchedFactors.value = await fetchStressFactorsWordCloud();
+      // Subscribe to live mood log updates for word cloud
+      subscribeToStressFactorsRealtime(user.uid);
     }
   });
 
@@ -214,11 +206,10 @@ onMounted(() => {
   ctx.scale(dpr, dpr);
 });
 
-// Watch for changes in fetchedFactors and redraw word cloud automatically
+// Draw word cloud whenever fetchedFactors changes
 watch(fetchedFactors, (newFactors) => {
   drawWordCloud(newFactors);
 }, { immediate: true, deep: true });
-
 </script>
 
 
