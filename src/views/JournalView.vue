@@ -247,7 +247,7 @@ onMounted(() => {
       <div class="card journal-card shadow rounded mb-5">
         <div class="card-header card-header-style">
             <h3 class="h5 mb-0">
-                <i class="mdi mdi-clock-outline me-2"></i> New Journal Entry
+              <i class="mdi mdi-clock-outline me-2"></i> New Journal Entry
             </h3>
         </div>
         <div class="card-body">
@@ -264,11 +264,12 @@ onMounted(() => {
       <div class="card journal-card shadow rounded mb-4">
         <div class="card-header card-header-style">
             <h3 class="h5 mb-0">
-                <i class="mdi mdi-book-open-variant me-2"></i> Recent Entries
+              <i class="mdi mdi-book-open-variant me-2"></i> Recent Entries
             </h3>
         </div>
         <div class="card-body">
-            <div v-if="!userId" class="text-center text-muted py-3">
+          
+          <div v-if="!userId" class="text-center text-muted py-3">
              <i class="bi bi-lock fa-2x mb-2"></i>
              <p>Log in to load your journal history.</p>
           </div>
@@ -335,7 +336,7 @@ onMounted(() => {
                   </div>
               </div>
           </div>
-          <div v-else class="text-muted fst-italic ps-2">
+          <div v-else class="text-muted fst-italic pt-3">
             <i class="bi bi-feather me-2" style="opacity: 0.5;"></i>
             No entries saved yet. Start by writing your first journal entry above!
           </div>
@@ -396,33 +397,6 @@ onMounted(() => {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
 
-/* 🆕 Replicating StudyView Card Header Style */
-.journal-card .card-header-style {
-    background: #667eea;
-    color: white;
-    border-radius: 15px 15px 0 0 !important;
-    padding: 1.5rem;
-    font-weight: 600;
-    font-size: 1.3rem;
-}
-
-.journal-card .card-header-style h3 {
-    color: white !important; /* Ensure header text is white */
-    font-weight: 600;
-    font-size: 1.3rem;
-}
-
-.journal-card .card-body {
-    padding: 1.5rem;
-}
-
-/* Base Card Styles */
-.card {
-	border-radius: 15px;
-	box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-    /* Removed default card-header padding and color to allow custom style */
-}
-
 /* TOAST STYLING */
 .toast {
   background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
@@ -432,7 +406,43 @@ onMounted(() => {
   box-shadow: 0 4px 12px rgba(0,0,0,0.2);
 }
 
-/* MODAL STYLING (Based on the provided custom CSS) */
+/* 🟢 CARD HEADER STYLING (Fixes White Gap) */
+.card {
+	border-radius: 15px;
+	box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    /* CRITICAL FIX 1: Removes the default white card border */
+    border: none;
+    /* CRITICAL FIX 2: Ensures content is clipped to the outer border-radius */
+    overflow: hidden; /* THIS IS THE KEY FIX */
+}
+
+.journal-card .card-header {
+    /* Ensures the header takes the top rounded corners */
+    border-radius: 15px 15px 0 0 !important;
+    border: none; 
+    border-bottom: none;
+    /* Spacing for content */
+    padding: 1.5rem;
+}
+
+.journal-card .card-header-style {
+    background: #667eea;
+    color: white;
+    font-weight: 600;
+    font-size: 1.3rem;
+}
+
+.journal-card .card-header-style h3 {
+    color: white !important;
+    font-weight: 600;
+    font-size: 1.3rem;
+}
+
+.journal-card .card-body {
+    padding: 1.5rem;
+}
+
+/* MODAL STYLING */
 .modal-header {
   background: #667eea;
   color: white;
@@ -446,13 +456,11 @@ onMounted(() => {
 }
 
 .save-button:hover {
-  /* This hover style ensures the text and button background are solid white for better visibility */
   background: #fff; 
   color: #667eea;
   border: 1px solid #667eea;
   box-shadow: 0 8px 16px rgba(102, 126, 234, 0.4);
   transform: translateY(-3px);
-  /* The text-clip/fill styles are removed as they conflict with solid backgrounds/borders */
 }
 
 .cancel-button {
@@ -463,7 +471,6 @@ onMounted(() => {
 }
 
 .cancel-button:hover {
-  /* This hover style ensures the text and button background are solid white for better visibility */
   background: #fff; 
   color: #ff6b6b;
   border: 1px solid #ff6b6b;
@@ -509,3 +516,4 @@ onMounted(() => {
     box-shadow: 0 2px 4px rgba(183, 28, 28, 0.2);
 }
 </style>
+
