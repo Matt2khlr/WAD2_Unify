@@ -1,1129 +1,1023 @@
-<script>
-import { BookOpen, Heart, Dumbbell, Clock, TrendingUp, Flame, Activity, Utensils } from "lucide-vue-next";
+<script setup>
+import { BookOpen, Heart, Clock, TrendingUp, Flame, Activity, Utensils } from "lucide-vue-next";
 import { collection, updateDoc, deleteDoc, doc, setDoc, query, where, onSnapshot, GeoPoint, getDocs, orderBy, limit } from 'firebase/firestore';
 import { db, auth } from '@/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { loadGoogleMaps } from "@/plugins/googleMaps";
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
+import 'bootstrap/dist/js/bootstrap.bundle.min.js';
 
-export default {
-    name: 'Home',
+// ==================== Reactive State ====================
+// Loading state
+const isLoading = ref(true);
+const userId = ref(null);
 
-    components: {
-        BookOpen,
-        Heart,
-        Dumbbell,
-        Clock,
-        TrendingUp,
-        Flame,
-        Activity,
-        Utensils
-    },
+// Status card and suggestions initial state
+const stress = ref('No data');
+const sleepQuality = ref('No data');
+const stressFactorsCount = ref(0);
+const avgSleepQuality = ref(0);
+const studySessionsToday = ref(0);
+const totalStudyTimeToday = ref(0);
+const suggestions = ref([]);
 
-    data() {
-        return {
-            // Loading state
-            isLoading: true,
-            userId: null,
+// Module progress initial state
+const modules = ref([]);
 
-            // Recommendations
-            stress: 'No data',
-            sleepQuality: 'No data',
-            stressFactorsCount: 0,
-            avgSleepQuality: 0,
-            studySessionsToday: 0,
-            totalStudyTimeToday: 0,
-            suggestions: [],
+// Google Calendar sync state
+const syncEnabled = ref(false);
+const accessToken = ref(null);
+const syncInterval = ref(null);
+const events = ref([]);
+const syncErrorCount = ref(0);
+const MAX_SYNC_ERRORS = 5;
 
-            // Module progress
-            modules: [],
+// Journal initial state
+const journalHistory = ref([]);
 
-            // Calendar sync
-            syncEnabled: false,
-            accessToken: null,
-            syncInterval: null,
-            events: [],
-            syncErrorCount: 0,
-            maxSyncErrors: 5,
+// Nutrition and fitness initial state
+const meals = ref([]);
+const workouts = ref([]);
 
-            // Journal data
-            journalHistory: [],
+// Firestore unsubscribe functions
+const unsubscribeJournal = ref(null);
+const unsubscribeMeals = ref(null);
+const unsubscribeWorkouts = ref(null);
 
-            // Meals and workouts data
-            meals: [],
-            workouts: [],
+// Toast notification
+const toast = ref(null);
+const toastMessage = ref('');
 
-            // Firestore unsubscribe functions
-            unsubscribeJournal: null,
-            unsubscribeMeals: null,
-            unsubscribeWorkouts: null,
-        };
-    },
-
-    computed: {
-        // Status card information
-        statusList() {
-            return [
-                { key: 'sessions', label: 'Study Sessions Today', value: this.studySessionsToday, subtext: `${this.formatStudyTime(this.totalStudyTimeToday)} focused time` },
-                { key: 'stress', label: 'Stress Level', value: this.stress, subtext: `${this.stressFactorsCount} stress factor${this.stressFactorsCount !== 1 ? 's' : ''} identified` },
-                { key: 'activity', label: 'Activity Minutes', value: `${this.totalWorkouts.minutes} min`, subtext: `${this.totalWorkouts.kcal} kcal burned` },
-                { key: 'sleep', label: 'Sleep Quality', value: this.sleepQuality, subtext: `${this.avgSleepQuality} hrs average this week` }
-            ];
+// ==================== Computed Properties ====================
+// Status card information
+const statusList = computed(() => {
+    return [
+        {
+            key: 'sessions',
+            label: 'Study Sessions Today',
+            value: studySessionsToday.value,
+            subtext: `${formatStudyTime(totalStudyTimeToday.value)} focused time`
         },
-
-        // All calendar events formatted for calendar display
-        allEvents() {
-            return this.events.map(event => {
-                const start = new Date(event.start)
-                const end = new Date(event.end)
-
-                return {
-                    ...event,
-                    name: event.name,
-                    start: start,
-                    end: end,
-                    title: event.name,
-                    color: event.colour,
-                    timed: true
-                }
-            })
+        {
+            key: 'stress',
+            label: 'Stress Level',
+            value: stress.value,
+            subtext: `${stressFactorsCount.value} stress factor${stressFactorsCount.value !== 1 ? 's' : ''} identified`
         },
-
-        // Events for current week grouped by day
-        weekEvents() {
-            const now = new Date()
-            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-
-            // Calculate End of Week (Sunday)
-            const endOfWeek = new Date(today)
-            const dayOfWeek = today.getDay()
-            const daysUntilSunday = dayOfWeek === 0 ? 0 : 7 - dayOfWeek
-            endOfWeek.setDate(today.getDate() + daysUntilSunday)
-            endOfWeek.setHours(23, 59, 59, 999)
-
-            // Filter Events for Current Week (Including Ongoing Events)
-            const thisWeekEvents = this.events.filter(event => {
-                const eventStart = new Date(event.start)
-                const eventEnd = new Date(event.end)
-                return eventEnd >= today && eventStart <= endOfWeek
-            })
-
-            // Group Events by Day
-            const grouped = {}
-
-            thisWeekEvents.forEach(event => {
-                const eventStart = new Date(event.start)
-                const eventEnd = new Date(event.end)
-
-                // Group Ongoing Events under Today
-                let displayDate = eventStart >= today ? eventStart : today
-
-                if (displayDate <= endOfWeek) {
-                    const dateKey = displayDate.toDateString()
-
-                    if (!grouped[dateKey]) {
-                        grouped[dateKey] = {
-                            date: displayDate,
-                            dayLabel: this.formatDayLabel(displayDate),
-                            events: []
-                        }
-                    }
-
-                    const eventWithStatus = {
-                        ...event,
-                        isOngoing: eventStart < today && eventEnd >= today
-                    }
-
-                    grouped[dateKey].events.push(eventWithStatus)
-                }
-            })
-
-            // Sort Events by Time and Priority
-            const priorityOrder = { 'High': 1, 'Medium': 2, 'Low': 3 }
-
-            Object.values(grouped).forEach(dayGroup => {
-                dayGroup.events.sort((a, b) => {
-                    if (a.isOngoing && !b.isOngoing) return -1
-                    if (!a.isOngoing && b.isOngoing) return 1
-
-                    const timeCompare = new Date(a.start) - new Date(b.start)
-                    if (timeCompare !== 0) return timeCompare
-                    return priorityOrder[a.priority] - priorityOrder[b.priority]
-                })
-            })
-
-            // Convert to Array & Sort by Date
-            return Object.values(grouped).sort((a, b) => a.date - b.date)
+        {
+            key: 'activity',
+            label: 'Activity Minutes',
+            value: `${totalWorkouts.value.minutes} min`,
+            subtext: `${totalWorkouts.value.kcal} kcal burned`
         },
-
-        // Total nutritional information of meals
-        totalMeals() {
-            return {
-                kcal: this.meals.reduce((a, m) => a + (Number(m.kcal) || 0), 0),
-                protein: this.meals.reduce((a, m) => a + (Number(m.protein) || 0), 0),
-                carbs: this.meals.reduce((a, m) => a + (Number(m.carbs) || 0), 0),
-                fat: this.meals.reduce((a, m) => a + (Number(m.fat) || 0), 0)
-            };
-        },
-
-        // Total workout statistics
-        totalWorkouts() {
-            return {
-                minutes: this.workouts.reduce((a, w) => a + (Number(w.minutes) || 0), 0),
-                kcal: this.workouts.reduce((a, w) => a + (Number(w.kcal) || 0), 0)
-            };
-        },
-
-        // Net calories (meals - workouts)
-        netCalories() {
-            return (this.totalMeals.kcal || 0) - (this.totalWorkouts.kcal || 0);
+        {
+            key: 'sleep',
+            label: 'Sleep Quality',
+            value: sleepQuality.value,
+            subtext: `${avgSleepQuality.value} hrs average this week`
         }
-    },
+    ];
+});
 
-    methods: {
-        // Load mood data
-        async loadStressLevel() {
-            if (!this.userId) {
-                return;
+// Events for current week grouped by day
+const weekEvents = computed(() => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    // Calculate end of week (Sunday)
+    const endOfWeek = new Date(today);
+    const dayOfWeek = today.getDay();
+    const daysUntilSunday = dayOfWeek === 0 ? 0 : 7 - dayOfWeek;
+    endOfWeek.setDate(today.getDate() + daysUntilSunday);
+    endOfWeek.setHours(23, 59, 59, 999);
+
+    // Filter events for current week
+    const thisWeekEvents = events.value.filter(event => {
+        const eventStart = new Date(event.start);
+        const eventEnd = new Date(event.end);
+        return eventEnd >= today && eventStart <= endOfWeek;
+    });
+
+    // Group events by day
+    const grouped = {};
+
+    thisWeekEvents.forEach(event => {
+        const eventStart = new Date(event.start);
+        const eventEnd = new Date(event.end);
+
+        let displayDate = eventStart >= today ? eventStart : today;
+        if (displayDate <= endOfWeek) {
+            const dateKey = displayDate.toDateString();
+            if (!grouped[dateKey]) {
+                grouped[dateKey] = {
+                    date: displayDate,
+                    dayLabel: formatDayLabel(displayDate),
+                    events: []
+                };
             }
 
-            try {
-                // Get stress level from latest mood log entry
-                const moodQuery = query(
-                    collection(db, 'moodLogs'),
-                    where('userId', '==', this.userId),
-                    orderBy('date', 'desc'),
-                    limit(1)
-                );
+            const eventWithStatus = {
+                ...event,
+                isOngoing: eventStart < today && eventEnd >= today
+            };
 
-                const moodSnapshot = await getDocs(moodQuery);
-                if (!moodSnapshot.empty) {
-                    const mood = moodSnapshot.docs[0].data().mood;
-                    const moodValue = Number(mood);
-                    if (moodValue < 30) {
-                        this.stress = 'Low';
-                    } else if (moodValue < 70) {
-                        this.stress = 'Moderate';
-                    } else {
-                        this.stress = 'High';
-                    }
-                }
+            grouped[dateKey].events.push(eventWithStatus);
+        }
+    });
 
-                // Get the latest mood log document
-                const latestMoodLog = moodSnapshot.docs[0].data();
+    // Sort events by time and priority
+    const priorityOrder = { 'High': 1, 'Medium': 2, 'Low': 3 };
 
-                // Extract stress factors array
-                const stressFactors = latestMoodLog.stressFactors || [];
+    Object.values(grouped).forEach(dayGroup => {
+        dayGroup.events.sort((a, b) => {
+            if (a.isOngoing && !b.isOngoing) return -1;
+            if (!a.isOngoing && b.isOngoing) return 1;
 
-                if (!Array.isArray(stressFactors)) {
-                    console.log('No stress factors array found');
-                    return;
-                }
-
-                // Store the count of unique stress factors
-                this.stressFactorsCount = stressFactors.length;
-
-                console.log('Stress factors count:', this.stressFactorsCount, 'Factors:', stressFactors);
-                console.log('Current status loaded:', this.stress);
-            } catch (error) {
-                console.error('Error loading stress:', error);
+            const timeCompare = new Date(a.start) - new Date(b.start);
+            if (timeCompare !== 0) {
+                return timeCompare;
             }
-        },
+            return priorityOrder[a.priority] - priorityOrder[b.priority];
+        });
+    });
 
-        // Load sleep quality
-        async loadSleepQuality() {
-            if (!this.userId) {
-                return;
-            }
+    // Convert to array and sort by date
+    return Object.values(grouped).sort((a, b) => a.date - b.date);
+});
 
-            try {
-                // Fetch last 7 sleep logs for this user
-                const sleepQuery = query(
-                    collection(db, 'sleepLogs'),
-                    where('userId', '==', this.userId),
-                    orderBy('date', 'desc'),
-                    limit(7)
-                );
+// Total nutrition information
+const totalMeals = computed(() => ({
+    kcal: meals.value.reduce((a, m) => a + (Number(m.kcal) || 0), 0),
+    protein: meals.value.reduce((a, m) => a + (Number(m.protein) || 0), 0),
+    carbs: meals.value.reduce((a, m) => a + (Number(m.carbs) || 0), 0),
+    fat: meals.value.reduce((a, m) => a + (Number(m.fat) || 0), 0)
+}));
 
-                const sleepSnapshot = await getDocs(sleepQuery);
-                if (sleepSnapshot.empty) {
-                    console.log('No sleep logs found');
-                    return;
-                }
+// Total workout statistics
+const totalWorkouts = computed(() => ({
+    minutes: workouts.value.reduce((a, w) => a + (Number(w.minutes) || 0), 0),
+    kcal: workouts.value.reduce((a, w) => a + (Number(w.kcal) || 0), 0)
+}));
 
-                // Get the latest sleep log document
-                const latestLog = sleepSnapshot.docs[0].data();
+// Net calories (meals - workouts)
+const netCalories = computed(() => {
+    return (totalMeals.value.kcal || 0) - (totalWorkouts.value.kcal || 0);
+});
 
-                // Extract sleep data array
-                const sleepDataArray = latestLog.sleepData || [];
+// ==================== Methods ====================
+// Load stress level
+async function loadStressLevel() {
+    if (!userId.value) return;
 
-                if (!Array.isArray(sleepDataArray) || sleepDataArray.length === 0) {
-                    console.log('No sleep data array found');
-                    return;
-                }
+    try {
+        // Get stress level from latest mood log
+        const stressQuery = query(
+            collection(db, 'moodLogs'),
+            where('userId', '==', userId.value),
+            orderBy('date', 'desc'),
+            limit(1)
+        );
 
-                // Calculate average sleep hours
-                let totalHours = 0;
-                sleepDataArray.forEach(day => {
-                    totalHours += Number(day.hours) || 0;
-                });
+        const stressSnapshot = await getDocs(stressQuery);
+        if (!stressSnapshot.empty) {
+            const stressData = stressSnapshot.docs[0].data().stress;
+            const stressValue = Number(stressData);
 
-                const averageHours = (totalHours / sleepDataArray.length).toFixed(1);
-                this.avgSleepQuality = averageHours;
-
-                // Determine sleep quality based on average hours
-                const avgHoursNum = Number(averageHours);
-                this.sleepQuality = avgHoursNum >= 7 ? 'Good' : avgHoursNum >= 5 ? 'Fair' : 'Poor';
-
-                console.log('Current sleep quality:', this.sleepQuality);
-                console.log('Average sleep quality this week:', this.avgSleepQuality, 'hours');
-            } catch (error) {
-                console.error('Error loading average sleep quality:', error);
-            }
-        },
-
-        // Load study sessions 
-        async loadStudySessions() {
-            if (!this.userId) {
-                return;
-            }
-
-            try {
-                // Get today's date range (start and end of day)
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-                const todayEnd = new Date();
-                todayEnd.setHours(23, 59, 59, 999);
-
-                // Query study sessions from Firebase
-                const q = query(
-                    collection(db, 'studytimes'),
-                    where('userId', '==', this.userId)
-                );
-                const querySnapshot = await getDocs(q);
-
-                let sessionCount = 0;
-                let totalMinutes = 0;
-
-                querySnapshot.forEach((docSnap) => {
-                    const data = docSnap.data();
-
-                    // Convert Firebase Timestamp to Date
-                    const startTime = data.starttime?.toDate ? data.starttime.toDate() : new Date(data.starttime);
-
-                    // Check if session is from today
-                    if (startTime >= today && startTime <= todayEnd) {
-                        sessionCount++;
-
-                        // Calculate duration
-                        const endTime = data.endtime?.toDate ? data.endtime.toDate() : new Date(data.endtime);
-                        const durationMs = endTime - startTime;
-                        const durationMinutes = Math.round(durationMs / 60000);
-                        totalMinutes += durationMinutes;
-                    }
-                });
-
-                this.studySessionsToday = sessionCount;
-                this.totalStudyTimeToday = totalMinutes;
-
-                console.log(`Study sessions today: ${sessionCount}, Total time: ${totalMinutes} minutes`);
-            } catch (error) {
-                console.error('Error loading study sessions:', error);
-            }
-        },
-
-        // Generate suggestions based on user data
-        generateSuggestionsFromData() {
-            this.suggestions = [];
-            const suggestions = [];
-
-            // Study sessions
-            if (this.studySessionsToday === 0) {
-                suggestions.push({
-                    title: 'Start Your First Session',
-                    description: 'You haven\'t started studying yet today. Begin with a 25-minute Pomodoro session to build momentum.',
-                    icon: 'BookOpen'
-                });
-            } else if (this.studySessionsToday < 3) {
-                suggestions.push({
-                    title: 'Keep It Up',
-                    description: `You've had ${this.studySessionsToday} study session${this.studySessionsToday !== 1 ? 's' : ''}. Keep the momentum going with another focused session.`,
-                    icon: 'BookOpen'
-                });
-            }
-
-            // Break reminders
-            if (this.totalStudyTimeToday >= 240) {
-                suggestions.push({
-                    title: 'Take a Break',
-                    description: `You've been working for ${this.formatStudyTime(this.totalStudyTimeToday)}. Take a longer break to refresh.`,
-                    icon: 'BookOpen'
-                });
-            }
-
-            // Workout suggestions based on activity minutes
-            if (this.totalWorkouts.minutes === 0) {
-                suggestions.push({
-                    title: 'Get Active',
-                    description: 'You haven\'t exercised today. Go for a 30 minute workout to boost your energy and burn some calories!',
-                    icon: 'Activity'
-                });
-            } else if (this.totalWorkouts.minutes < 30) {
-                const remainingTime = 30 - this.totalWorkouts.minutes;
-                suggestions.push({
-                    title: 'Quick Workout',
-                    description: `You need ${remainingTime} more minutes of exercise today. Go for a quick 5 - 10 minute session!`,
-                    icon: 'Activity'
-                });
-            } else if (this.totalWorkouts.minutes >= 30) {
-                suggestions.push({
-                    title: 'Keep the Momentum',
-                    description: `Great job at keeping fit! You've exercised for ${this.totalWorkouts.minutes} minutes.`,
-                    icon: 'Activity'
-                });
-            }
-
-            // Sleep quality
-            if (this.sleepQuality === 'Poor') {
-                suggestions.push({
-                    title: 'Improve Your Sleep',
-                    description: 'Your sleep quality was poor this week. Start by establishing a consistent bedtime routine.',
-                    icon: 'Clock'
-                });
-            } else if (this.sleepQuality === 'Fair') {
-                suggestions.push({
-                    title: 'Optimise Your Sleep',
-                    description: 'Your sleep was fair this week. You can improve it by reducing screen time before bed.',
-                    icon: 'Clock'
-                });
-            } else if (this.sleepQuality === 'Good') {
-                suggestions.push({
-                    title: 'Maintain Your Sleep Routine',
-                    description: 'Your sleep quality is excellent! Keep up your bedtime routine to maintain this positive trend.',
-                    icon: 'Clock'
-                });
-            }
-
-            // Stress management suggestions
-            if (this.stress === 'High') {
-                suggestions.push({
-                    title: 'Wind Down Routine',
-                    description: 'Your stress level is high. Consider a relaxing activity like meditation to help you unwind before bed.',
-                    icon: 'Heart'
-                });
+            // Categorise stress level
+            if (stressValue < 30) {
+                stress.value = 'Low';
+            } else if (stressValue < 70) {
+                stress.value = 'Moderate';
             } else {
-                suggestions.push({
-                    title: 'De-Stress Tips',
-                    description: 'To keep stress levels low, take short breaks during study sessions and talk to friends or family.',
-                    icon: 'Heart'
-                });
+                stress.value = 'High';
+            }
+        }
+
+        // Extract stress factors
+        const latestStressLog = stressSnapshot.docs[0].data();
+        const stressFactors = latestStressLog.stressFactors || [];
+
+        if (!Array.isArray(stressFactors)) {
+            console.log('No stress factors array found');
+            return;
+        }
+
+        // Store count of stress factors
+        stressFactorsCount.value = stressFactors.length;
+
+        console.log('Stress factors count:', stressFactorsCount.value, 'Factors:', stressFactors);
+        console.log('Current stress loaded:', stress.value);
+    } catch (error) {
+        console.error('Error loading stress:', error);
+    }
+}
+
+// Load sleep quality
+async function loadSleepQuality() {
+    if (!userId.value) return;
+
+    try {
+        // Fetch sleep logs
+        const sleepQuery = query(
+            collection(db, 'sleepLogs'),
+            where('userId', '==', userId.value),
+            orderBy('date', 'desc'),
+            limit(7)
+        );
+
+        const sleepSnapshot = await getDocs(sleepQuery);
+        if (sleepSnapshot.empty) {
+            console.log('No sleep logs found');
+            return;
+        }
+
+        // Get sleep hours
+        const sleepLogs = sleepSnapshot.docs[0].data();
+        const sleepDataArray = sleepLogs.sleepData || [];
+
+        if (!Array.isArray(sleepDataArray) || sleepDataArray.length === 0) {
+            console.log('No sleep data array found');
+            return;
+        }
+
+        // Calculate average sleep hours
+        let totalHours = 0;
+        sleepDataArray.forEach(day => {
+            totalHours += Number(day.hours) || 0;
+        });
+
+        const averageHours = (totalHours / sleepDataArray.length).toFixed(1);
+        avgSleepQuality.value = averageHours;
+
+        // Determine sleep quality based on average sleep hours
+        const avgHoursNum = Number(averageHours);
+        sleepQuality.value = avgHoursNum >= 7 ? 'Good' : avgHoursNum >= 5 ? 'Fair' : 'Poor';
+
+        console.log('Current sleep quality:', sleepQuality.value);
+        console.log('Average sleep quality this week:', avgSleepQuality.value, 'hours');
+    } catch (error) {
+        console.error('Error loading average sleep quality:', error);
+    }
+}
+
+// Load study sessions
+async function loadStudySessions() {
+    if (!userId.value) return;
+
+    try {
+        // Get today's date range
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const todayEnd = new Date();
+        todayEnd.setHours(23, 59, 59, 999);
+
+        // Fetch study sessions
+        const q = query(
+            collection(db, 'studytimes'),
+            where('userId', '==', userId.value)
+        );
+        const querySnapshot = await getDocs(q);
+
+        let sessionCount = 0;
+        let totalMinutes = 0;
+
+        querySnapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+
+            // Convert Firebase timestamp to date
+            const startTime = data.starttime?.toDate ? data.starttime.toDate() : new Date(data.starttime);
+
+            if (startTime >= today && startTime <= todayEnd) {
+                sessionCount++;
+
+                // Calculate duration
+                const endTime = data.endtime?.toDate ? data.endtime.toDate() : new Date(data.endtime);
+                const durationMs = endTime - startTime;
+                const durationMinutes = Math.round(durationMs / 60000);
+                totalMinutes += durationMinutes;
+            }
+        });
+
+        studySessionsToday.value = sessionCount;
+        totalStudyTimeToday.value = totalMinutes;
+
+        console.log(`Study sessions today: ${sessionCount}, Total time: ${totalMinutes} minutes`);
+    } catch (error) {
+        console.error('Error loading study sessions:', error);
+    }
+}
+
+// Generate suggestions based on data
+function generateSuggestionsFromData() {
+    suggestions.value = [];
+    const suggestionsList = [];
+
+    // Study session suggestions
+    if (studySessionsToday.value === 0) {
+        suggestionsList.push({
+            title: 'Start Your First Session',
+            description: 'You haven\'t started studying yet today. Begin with a 25-minute Pomodoro session to build momentum.',
+            icon: 'BookOpen'
+        });
+    } else if (studySessionsToday.value < 3) {
+        suggestionsList.push({
+            title: 'Keep It Up',
+            description: `You've had ${studySessionsToday.value} study session${studySessionsToday.value !== 1 ? 's' : ''}. Keep the momentum going with another focused session.`,
+            icon: 'BookOpen'
+        });
+    }
+
+    // Break reminders
+    if (totalStudyTimeToday.value >= 240) {
+        suggestionsList.push({
+            title: 'Take a Break',
+            description: `You've been working for ${formatStudyTime(totalStudyTimeToday.value)}. Take a longer break to refresh.`,
+            icon: 'BookOpen'
+        });
+    }
+
+    // Workout suggestions based on activity minutes
+    if (totalWorkouts.value.minutes === 0) {
+        suggestionsList.push({
+            title: 'Get Active',
+            description: 'You haven\'t exercised today. Go for a 30 minute workout to boost your energy and burn some calories!',
+            icon: 'Activity'
+        });
+    } else if (totalWorkouts.value.minutes < 30) {
+        const remainingTime = 30 - totalWorkouts.value.minutes;
+        suggestionsList.push({
+            title: 'Quick Workout',
+            description: `You need ${remainingTime} more minutes of exercise today. Go for a quick 5 - 10 minute session!`,
+            icon: 'Activity'
+        });
+    } else if (totalWorkouts.value.minutes >= 30) {
+        suggestionsList.push({
+            title: 'Keep the Momentum',
+            description: `Great job at keeping fit! You've exercised for ${totalWorkouts.value.minutes} minutes.`,
+            icon: 'Activity'
+        });
+    }
+
+    // Sleep quality suggestions
+    if (sleepQuality.value === 'Poor') {
+        suggestionsList.push({
+            title: 'Improve Your Sleep',
+            description: 'Your sleep quality was poor this week. Start by establishing a consistent bedtime routine.',
+            icon: 'Clock'
+        });
+    } else if (sleepQuality.value === 'Fair') {
+        suggestionsList.push({
+            title: 'Optimise Your Sleep',
+            description: 'Your sleep was fair this week. You can improve it by reducing screen time before bed.',
+            icon: 'Clock'
+        });
+    } else if (sleepQuality.value === 'Good') {
+        suggestionsList.push({
+            title: 'Maintain Your Sleep Routine',
+            description: 'Your sleep quality is excellent! Keep up your bedtime routine to maintain this positive trend.',
+            icon: 'Clock'
+        });
+    }
+
+    // Stress management suggestions
+    if (stress.value === 'High') {
+        suggestionsList.push({
+            title: 'Wind Down Routine',
+            description: 'Your stress level is high. Consider a relaxing activity like meditation to help you unwind before bed.',
+            icon: 'Heart'
+        });
+    } else {
+        suggestionsList.push({
+            title: 'De-Stress Tips',
+            description: 'To keep stress levels low, take short breaks during study sessions and talk to friends or family.',
+            icon: 'Heart'
+        });
+    }
+
+    suggestions.value = suggestionsList;
+    console.log('Suggestions generated:', suggestions.value);
+}
+
+// Gradient colour for status cards
+function getStatusCardGradient(index) {
+    const gradients = [
+        'gradient-primary',
+        'gradient-wellness',
+        'gradient-energy',
+        'gradient-study'
+    ];
+    return gradients[index] || 'gradient-primary';
+}
+
+// Format study time to hours and minutes
+function formatStudyTime(minutes) {
+    if (minutes < 60) {
+        return `${minutes} min${minutes !== 1 ? 's' : ''}`;
+    }
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    if (mins === 0) {
+        return `${hours} hour${hours !== 1 ? 's' : ''}`;
+    }
+    return `${hours} hour${hours !== 1 ? 's' : ''} ${mins} min${mins !== 1 ? 's' : ''}`;
+};
+
+// Load module progress
+async function loadModuleProgress() {
+    if (!userId.value) return;
+
+    try {
+        // Load topics
+        const q = query(collection(db, 'studydata'), where('userId', '==', userId.value));
+        const querySnapshot = await getDocs(q);
+
+        // Group topics by module and calculate progress
+        const moduleStats = {};
+
+        querySnapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+            const moduleName = data.module;
+
+            if (!moduleStats[moduleName]) {
+                moduleStats[moduleName] = {
+                    total: 0,
+                    completed: 0
+                };
             }
 
-            this.suggestions = suggestions;
-            console.log('Suggestions generated:', this.suggestions);
-        },
-
-        // Get gradient class for status cards
-        getStatusCardGradient(index) {
-            const gradients = [
-                'gradient-primary',
-                'gradient-wellness',
-                'gradient-energy',
-                'gradient-study'
-            ];
-            return gradients[index] || 'gradient-primary';
-        },
-
-        // Format study time from minutes to hours and minutes
-        formatStudyTime(minutes) {
-            if (minutes < 60) {
-                return `${minutes} min${minutes !== 1 ? 's' : ''}`;
+            moduleStats[moduleName].total++;
+            if (data.completed) {
+                moduleStats[moduleName].completed++;
             }
-            const hours = Math.floor(minutes / 60);
-            const mins = minutes % 60;
-            if (mins === 0) {
-                return `${hours} hour${hours !== 1 ? 's' : ''}`;
-            }
-            return `${hours} hour${hours !== 1 ? 's' : ''} ${mins} min${mins !== 1 ? 's' : ''}`;
-        },
+        });
 
-        // Load module progress
-        async loadModuleProgress() {
-            if (!this.userId) {
+        // Convert to array and calculate progress percentage
+        modules.value = Object.keys(moduleStats).map(moduleName => {
+            const stats = moduleStats[moduleName];
+            const progress = stats.total > 0
+                ? Math.round((stats.completed / stats.total) * 100)
+                : 0;
+
+            return {
+                name: moduleName,
+                progress: progress,
+                completed: stats.completed,
+                total: stats.total
+            };
+        }).sort((a, b) => a.name.localeCompare(b.name));
+
+        console.log('Module progress loaded:', modules.value);
+    } catch (error) {
+        console.error('Error loading module progress:', error);
+    }
+};
+
+// Google Calendar sync handler
+async function toggleSync() {
+    if (syncEnabled.value) {
+        await connectGoogle();
+    } else {
+        await disconnectGoogle();
+    }
+};
+
+// Connect to Google Login API
+async function connectGoogle() {
+    if (!window.gapi || !window.google) {
+        showToast('Error connecting to Google. Please try again.');
+        syncEnabled.value = false;
+        return;
+    }
+
+    // Check for saved Google account token
+    const savedToken = sessionStorage.getItem('google_token');
+    if (savedToken) {
+        accessToken.value = savedToken;
+        await waitForGoogleAPI();
+        await syncWithGoogle();
+        startAutoSync();
+        return;
+    }
+
+    // Generate new Google OAuth token
+    const tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+        scope: 'https://www.googleapis.com/auth/calendar',
+        callback: async (response) => {
+            if (response.error) {
+                console.log(response.error);
+                syncEnabled.value = false;
                 return;
             }
 
+            accessToken.value = response.access_token;
+            sessionStorage.setItem('google_token', accessToken.value);
+
+            await waitForGoogleAPI();
+            await syncWithGoogle();
+            startAutoSync();
+        }
+    });
+
+    tokenClient.requestAccessToken();
+};
+
+// Disconnect from Google Login
+async function disconnectGoogle() {
+    if (syncInterval.value) {
+        clearInterval(syncInterval.value);
+    }
+
+    sessionStorage.removeItem('google_token');
+    accessToken.value = null;
+};
+
+// Auto sync with Google Calendar (Every 2 minutes)
+function startAutoSync() {
+    if (syncInterval.value) {
+        clearInterval(syncInterval.value);
+    }
+
+    syncInterval.value = setInterval(() => {
+        syncWithGoogle();
+    }, 2 * 60 * 1000);
+};
+
+// Initialise Google API Client
+async function initGoogle() {
+    try {
+        await new Promise((resolve) => {
+            gapi.load('client', resolve);
+        });
+
+        await gapi.client.init({
+            apiKey: import.meta.env.VITE_GOOGLE_API_KEY,
+            discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest']
+        });
+
+        console.log('Google Calendar API Initialised');
+    } catch (error) {
+        console.error('Error Initialising Google Calendar API:', error);
+    }
+};
+
+// Sync events with Google Calendar
+async function syncWithGoogle() {
+    if (!accessToken.value) {
+        console.log('No Access Token.');
+        return;
+    }
+
+    try {
+        const response = await fetch(
+            'https://www.googleapis.com/calendar/v3/calendars/primary/events?orderBy=startTime&singleEvents=true&showDeleted=false&timeMin=' + new Date().toISOString() + '&maxResults=100',
+            {
+                headers: {
+                    'Authorization': `Bearer ${accessToken.value}`,
+                    'Accept': 'application/json'
+                }
+            }
+        );
+
+        if (!response.ok) {
+            throw new Error(`Calendar API error: ${response.status} ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        const googleApiEvents = data.items || [];
+        const googleEventIdsFromApi = new Set(googleApiEvents.map(item => item.id));
+
+        const gEventIdToDocIdMap = new Map();
+        events.value
+            .filter(event => event.gEventId)
+            .forEach(event => {
+                gEventIdToDocIdMap.set(event.gEventId, event.id);
+            });
+
+        // Add/update events in Cloud Firestore
+        for (const item of googleApiEvents) {
+            let location = null;
+            let locationName = '';
+
+            if (item.location) {
+                const parsed = await geocodeLocation(item.location);
+                if (parsed) {
+                    location = parsed.geopoint;
+                    locationName = parsed.name;
+                } else {
+                    locationName = item.location;
+                }
+            }
+
+            const eventData = {
+                userId: userId.value,
+                name: item.summary || 'Untitled Event',
+                description: item.description || '',
+                start: new Date(item.start.dateTime || item.start.date),
+                end: new Date(item.end.dateTime || item.end.date),
+                locationName: locationName,
+                location: location,
+                synced: true,
+                gEventId: item.id
+            };
+
             try {
-                // Load topics from Firebase
-                const q = query(collection(db, 'studydata'), where('userId', '==', this.userId));
-                const querySnapshot = await getDocs(q);
-
-                // Group topics by module and calculate progress
-                const moduleStats = {};
-
-                querySnapshot.forEach((docSnap) => {
-                    const data = docSnap.data();
-                    const moduleName = data.module;
-
-                    if (!moduleStats[moduleName]) {
-                        moduleStats[moduleName] = {
-                            total: 0,
-                            completed: 0
-                        };
-                    }
-
-                    moduleStats[moduleName].total++;
-                    if (data.completed) {
-                        moduleStats[moduleName].completed++;
-                    }
-                });
-
-                // Convert to array and calculate percentages
-                this.modules = Object.keys(moduleStats).map(moduleName => {
-                    const stats = moduleStats[moduleName];
-                    const progress = stats.total > 0
-                        ? Math.round((stats.completed / stats.total) * 100)
-                        : 0;
-
-                    return {
-                        name: moduleName,
-                        progress: progress,
-                        completed: stats.completed,
-                        total: stats.total
-                    };
-                }).sort((a, b) => a.name.localeCompare(b.name));
-
-                console.log('Module progress loaded:', this.modules);
+                if (gEventIdToDocIdMap.has(item.id)) {
+                    const firestoreDocId = gEventIdToDocIdMap.get(item.id);
+                    console.log(`Updating Firestore Event ${firestoreDocId} with Google Calendar Event ${item.id}`);
+                    await updateDoc(doc(db, 'events', firestoreDocId), eventData);
+                } else {
+                    eventData.colour = '#9FE1E7';
+                    eventData.source = 'google';
+                    eventData.priority = 'Low';
+                    console.log(`Creating New Firestore Document for Google Calendar Event ${item.id}`);
+                    await setDoc(doc(db, 'events', item.id), eventData);
+                }
             } catch (error) {
-                console.error('Error loading module progress:', error);
-            }
-        },
-
-        // Google Calendar Toggle Handler
-        async toggleSync() {
-            if (this.syncEnabled) {
-                // Turn On Sync
-                await this.connectGoogle();
-            } else {
-                // Turn Off Sync
-                this.disconnectGoogle();
-            }
-        },
-
-        // Connect to Google Account Login
-        async connectGoogle() {
-            if (!window.gapi || !window.google) {
-                alert('Error Connecting to Google Account Login. Please Try Again.');
-                this.syncEnabled = false;
-                return;
-            }
-
-            // Check for Saved Google Account Token
-            const savedToken = sessionStorage.getItem('google_token')
-            if (savedToken) {
-                this.accessToken = savedToken;
-                await this.waitForGoogleAPI();
-                await this.syncWithGoogle();
-                this.startAutoSync();
-                return;
-            }
-
-            // Generate New Google Account Token
-            const tokenClient = google.accounts.oauth2.initTokenClient({
-                client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
-                scope: 'https://www.googleapis.com/auth/calendar',
-                callback: async (response) => {
-                    if (response.error) {
-                        console.log(response.error);
-                        this.syncEnabled = false;
-                        return
-                    }
-
-                    this.accessToken = response.access_token;
-                    sessionStorage.setItem('google_token', this.accessToken);
-
-                    await this.waitForGoogleAPI();
-                    await this.syncWithGoogle();
-                    this.startAutoSync();
+                console.error('Error Syncing Event from Google Calendar to Firestore:', error);
+                syncErrorCount.value++;
+                if (syncErrorCount.value >= MAX_SYNC_ERRORS) {
+                    console.error('Maximum Sync Errors Reached. Disconnecting Google Calendar Sync.');
+                    disconnectGoogle();
                 }
-            })
-
-            tokenClient.requestAccessToken()
-        },
-
-        // Disconnect from Google Calendar
-        disconnectGoogle() {
-            if (this.syncInterval) {
-                clearInterval(this.syncInterval);
             }
+        }
 
-            sessionStorage.removeItem('google_token')
-            this.accessToken = null;
-        },
+        // Reset sync error count on successful sync
+        syncErrorCount.value = 0;
 
-        // Auto Sync with Google Calendar (Every 2 Minutes)
-        startAutoSync() {
-            if (this.syncInterval) {
-                clearInterval(this.syncInterval);
+        // Remove deleted Google Calendar events from Cloud Firestore
+        const localGoogleEvents = events.value.filter(event => event.source === 'google');
+        for (const localEvent of localGoogleEvents) {
+            if (!googleEventIdsFromApi.has(localEvent.id)) {
+                console.log(`Deleting Google Event from Cloud Firestore: ${localEvent.name} (${localEvent.id})`);
+                await deleteDoc(doc(db, 'events', localEvent.id));
             }
+        }
 
-            this.syncInterval = setInterval(() => {
-                this.syncWithGoogle()
-            }, 60000)
-        },
+        // Add unsynced Cloud Firestore events to Google Calendar
+        const eventsToPush = events.value.filter(event => event.source === 'firestore' && !event.synced);
 
-        async initGoogle() {
-            try {
-                // Load Google Calendar API Client
-                await new Promise((resolve) => {
-                    gapi.load('client', resolve)
-                })
-
-                // Initialise Google Calendar Client
-                await gapi.client.init({
-                    apiKey: import.meta.env.VITE_GOOGLE_API_KEY,
-                    discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest']
-                })
-
-                console.log('Google Calendar API Initialised')
-            } catch (error) {
-                console.error('Error Initialising Google Calendar API:', error)
-            }
-        },
-
-        async syncWithGoogle() {
-            if (!this.accessToken) {
-                console.log('No Access Token.');
-                return;
-            }
-
-            try {
-                // Use Fetch API instead of gapi.client.calendar
-                const response = await fetch(
-                    'https://www.googleapis.com/calendar/v3/calendars/primary/events?orderBy=startTime&singleEvents=true&showDeleted=false&timeMin=' + new Date().toISOString() + '&maxResults=100',
-                    {
-                        headers: {
-                            'Authorization': `Bearer ${this.accessToken}`,
-                            'Accept': 'application/json'
-                        }
-                    }
-                );
-
-                if (!response.ok) {
-                    throw new Error(`Calendar API error: ${response.status} ${response.statusText}`);
-                }
-
-                const data = await response.json();
-                const googleApiEvents = data.items || [];
-                const googleEventIdsFromApi = new Set(googleApiEvents.map(item => item.id));
-
-                const gEventIdToDocIdMap = new Map();
-                this.events
-                    .filter(event => event.gEventId)
-                    .forEach(event => {
-                        gEventIdToDocIdMap.set(event.gEventId, event.id);
-                    });
-
-                // Add/Update Pulled Events in Cloud Firestore
-                for (const item of googleApiEvents) {
-                    let location = null;
-                    let locationName = '';
-
-                    if (item.location) {
-                        const parsed = await this.geocodeLocation(item.location);
-                        if (parsed) {
-                            location = parsed.geopoint;
-                            locationName = parsed.name;
-                        } else {
-                            locationName = item.location;
-                        }
-                    }
-
-                    const eventData = {
-                        userId: this.userId,
-                        name: item.summary || 'Untitled Event',
-                        description: item.description || '',
-                        start: new Date(item.start.dateTime || item.start.date),
-                        end: new Date(item.end.dateTime || item.end.date),
-                        locationName: locationName,
-                        location: location,
-                        synced: true,
-                        gEventId: item.id
-                    };
-                    try {
-                        if (gEventIdToDocIdMap.has(item.id)) {
-                            const firestoreDocId = gEventIdToDocIdMap.get(item.id);
-                            console.log(`Updating Firestore Event ${firestoreDocId} with Google Calendar Event ${item.id}`);
-                            await updateDoc(doc(db, 'events', firestoreDocId), eventData);
-                        } else {
-                            eventData.colour = '#9FE1E7';
-                            eventData.source = 'google';
-                            eventData.priority = 'Low';
-                            console.log(`Creating New Firestore Document for Google Calendar Event ${item.id}`);
-                            await setDoc(doc(db, 'events', item.id), eventData);
-                        }
-                    } catch (err) {
-                        console.error('Error Syncing Event from Google Calendar to Firestore:', err);
-                        this.syncErrorCount++;
-                        if (this.syncErrorCount >= this.maxSyncErrors) {
-                            console.error('Maximum Sync Errors Reached. Disconnecting Google Calendar Sync.');
-                            this.disconnectGoogle();
-                        }
-                    }
-                }
-
-                // Reset Sync Error Count on Successful Sync
-                this.syncErrorCount = 0;
-
-                // Remove Deleted Google Calendar Events from Cloud Firestore
-                const localGoogleEvents = this.events.filter(event => event.source === 'google');
-                for (const localEvent of localGoogleEvents) {
-                    if (!googleEventIdsFromApi.has(localEvent.id)) {
-                        console.log(`Deleting Google Event from Cloud Firestore: ${localEvent.name} (${localEvent.id})`);
-                        await deleteDoc(doc(db, 'events', localEvent.id));
-                    }
-                }
-
-                // Add unsynched Cloud Firestore Events to Google Calendar
-                const eventsToPush = this.events.filter(event => event.source === 'firestore' && !event.synced);
-
-                for (const event of eventsToPush) {
-                    try {
-                        const resource = {
-                            summary: event.name,
-                            description: event.description,
-                            start: { dateTime: new Date(event.start).toISOString() },
-                            end: { dateTime: new Date(event.end).toISOString() },
-                            location: event.locationName || ''
-                        };
-
-                        const insertResponse = await fetch(
-                            'https://www.googleapis.com/calendar/v3/calendars/primary/events',
-                            {
-                                method: 'POST',
-                                headers: {
-                                    'Authorization': `Bearer ${this.accessToken}`,
-                                    'Content-Type': 'application/json'
-                                },
-                                body: JSON.stringify(resource)
-                            }
-                        );
-
-                        if (insertResponse.ok) {
-                            const result = await insertResponse.json();
-                            await updateDoc(doc(db, 'events', event.id), {
-                                synced: true,
-                                gEventId: result.id
-                            });
-                            console.log(`Synced Event "${event.name}" to Google Calendar.`);
-                        } else {
-                            console.error(`Error Adding Event "${event.name}" to Google Calendar:`, insertResponse.status);
-                        }
-                    } catch (err) {
-                        console.error(`Error Adding Event "${event.name}" to Google Calendar:`, err);
-                    }
-                }
-            } catch (error) {
-                console.error('Overall Synchronisation Error:', error);
-            }
-        },
-
-        // Wait for Google API to be Ready
-        async waitForGoogleAPI() {
-            return new Promise((resolve) => {
-                const checkAPI = () => {
-                    if (window.gapi && window.gapi.client && window.gapi.client.calendar) {
-                        console.log('Google Calendar API is ready')
-                        resolve()
-                    } else {
-                        console.log('Waiting for Google Calendar API...')
-                        setTimeout(checkAPI, 500)
-                    }
-                }
-                checkAPI()
-            })
-        },
-
-        // Convert Location to Geopoint
-        async geocodeLocation(address) {
-            try {
-                const { Geocoder } = await google.maps.importLibrary("geocoding")
-                const geocoder = new Geocoder()
-
-                return new Promise((resolve) => {
-                    geocoder.geocode({ address: address }, (results, status) => {
-                        if (status === 'OK' && results[0]) {
-                            const loc = results[0].geometry.location
-                            resolve({
-                                geopoint: new GeoPoint(loc.lat(), loc.lng()),
-                                name: results[0].formatted_address
-                            })
-                        } else {
-                            resolve(null)
-                        }
-                    })
-                })
-            } catch (err) {
-                return null
-            }
-        },
-
-        // Update Event in Google Calendar
-        async updateInGoogle(eventId, eventData) {
+        for (const event of eventsToPush) {
             try {
                 const resource = {
-                    summary: eventData.name,
-                    description: eventData.description,
-                    start: {
-                        dateTime: eventData.start.toISOString(),
-                        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
-                    },
-                    end: {
-                        dateTime: eventData.end.toISOString(),
-                        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
-                    }
-                }
-
-                if (eventData.locationName) {
-                    resource.location = eventData.locationName
-                }
-
-                await gapi.client.calendar.events.update({
-                    calendarId: 'primary',
-                    eventId: eventId,
-                    resource: resource
-                })
-            }
-            catch (error) {
-                console.log('Error Updating Event in Google Calendar:', error);
-            }
-        },
-
-        // Add Event to Google Calendar
-        async addToGoogle(eventData) {
-            try {
-                const startDate = eventData.start instanceof Date ? eventData.start : new Date(eventData.start);
-                const endDate = eventData.end instanceof Date ? eventData.end : new Date(eventData.end);
-
-                const resource = {
-                    summary: eventData.name,
-                    description: eventData.description,
-                    start: {
-                        dateTime: startDate.toISOString(),
-                        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
-                    },
-                    end: {
-                        dateTime: endDate.toISOString(),
-                        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
-                    },
-                    location: eventData.locationName || ''
+                    summary: event.name,
+                    description: event.description,
+                    start: { dateTime: new Date(event.start).toISOString() },
+                    end: { dateTime: new Date(event.end).toISOString() },
+                    location: event.locationName || ''
                 };
 
-                const response = await fetch(
+                const insertResponse = await fetch(
                     'https://www.googleapis.com/calendar/v3/calendars/primary/events',
                     {
                         method: 'POST',
                         headers: {
-                            'Authorization': `Bearer ${this.accessToken}`,
+                            'Authorization': `Bearer ${accessToken.value}`,
                             'Content-Type': 'application/json'
                         },
                         body: JSON.stringify(resource)
                     }
                 );
 
-                if (!response.ok) {
-                    throw new Error(`Calendar API error: ${response.status}`);
-                }
-
-                const result = await response.json();
-                console.log('Event Added to Google Calendar:', result.id);
-                return result.id;
-            } catch (error) {
-                console.error('Error Adding Event to Google Calendar:', error);
-                return null;
-            }
-        },
-
-        // Open Google Maps
-        openMap(event) {
-            if (event.location) {
-                const lat = event.location.latitude
-                const lng = event.location.longitude
-                window.open(`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`, '_blank');
-            } else if (event.locationName) {
-                const encodedAddress = encodeURIComponent(event.locationName);
-                window.open(`https://www.google.com/maps/search/?api=1&query=${encodedAddress}`, '_blank');
-            }
-        },
-
-        // Format Event Date
-        formatShortDate(dateTime) {
-            const date = new Date(dateTime)
-            return date.toLocaleDateString('en-UK', {
-                day: 'numeric',
-                month: 'short'
-            })
-        },
-
-        // Format Event Time
-        formatEventTime(dateTime) {
-            const date = new Date(dateTime)
-            return date.toLocaleTimeString('en-UK', {
-                hour: 'numeric',
-                minute: '2-digit',
-            })
-        },
-
-        // Format day label (e.g., "Today", "Tomorrow", "Wed, Oct 23")
-        formatDayLabel(date) {
-            const today = new Date()
-            const tomorrow = new Date(today)
-            tomorrow.setDate(tomorrow.getDate() + 1)
-
-            const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate())
-            const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate())
-            const tomorrowOnly = new Date(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate())
-
-            if (dateOnly.getTime() === todayOnly.getTime()) {
-                return 'Today'
-            } else if (dateOnly.getTime() === tomorrowOnly.getTime()) {
-                return 'Tomorrow'
-            } else {
-                return date.toLocaleDateString('en-US', {
-                    weekday: 'short',
-                    month: 'short',
-                    day: 'numeric'
-                })
-            }
-        },
-
-        // Listen to Cloud Firestore and Get Events
-        listenToEvents() {
-            const q = query(collection(db, 'events'), where('userId', '==', this.userId));
-            onSnapshot(q, (snapshot) => {
-                this.events = snapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data(),
-                    start: doc.data().start.toDate(),
-                    end: doc.data().end.toDate(),
-                }))
-            });
-        },
-
-        // Get contrasting text color for mood badge
-        getContrastColor(hexColor) {
-            // Convert HEX to RGB
-            const color = hexColor.replace('#', '')
-            const r = parseInt(color.substr(0, 2), 16)
-            const g = parseInt(color.substr(2, 2), 16)
-            const b = parseInt(color.substr(4, 2), 16)
-
-            // Calculate Perceived Brightness
-            const brightness = (r * 299 + g * 587 + b * 114) / 1000
-
-            // Return Black or White Text Colour based on Brightness
-            return brightness > 128 ? '#000000' : '#ffffff'
-        },
-
-        // Journal entries subscription
-        async subscribeToJournalEntries() {
-            if (!this.userId) {
-                this.journalHistory = [];
-                if (this.unsubscribeJournal) {
-                    this.unsubscribeJournal();
-                }
-                return;
-            }
-
-            try {
-                const q = query(
-                    collection(db, 'journals'),
-                    where('userId', '==', this.userId),
-                    orderBy('date', 'desc')
-                );
-
-                this.unsubscribeJournal = onSnapshot(q, (snapshot) => {
-                    this.journalHistory = snapshot.docs.map(doc => {
-                        const data = doc.data();
-                        return {
-                            id: doc.id,
-                            text: data.text,
-                            date: data.date.toDate().toLocaleString(),
-                            mood: data.mood || null,
-                            moodIcon: this.getMoodIcon(data.mood),
-                            isSaving: false
-                        };
+                if (insertResponse.ok) {
+                    const result = await insertResponse.json();
+                    await updateDoc(doc(db, 'events', event.id), {
+                        synced: true,
+                        gEventId: result.id
                     });
-                    console.log(`Journal history loaded for user ${this.userId}`);
-                }, (error) => {
-                    console.error('Error loading journal entries:', error);
-                });
+                    console.log(`Synced Event "${event.name}" to Google Calendar.`);
+                } else {
+                    console.error(`Error Adding Event "${event.name}" to Google Calendar:`, insertResponse.status);
+                }
             } catch (error) {
-                console.error('Error subscribing to journal entries:', error);
+                console.error(`Error Adding Event "${event.name}" to Google Calendar:`, error);
             }
-        },
+        }
+    } catch (error) {
+        console.error('Overall Synchronisation Error:', error);
+    }
+};
 
-        // Get mood color class for mood badge
-        getMoodColorClass(moodLabel) {
-            const moodColors = {
-                'Great': 'bg-success',
-                'Okay': 'bg-warning',
-                'Stressed': 'bg-danger'
-            };
-            return moodColors[moodLabel] || 'bg-secondary';
-        },
+// Wait for Google Calendar API to be ready
+async function waitForGoogleAPI() {
+    return new Promise((resolve, reject) => {
+        let attempts = 0;
+        const maxAttempts = 30;
 
-        // Get mood icon for journal entry
-        getMoodIcon(moodLabel) {
-            const moodIcons = {
-                'Great': '😊',
-                'Okay': '😐',
-                'Stressed': '☹️'
-            };
-            return moodIcons[moodLabel] || '';
-        },
-
-        // Nutrition data
-        async bindNutritionData() {
-            if (!this.userId) {
-                this.meals = [];
-                this.workouts = [];
-                if (this.unsubscribeMeals) {
-                    this.unsubscribeMeals();
-                }
-                if (this.unsubscribeWorkouts) {
-                    this.unsubscribeWorkouts();
-                }
-                return;
+        const checkAPI = () => {
+            if (window.gapi && window.gapi.client && window.gapi.client.calendar) {
+                console.log('Google Calendar API is ready');
+                resolve();
+            } else if (attempts >= maxAttempts) {
+                console.error('Google Calendar API failed to load');
+                reject(new Error('Google Calendar API timeout'));
+            } else {
+                console.log('Waiting for Google Calendar API...');
+                attempts++;
+                setTimeout(checkAPI, 1000);
             }
-            try {
-                const today = new Date().toISOString().split('T')[0];
+        };
+        checkAPI();
+    });
+};
 
-                if (this.unsubscribeMeals) {
-                    this.unsubscribeMeals();
-                }
+// Convert location string to GeoPoint
+async function geocodeLocation(address) {
+    try {
+        const { Geocoder } = await google.maps.importLibrary("geocoding");
+        const geocoder = new Geocoder();
 
-                const mealsQuery = query(
-                    collection(db, 'meals'),
-                    where('userId', '==', this.userId),
-                    where('date', '==', today)
-                );
-
-                this.unsubscribeMeals = onSnapshot(mealsQuery, (snapshot) => {
-                    this.meals = snapshot.docs.map(doc => ({
-                        id: doc.id,
-                        ...doc.data()
-                    }));
-                });
-
-                if (this.unsubscribeWorkouts) {
-                    this.unsubscribeWorkouts();
-                }
-
-                const workoutsQuery = query(
-                    collection(db, 'workouts'),
-                    where('userId', '==', this.userId),
-                    where('date', '==', today)
-                );
-
-                this.unsubscribeWorkouts = onSnapshot(workoutsQuery, (snapshot) => {
-                    this.workouts = snapshot.docs.map(doc => ({
-                        id: doc.id,
-                        ...doc.data()
-                    }));
-                });
-            } catch (error) {
-                console.error('Error binding nutrition data:', error);
-            }
-        },
-
-        // Cleanup all listeners and data
-        cleanupAllListeners() {
-            this.userId = null;
-
-            if (this.syncInterval) {
-                clearInterval(this.syncInterval);
-                this.syncInterval = null;
-            }
-
-            ['unsubscribeJournal', 'unsubscribeMeals', 'unsubscribeWorkouts'].forEach(key => {
-                if (this[key]) {
-                    this[key]();
-                    this[key] = null;
+        return new Promise((resolve) => {
+            geocoder.geocode({ address: address }, (results, status) => {
+                if (status === 'OK' && results[0]) {
+                    const loc = results[0].geometry.location;
+                    resolve({
+                        geopoint: new GeoPoint(loc.lat(), loc.lng()),
+                        name: results[0].formatted_address
+                    });
+                } else {
+                    resolve(null);
                 }
             });
+        });
+    } catch (error) {
+        return null;
+    }
+};
 
-            this.journalHistory = [];
-            this.meals = [];
-            this.workouts = [];
-            this.events = [];
+// Open Google Maps for event location
+function openMap(event) {
+    if (event.location) {
+        const lat = event.location.latitude;
+        const lng = event.location.longitude;
+        window.open(`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`, '_blank');
+    } else if (event.locationName) {
+        const encodedAddress = encodeURIComponent(event.locationName);
+        window.open(`https://www.google.com/maps/search/?api=1&query=${encodedAddress}`, '_blank');
+    }
+};
+
+// Format event date (short format)
+function formatShortDate(dateTime) {
+    const date = new Date(dateTime);
+    return date.toLocaleDateString('en-GB', {
+        day: 'numeric',
+        month: 'short'
+    });
+};
+
+// Format event time
+function formatEventTime(dateTime) {
+    const date = new Date(dateTime);
+    return date.toLocaleTimeString('en-GB', {
+        hour: 'numeric',
+        minute: '2-digit',
+    });
+};
+
+// Format day label (e.g., "Today", "Tomorrow", "Wed, Oct 23")
+function formatDayLabel(date) {
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const tomorrowOnly = new Date(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate());
+
+    if (dateOnly.getTime() === todayOnly.getTime()) {
+        return 'Today';
+    } else if (dateOnly.getTime() === tomorrowOnly.getTime()) {
+        return 'Tomorrow';
+    } else {
+        return date.toLocaleDateString('en-US', {
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric'
+        });
+    }
+};
+
+// Listen to Cloud Firestore events
+function listenToEvents() {
+    const q = query(collection(db, 'events'), where('userId', '==', userId.value));
+    onSnapshot(q, (snapshot) => {
+        events.value = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+            start: doc.data().start.toDate(),
+            end: doc.data().end.toDate(),
+        }));
+    });
+};
+
+// Get contrasting text colour for mood badge
+function getContrastColor(hexColor) {
+    const color = hexColor.replace('#', '');
+    const r = parseInt(color.substr(0, 2), 16);
+    const g = parseInt(color.substr(2, 2), 16);
+    const b = parseInt(color.substr(4, 2), 16);
+
+    // Return Black or White Text Colour Based on Brightness
+    const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+    return brightness > 128 ? '#000000' : '#ffffff';
+};
+
+// Load journal entries
+async function loadJournalEntries() {
+    if (!userId.value) {
+        journalHistory.value = [];
+        if (unsubscribeJournal.value) {
+            unsubscribeJournal.value();
         }
-    },
+        return;
+    }
 
-    async mounted() {
-        // Set up authentication listener
-        onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                this.userId = user.uid;
-                console.log('User authenticated:', this.userId);
-                this.isLoading = true;
+    try {
+        const q = query(
+            collection(db, 'journals'),
+            where('userId', '==', userId.value),
+            orderBy('date', 'desc')
+        );
 
-                // Load module progress from Firebase
-                await loadGoogleMaps();
-                await this.loadModuleProgress();
+        unsubscribeJournal.value = onSnapshot(q, (snapshot) => {
+            journalHistory.value = snapshot.docs.map(doc => {
+                const data = doc.data();
+                return {
+                    id: doc.id,
+                    text: data.text,
+                    date: data.date.toDate().toLocaleString(),
+                    mood: data.mood || null,
+                    moodIcon: getMoodIcon(data.mood),
+                };
+            });
+            console.log(`Journal history loaded for user ${userId.value}`);
+        }, (error) => {
+            console.error('Error loading journal entries:', error);
+        });
+    } catch (error) {
+        console.error('Error subscribing to journal entries:', error);
+    }
+};
 
-                // Load recommendations from Firebase
-                await this.loadStressLevel();
-                await this.loadSleepQuality();
+// Get mood color class for badge
+function getMoodColorClass(moodLabel) {
+    const moodColors = {
+        'Great': 'bg-success',
+        'Okay': 'bg-warning',
+        'Stressed': 'bg-danger'
+    };
+    return moodColors[moodLabel] || 'bg-secondary';
+};
 
-                // Load today's study sessions from Firebase
-                await this.loadStudySessions();
+// Get mood icon for journal entry
+function getMoodIcon(moodLabel) {
+    const moodIcons = {
+        'Great': '😊',
+        'Okay': '😐',
+        'Stressed': '☹️'
+    };
+    return moodIcons[moodLabel] || '';
+};
 
-                // Load nutrition data from Firebase
-                await this.bindNutritionData();
+// Bind nutrition data
+async function bindNutritionData() {
+    if (!userId.value) {
+        meals.value = [];
+        workouts.value = [];
+        unsubscribeMeals.value?.();
+        unsubscribeWorkouts.value?.();
+        return;
+    }
 
-                // Load journal entries
-                await this.subscribeToJournalEntries();
+    try {
+        const today = new Date().toISOString().split('T')[0];
 
-                // Generate suggestions based on loaded data
-                this.generateSuggestionsFromData();
+        if (unsubscribeMeals.value) {
+            unsubscribeMeals.value();
+        }
 
-                // Listen for real-time updates
-                this.listenToEvents();
-                await this.initGoogle();
+        const mealsQuery = query(
+            collection(db, 'meals'),
+            where('userId', '==', userId.value),
+            where('date', '==', today)
+        );
 
-                // All data loaded
-                this.isLoading = false;
-            } else {
-                this.userId = null;
-                this.modules = [];
-                this.suggestions = [];
-                this.stressFactorsCount = 0;
-                this.avgSleepQuality = 0;
-                this.isLoading = false;
-                this.cleanupAllListeners();
-                console.log('No user authenticated');
-            }
+        unsubscribeMeals.value = onSnapshot(mealsQuery, (snapshot) => {
+            meals.value = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }));
         });
 
-        // Check for Saved Session
-        const savedToken = sessionStorage.getItem('google_token')
-        if (savedToken) {
-            this.syncEnabled = true;
-            this.accessToken = savedToken;
-
-            await this.waitForGoogleAPI()
-            await this.syncWithGoogle()
-            this.startAutoSync()
+        if (unsubscribeWorkouts.value) {
+            unsubscribeWorkouts.value();
         }
-    },
 
-    beforeUnmount() {
-        if (this.syncInterval) {
-            clearInterval(this.syncInterval);
-        }
-        this.cleanupAllListeners();
+        const workoutsQuery = query(
+            collection(db, 'workouts'),
+            where('userId', '==', userId.value),
+            where('date', '==', today)
+        );
+
+        unsubscribeWorkouts.value = onSnapshot(workoutsQuery, (snapshot) => {
+            workouts.value = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }));
+        });
+    } catch (error) {
+        console.error('Error binding nutrition data:', error);
     }
-}
+};
+
+// Show toast message
+function showToast(message) {
+    toastMessage.value = message;
+
+    if (toast.value) {
+        const bsToast = new bootstrap.Toast(toast.value);
+        bsToast.show();
+    }
+};
+
+// Cleanup all listeners and data
+function cleanupAllListeners() {
+    if (syncInterval.value) {
+        clearInterval(syncInterval.value);
+        syncInterval.value = null;
+    }
+
+    [unsubscribeJournal, unsubscribeMeals, unsubscribeWorkouts].forEach(unsub => {
+        unsub.value?.();
+        unsub.value = null;
+    });
+
+    journalHistory.value = [];
+    meals.value = [];
+    workouts.value = [];
+    events.value = [];
+    userId.value = null;
+};
+
+// ==================== Mounted hooks ====================
+onMounted(async () => {
+    // Set up auth listener
+    onAuthStateChanged(auth, async (user) => {
+        if (user) {
+            userId.value = user.uid;
+            console.log('User authenticated:', userId.value);
+            isLoading.value = true;
+
+            await Promise.all([
+                loadGoogleMaps(),
+                loadModuleProgress(),
+                loadStressLevel(),
+                loadSleepQuality(),
+                loadStudySessions(),
+                loadJournalEntries(),
+                bindNutritionData(),
+                initGoogle()
+            ]);
+
+            // Generate suggestions
+            generateSuggestionsFromData();
+
+            // Listen for real-time updates
+            listenToEvents();
+
+            // All data loaded
+            isLoading.value = false;
+        } else {
+            // Reset all data on log out
+            userId.value = null;
+            modules.value = [];
+            suggestions.value = [];
+            stressFactorsCount.value = 0;
+            avgSleepQuality.value = 0;
+            isLoading.value = false;
+            cleanupAllListeners();
+            console.log('No user authenticated');
+        }
+    });
+
+    // Check for saved Google token
+    const savedToken = sessionStorage.getItem('google_token');
+    if (savedToken) {
+        syncEnabled.value = true;
+        accessToken.value = savedToken;
+
+        await waitForGoogleAPI();
+        await syncWithGoogle();
+        startAutoSync();
+    }
+});
+
+// Cleanup before unmount
+onBeforeUnmount(() => {
+    cleanupAllListeners();
+});
 </script>
 
 <template>
@@ -1139,10 +1033,10 @@ export default {
         <!-- Main content loaded-->
         <div v-else>
             <header>
-                <div class="container px-3 pt-5 pb-3">
-                    <h1 class="display-6 fw-bold mb-2">Welcome back!</h1>
+                <div class="container px-3 pt-4 pb-2">
+                    <h1 class="display-6 fw-bold mb-2">Welcome back, {{ auth.currentUser.displayName }}!</h1>
                     <p class="fs-5 mb-0">
-                        Check out your recent activity and personalised recommendations.
+                        Here's an overview of your recent wellbeing and activities.
                     </p>
                 </div>
             </header>
@@ -1304,6 +1198,7 @@ export default {
                         </div>
                     </div>
 
+                    <!-- Module progress -->
                     <div class="col-12 col-lg-6">
                         <div class="card  h-100">
                             <div class="card-body">
@@ -1336,6 +1231,7 @@ export default {
                         </div>
                     </div>
 
+                    <!-- Journal entries -->
                     <div class="col-12 col-lg-6">
                         <div class="card h-100">
                             <div class="card-body d-flex flex-column">
@@ -1384,6 +1280,7 @@ export default {
                         </div>
                     </div>
 
+                    <!-- Nutrition summary -->
                     <div class="col-12 col-lg-6">
                         <div class="card h-100">
                             <div class="card-body d-flex align-items-center justify-content-around">
@@ -1415,7 +1312,6 @@ export default {
         </div>
     </div>
 </template>
-
 
 <style scoped>
 /* Cards */
