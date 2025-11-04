@@ -1,24 +1,42 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { auth } from '@/firebase';
 import Collapse from 'bootstrap/js/dist/collapse'
+import { onAuthStateChanged } from 'firebase/auth';
 
 const collapseMenu = ref(null);
+const userName = ref('Profile');
 let bsCollapse = null;
+let unsubscribeAuth = null;
 
 onMounted(() => {
     if (collapseMenu.value) {
         bsCollapse = new Collapse(collapseMenu.value, { toggle: false });
     }
+
+    unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+        if (user) {
+            userName.value = user.displayName || 'Profile';
+            console.log('Username updated to:', userName.value);
+        }
+    });
+
+    window.addEventListener('profile-updated', () => {
+        userName.value = auth.currentUser?.displayName || 'Profile';
+    });
 })
 
 onBeforeUnmount(() => {
     if (bsCollapse) {
         bsCollapse.dispose();
     }
+    if (unsubscribeAuth) {
+        unsubscribeAuth();
+    }
 })
 
-function closeNav() {
-    if (bsCollapse && collapseMenu.value.classList.contains('show')) {
+const closeNav = () => {
+    if (bsCollapse && collapseMenu.value && collapseMenu.value.classList.contains('show')) {
         bsCollapse.hide();
     }
 }
@@ -27,7 +45,7 @@ function closeNav() {
 <template>
     <nav class="navbar navbar-dark navbar-expand-lg">
         <div class="container">
-            <RouterLink class="navbar-brand d-flex align-items-center" to="/" @click="closeNav">
+            <RouterLink class="navbar-brand d-flex align-items-center" to="/" @click="closeNav()">
                 <img src="../assets/logo.png" class="navbar-logo" alt="Logo" />
             </RouterLink>
 
@@ -39,22 +57,22 @@ function closeNav() {
             <div id="mainNav" class="collapse navbar-collapse" ref="collapseMenu">
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item">
-                        <RouterLink class="nav-link" to="/journal" @click="closeNav">Journal</RouterLink>
+                        <RouterLink class="nav-link" to="/journal" @click="closeNav()">Journal</RouterLink>
                     </li>
                     <li class="nav-item">
-                        <RouterLink class="nav-link" to="/wellbeing" @click="closeNav">Wellbeing</RouterLink>
+                        <RouterLink class="nav-link" to="/wellbeing" @click="closeNav()">Wellbeing</RouterLink>
                     </li>
                     <li class="nav-item">
-                        <RouterLink class="nav-link" to="/study" @click="closeNav">Study</RouterLink>
+                        <RouterLink class="nav-link" to="/study" @click="closeNav()">Study</RouterLink>
                     </li>
                     <li class="nav-item">
-                        <RouterLink class="nav-link" to="/nutrition" @click="closeNav">Nutrition</RouterLink>
+                        <RouterLink class="nav-link" to="/nutrition" @click="closeNav()">Nutrition</RouterLink>
                     </li>
                     <li class="nav-item">
-                        <RouterLink class="nav-link" to="/calendar" @click="closeNav">Calendar</RouterLink>
+                        <RouterLink class="nav-link" to="/calendar" @click="closeNav()">Calendar</RouterLink>
                     </li>
                     <li class="nav-item">
-                        <RouterLink class="nav-link" to="/settings" @click="closeNav">Profile</RouterLink>
+                        <RouterLink class="nav-link" to="/settings" @click="closeNav()">{{ userName }}</RouterLink>
                     </li>
                 </ul>
             </div>

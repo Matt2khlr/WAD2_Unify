@@ -1,12 +1,19 @@
 <script setup>
 import { ref, onMounted } from 'vue';
-import { updatePassword, reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth';
+import { updatePassword, reauthenticateWithCredential, EmailAuthProvider, updateProfile } from 'firebase/auth';
 import { auth } from '@/firebase';
 import { useRouter } from 'vue-router';
 import { performLogout } from '@/utils/auth';
 
 const router = useRouter();
 const user = ref(null);
+
+// Display name state
+const displayName = ref('');
+const displayNameLoading = ref(false);
+const displayNameError = ref(null);
+const displayNameSuccess = ref(false);
+const isEditingName = ref(false);
 
 // Change password state
 const currentPassword = ref('');
@@ -22,7 +29,49 @@ const logoutLoading = ref(false);
 // Load current user on mount
 onMounted(() => {
     user.value = auth.currentUser;
+    displayName.value = auth.currentUser?.displayName || '';
 });
+
+// Update display name
+async function updateDisplayNameHandler() {
+    if (!displayName.value || displayName.value.trim().length === 0) {
+        displayNameError.value = 'Display name cannot be empty.';
+        return;
+    }
+
+    if (displayName.value === user.value.displayName) {
+        isEditingName.value = false;
+        return;
+    }
+
+    displayNameLoading.value = true;
+    displayNameError.value = null;
+    displayNameSuccess.value = false;
+
+    try {
+        await updateProfile(user.value, {
+            displayName: displayName.value.trim()
+        });
+        user.value = auth.currentUser;
+        await auth.currentUser.reload();
+        window.dispatchEvent(new CustomEvent('profile-updated'));
+        displayNameSuccess.value = true;
+        isEditingName.value = false;
+        setTimeout(() => displayNameSuccess.value = false, 3000);
+    } catch (e) {
+        displayNameError.value = e?.message || 'Failed to update display name.';
+    } finally {
+        displayNameLoading.value = false;
+    }
+}
+
+// Cancel edit
+function cancelEditName() {
+    displayName.value = user.value?.displayName || '';
+    isEditingName.value = false;
+    displayNameError.value = null;
+}
+
 
 // Update password
 async function updatePasswordHandler() {
@@ -88,9 +137,38 @@ async function logout() {
                 <h1 class="mb-4">Settings</h1>
 
                 <!-- Account Information Section -->
-                <div class="card auth-card mb-4">
+                <div class="card card mb-4">
                     <div class="card-body p-4">
-                        <h2 class="h5 mb-3">Account Information</h2>
+                        <!-- Display Name -->
+                        <h5 class="mb-2">Account Information</h5>
+                        <div class="mb-2">
+                            <label class="form-label small">Display Name</label>
+                            <div v-if="!isEditingName" class="d-flex justify-content-between align-items-center">
+                                <div class="fw-semibold">{{ user?.displayName || '' }}</div>
+                                <button type="button" class="btn btn-sm btn-outline-primary"
+                                    @click="isEditingName = true">
+                                    Edit
+                                </button>
+                            </div>
+                            <div v-else class="d-flex gap-2">
+                                <input v-model="displayName" type="text" class="form-control form-control-sm"
+                                    placeholder="Enter your display name" />
+                                <button type="button" class="btn btn-sm btn-primary" @click="updateDisplayNameHandler"
+                                    :disabled="displayNameLoading">
+                                    Save
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" @click="cancelEditName"
+                                    :disabled="displayNameLoading">
+                                    Cancel
+                                </button>
+                            </div>
+                            <div v-if="displayNameSuccess" class="alert alert-success mt-2 mb-0 py-2">
+                                Display name updated successfully!
+                            </div>
+                            <div v-if="displayNameError" class="alert alert-danger mt-2 mb-0 py-2">
+                                {{ displayNameError }}
+                            </div>
+                        </div>
                         <div class="mb-0">
                             <label class="form-label text-muted small">Email</label>
                             <div class="fw-semibold">{{ user?.email }}</div>
@@ -99,7 +177,7 @@ async function logout() {
                 </div>
 
                 <!-- Change Password Section -->
-                <div class="card auth-card mb-4">
+                <div class="card mb-4">
                     <div class="card-body p-4 d-flex flex-column">
                         <h2 class="mb-1">Change Password</h2>
                         <p class="text-muted mb-3">Update your account password</p>
@@ -140,7 +218,7 @@ async function logout() {
                 </div>
 
                 <!-- Logout Section -->
-                <div class="card auth-card">
+                <div class="card">
                     <div class="card-body p-4 d-flex flex-column">
                         <button class="btn btn-outline-danger w-100" @click="logout" :disabled="logoutLoading">
                             <span v-if="logoutLoading" class="spinner-border spinner-border-sm me-2"></span>
@@ -155,14 +233,25 @@ async function logout() {
 
 <style scoped>
 /* Auth card */
-.auth-card {
-    border-radius: 1rem;
+/* Cards */
+.card {
+    border-radius: 0.75rem;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+    background-color: #f5f5f5;
 }
 
-/* Auth card hover */
-.auth-card:hover {
+/* Card Hover Effect */
+.card:hover {
     transform: translateY(-4px);
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.05);
+}
+
+.btn-sm, .btn-primary{
+    background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    border-radius: 0.75rem;
+    padding: 5px 10px;
+    color: white;
 }
 </style>
