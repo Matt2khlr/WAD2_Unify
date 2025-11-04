@@ -3,11 +3,19 @@ import { ref, onMounted } from 'vue';
 import { db, auth } from '@/firebase'; 
 import { collection, addDoc, query, orderBy, onSnapshot, where, doc, deleteDoc, updateDoc } from 'firebase/firestore'; 
 import { onAuthStateChanged } from 'firebase/auth'; 
+import * as bootstrap from 'bootstrap'; 
 
 const userId = ref(null); 
 const journalEntry = ref('');
 const journalHistory = ref([]); 
 const editingEntry = ref(null); 
+
+// 🆕 TOAST/MODAL STATE
+const toast = ref(null);
+const toastMessage = ref('');
+const generalDialog = ref(false);
+const dialogMessage = ref('');
+const dialogConfirmAction = ref(null); 
 
 // MOOD TRACKING STATE AND LOGIC
 const moodOptions = [
@@ -31,7 +39,34 @@ function getMoodIcon(moodLabel) {
     return option ? option.icon : '';
 }
 
-// FIREBASE READ FUNCTION (Real-time Listener)
+// 🆕 DIALOG FUNCTIONS
+function showToast(message) {
+  toastMessage.value = message;
+  let toastEl = toast.value;
+  let toastBs = new bootstrap.Toast(toastEl);
+  toastBs.show();
+}
+
+function openGeneralDialog(message, confirmAction = null) {
+  dialogMessage.value = message;
+  dialogConfirmAction.value = confirmAction;
+  generalDialog.value = true;
+}
+
+function closeGeneralDialog() {
+  generalDialog.value = false;
+  dialogConfirmAction.value = null;
+}
+
+function executeDialogAction() {
+    if (dialogConfirmAction.value) {
+        dialogConfirmAction.value();
+    }
+    closeGeneralDialog();
+}
+
+
+// FIREBASE READ FUNCTION
 function subscribeToJournalEntries() {
     if (!userId.value) return; 
 
@@ -65,17 +100,17 @@ function subscribeToJournalEntries() {
 async function saveEntry() {
   const user = auth.currentUser;
   if (!user) {
-      alert('You must be logged in to save a journal entry.');
+      showToast('You must be logged in to save a journal entry.');
       return;
   }
   
   if (!journalEntry.value.trim()) {
-    alert('Please write something before saving.');
+    showToast('Please write something before saving.');
     return;
   }
   
   if (!selectedMood.value) {
-      alert('Please select a mood before saving your journal entry.');
+      showToast('Please select a mood before saving your journal entry.');
       return; 
   }
 
@@ -103,10 +138,11 @@ async function saveEntry() {
 
   try {
       await addDoc(collection(db, 'journals'), newEntryData);
+      showToast('Journal entry saved to the cloud!');
       
   } catch (error) {
       console.error("Error saving journal entry:", error);
-      alert('Failed to save journal entry to database. Please try again.');
+      showToast('Error: Failed to save journal entry.');
       
       journalHistory.value = journalHistory.value.filter(e => e.id !== optimisticEntry.id);
       selectedMood.value = moodToReset;
@@ -117,7 +153,6 @@ async function saveEntry() {
 
 // 1. Opens the editing form
 function openEditDialog(entry) {
-    // Create a copy so we modify the local copy, not the bound array directly
     editingEntry.value = { ...entry };
 }
 
@@ -135,30 +170,36 @@ async function saveEditedEntry(entry) {
 
         await updateDoc(entryRef, updatedData);
         
-        // Success: Close the editing state. onSnapshot updates the list.
         editingEntry.value = null;
+        showToast('Entry successfully updated!');
+        
     } catch (error) {
         console.error("Error updating entry:", error);
-        alert('Failed to save changes to the journal entry.');
+        showToast('Error: Failed to save changes.');
     }
 }
 
-// 3. Deletes the entry from Firestore
-async function deleteJournalEntry(id) {
-    if (!confirm('Are you sure you want to delete this journal entry? This action cannot be undone.')) {
-        return;
-    }
-    
+// 3. Deletes the entry from Firestore (Uses new Modal for confirmation)
+function deleteJournalEntry(id) {
+    openGeneralDialog(
+        "Are you sure you want to permanently delete this journal entry? This action cannot be undone.", 
+        () => executeDelete(id)
+    );
+}
+
+// Helper function to execute the Firebase delete
+async function executeDelete(id) {
     try {
         const entryRef = doc(db, 'journals', id);
         await deleteDoc(entryRef);
+        showToast('Entry successfully deleted.');
         
-        // Success: onSnapshot handles removal from the list automatically.
     } catch (error) {
         console.error("Error deleting entry:", error);
-        alert('Failed to delete the journal entry.');
+        showToast('Error: Failed to delete the journal entry.');
     }
 }
+
 
 onMounted(() => {
     onAuthStateChanged(auth, (user) => {
@@ -261,17 +302,17 @@ onMounted(() => {
                               <i v-if="entry.isSaving" class="bi bi-cloud-arrow-up-fill text-warning ms-2"></i>
                           </span>
 
-                          <div class="btn-group btn-group-sm" role="group" v-if="!entry.isSaving">
+                          <div class="action-buttons" role="group" v-if="!entry.isSaving">
                               <button 
                                   type="button" 
-                                  class="btn btn-outline-info"
+                                  class="btn btn-sm action-edit me-2"
                                   @click="openEditDialog(entry)"
                               >
                                   <i class="bi bi-pencil"></i> Edit
                               </button>
                               <button 
                                   type="button" 
-                                  class="btn btn-outline-danger"
+                                  class="btn btn-sm action-delete"
                                   @click="deleteJournalEntry(entry.id)"
                               >
                                   <i class="bi bi-trash"></i> Delete
@@ -290,11 +331,142 @@ onMounted(() => {
       </div>
 
     </div>
+    
+    <div
+      ref="toast"
+      class="toast position-fixed bottom-0 start-50 translate-middle-x m-3"
+      role="alert"
+      aria-live="assertive"
+      aria-atomic="true"
+      data-bs-delay="3000"
+    >
+      <div class="toast-body">
+        {{ toastMessage }}
+      </div>
+    </div>
+
+    <div
+      class="modal fade" 
+      :class="{ show: generalDialog, 'd-block': generalDialog }"
+      tabindex="-1"
+      style="background-color: rgba(0,0,0,0.5);"
+    >
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">
+              <i class="bi bi-exclamation-triangle-fill me-2"></i>
+              Confirmation
+            </h5>
+            <button type="button" class="btn-close btn-close-white" @click="closeGeneralDialog"></button>
+          </div>
+          <div class="modal-body">
+            <p class="mb-0">
+              {{dialogMessage}}
+            </p>
+          </div>
+          <div class="modal-footer">
+            <button class="btn cancel-button" @click="closeGeneralDialog">
+              Cancel
+            </button>
+            <button class="btn save-button" @click="executeDialogAction">
+              Confirm
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <style scoped>
 .bg-gradient {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+/* TOAST STYLING */
+.toast {
+  background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+/* MODAL STYLING (Based on the provided custom CSS) */
+.modal-header {
+  background: #667eea;
+  color: white;
+}
+
+.save-button {
+  background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 20px;
+  transition: all 0.3s ease;
+}
+
+.save-button:hover {
+  /* This hover style ensures the text and button background are solid white for better visibility */
+  background: #fff; 
+  color: #667eea;
+  border: 1px solid #667eea;
+  box-shadow: 0 8px 16px rgba(102, 126, 234, 0.4);
+  transform: translateY(-3px);
+  /* The text-clip/fill styles are removed as they conflict with solid backgrounds/borders */
+}
+
+.cancel-button {
+  background: linear-gradient(120deg, #ff6b6b 0%, #ee5a6f 100%);
+  color: white;
+  border-radius: 20px;
+  transition: all 0.3s ease;
+}
+
+.cancel-button:hover {
+  /* This hover style ensures the text and button background are solid white for better visibility */
+  background: #fff; 
+  color: #ff6b6b;
+  border: 1px solid #ff6b6b;
+  box-shadow: 0 8px 16px rgba(255, 107, 107, 0.4);
+  transform: translateY(-3px);
+}
+
+/* ACTION BUTTON STYLING (Edit/Delete on list) */
+.action-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+.action-edit {
+    background-color: #e3f2fd; 
+    color: #0d47a1; 
+    border: 1px solid #bbdefb;
+    border-radius: 8px;
+    font-weight: 500;
+    transition: all 0.2s ease-in-out;
+}
+
+.action-edit:hover {
+    background-color: #bbdefb;
+    color: #0d47a1;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(13, 71, 161, 0.2);
+}
+
+.action-delete {
+    background-color: #ffebee; 
+    color: #b71c1c; 
+    border: 1px solid #ffcdd2;
+    border-radius: 8px;
+    font-weight: 500;
+    transition: all 0.2s ease-in-out;
+}
+
+.action-delete:hover {
+    background-color: #ffcdd2;
+    color: #b71c1c;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(183, 28, 28, 0.2);
 }
 </style>
