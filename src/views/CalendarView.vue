@@ -817,6 +817,7 @@ export default {
       deleteConfirmDialog: false,
       generalDialog: false,
       toastMessage: '',
+      dialogMessage: '',
       editMode: false,
       events: [],
       currentEvent: {
