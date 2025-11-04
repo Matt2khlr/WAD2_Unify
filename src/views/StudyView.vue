@@ -2160,14 +2160,14 @@ export default {
 	border-radius: 30px;
 	box-shadow: 0 10px 30px rgba(0,0,0,0.2);
 	margin-bottom: 2rem;
-	overflow: visible;
+	overflow: hidden;
 	position: relative;
 }
 
 .card-header {
 	background: #667eea;
 	color: white;
-	border-radius: 100px 100px 0 0 !important;
+	border-radius: 30px 30px 0 0;
 	padding: 1.5rem;
 	font-weight: 600;
 	font-size: 1.3rem;
@@ -2416,6 +2416,7 @@ export default {
 }
 
 .flashcard-list-item {
+	
 	transition: background-color 0.2s, transform 0.6s;
 	transform-style: preserve-3d;
 }
