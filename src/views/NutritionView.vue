@@ -1,31 +1,9 @@
 <script setup>
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from "vue";
 import { db, auth } from "@/firebase";
-import {
-  collection,
-  addDoc,
-  deleteDoc,
-  doc,
-  onSnapshot,
-  query,
-  where,
-  serverTimestamp,
-  setDoc,
-  deleteField,
-  getDoc
-} from "firebase/firestore";
+import { collection, addDoc, deleteDoc, doc, onSnapshot, query, where, serverTimestamp, setDoc, deleteField, getDoc } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
-import {
-  Calendar,
-  Flame,
-  TrendingUp,
-  Activity,
-  Utensils,
-  Clock,
-  Plus,
-  ChevronLeft,
-  ChevronRight
-} from "lucide-vue-next";
+import { Calendar, Flame, TrendingUp, Activity, Utensils, Clock, Plus, ChevronLeft, ChevronRight } from "lucide-vue-next";
 import { Toast } from "bootstrap";
 
 function toISO(d) {
@@ -47,6 +25,7 @@ const defaultMets = {
   gym: { easy: 3, moderate: 5, vigorous: 6 },
   yoga: { easy: 2, moderate: 2.5, vigorous: 3 }
 };
+
 const metsMap = ref(defaultMets);
 let unsubMets = null;
 function metFor(activity, intensity = "moderate") {
@@ -149,7 +128,7 @@ async function saveProfile(partial) {
   if (!userId.value || !profileReady.value) return;
   try {
     await setDoc(doc(db, "profiles", userId.value), { ...partial, updatedAt: serverTimestamp() }, { merge: true });
-  } catch (e) {}
+  } catch (e) { }
 }
 
 const mealForm = ref({
@@ -419,6 +398,7 @@ const suggestions = computed(() => {
     if (overCals.value > 0) s.push({ type: "burn", text: `Burn ~${overCals.value} kcal to reach today’s target.` });
     if (proteinGap.value > 0) s.push({ type: "eat", text: `Aim for +${proteinGap.value.toFixed(0)} g protein.` });
     if (fatGap.value < 0) s.push({ type: "balance", text: `Fat is high; trim fats to stay ≥20% but not excessive.` });
+    if (carbsGap.value > 0) s.push({ type: "eat", text: `You can have +${carbsGap.value.toFixed(0)} g carbs if needed.` });
   } else if (goal.value === "muscle-gain") {
     if (proteinGap.value > 0) s.push({ type: "eat", text: `Eat +${proteinGap.value.toFixed(0)} g protein.` });
     if (overCals.value < 0) s.push({ type: "eat", text: `You’re under by ${Math.abs(overCals.value)} kcal — add a snack.` });
@@ -715,7 +695,9 @@ watch([schedules, selectedDate], () => {
                 <span>{{ totalsMeals.protein }} g / {{ proteinTarget }} g</span>
               </div>
               <div class="progress">
-                <div class="progress-bar bg-primary" :style="{ width: Math.min(100, (totalsMeals.protein / proteinTarget) * 100) + '%' }"></div>
+                <div class="progress-bar bg-primary"
+                  :style="{ width: Math.min(100, (totalsMeals.protein / proteinTarget) * 100) + '%' }">
+                </div>
               </div>
             </div>
             <div class="mb-2">
@@ -724,7 +706,9 @@ watch([schedules, selectedDate], () => {
                 <span>{{ totalsMeals.carbs }} g / {{ carbsTarget }} g</span>
               </div>
               <div class="progress">
-                <div class="progress-bar bg-info" :style="{ width: Math.min(100, (totalsMeals.carbs / carbsTarget) * 100) + '%' }"></div>
+                <div class="progress-bar bg-info"
+                  :style="{ width: Math.min(100, (totalsMeals.carbs / carbsTarget) * 100) + '%' }">
+                </div>
               </div>
             </div>
             <div>
@@ -733,7 +717,8 @@ watch([schedules, selectedDate], () => {
                 <span>{{ totalsMeals.fat }} g / {{ fatTarget }} g</span>
               </div>
               <div class="progress">
-                <div class="progress-bar bg-warning" :style="{ width: Math.min(100, (totalsMeals.fat / fatTarget) * 100) + '%' }"></div>
+                <div class="progress-bar bg-warning"
+                  :style="{ width: Math.min(100, (totalsMeals.fat / fatTarget) * 100) + '%' }"></div>
               </div>
             </div>
           </div>
@@ -747,18 +732,23 @@ watch([schedules, selectedDate], () => {
           <div class="col-12 col-md-5">
             <label class="form-label">Goal</label>
             <div class="btn-group w-100">
-              <button class="btn" :class="goal==='weight-loss'?'btn-primary':'btn-outline-primary'" @click="goal='weight-loss'">Weight loss</button>
-              <button class="btn" :class="goal==='maintenance'?'btn-primary':'btn-outline-primary'" @click="goal='maintenance'">Maintenance</button>
-              <button class="btn" :class="goal==='muscle-gain'?'btn-primary':'btn-outline-primary'" @click="goal='muscle-gain'">Muscle gain</button>
+              <button class="btn" :class="goal === 'weight-loss' ? 'btn-primary' : 'btn-outline-primary'"
+                @click="goal = 'weight-loss'">Weight loss</button>
+              <button class="btn" :class="goal === 'maintenance' ? 'btn-primary' : 'btn-outline-primary'"
+                @click="goal = 'maintenance'">Maintenance</button>
+              <button class="btn" :class="goal === 'muscle-gain' ? 'btn-primary' : 'btn-outline-primary'"
+                @click="goal = 'muscle-gain'">Muscle gain</button>
             </div>
           </div>
           <div class="col-6 col-md-3">
             <label class="form-label">Height (cm)</label>
-            <input type="number" min="1" class="form-control" v-model.number="targets.heightCm" placeholder="e.g., 175" />
+            <input type="number" min="1" class="form-control" v-model.number="targets.heightCm"
+              placeholder="e.g., 175" />
           </div>
           <div class="col-6 col-md-2">
             <label class="form-label">Weight (kg)</label>
-            <input type="number" min="1" class="form-control" v-model.number="targets.weightKg" placeholder="e.g., 70" />
+            <input type="number" min="1" class="form-control" v-model.number="targets.weightKg"
+              placeholder="e.g., 70" />
           </div>
           <div class="col-12 col-md-2">
             <label class="form-label d-flex align-items-center justify-content-between">
@@ -772,18 +762,8 @@ watch([schedules, selectedDate], () => {
               </div>
             </label>
             <input v-if="useAutoCalorie" type="number" class="form-control" :value="suggestedCalorie" disabled />
-            <input
-              v-else
-              ref="kcalInputRef"
-              type="number"
-              min="0"
-              class="form-control"
-              v-model="calorieInput"
-              placeholder="e.g., 2000"
-              @keydown.stop
-              @keyup.stop
-              @keypress.stop
-            />
+            <input v-else ref="kcalInputRef" type="number" min="0" class="form-control" v-model="calorieInput"
+              placeholder="e.g., 2000" @keydown.stop @keyup.stop @keypress.stop />
           </div>
         </div>
       </div>
@@ -795,11 +775,11 @@ watch([schedules, selectedDate], () => {
           <Clock class="text-secondary" :size="18" />
           Suggestions
         </h6>
-        <div v-if="suggestions.length===0" class="text-success">
+        <div v-if="suggestions.length === 0" class="text-success">
           You're tracking well — no action needed.
         </div>
         <ul v-else class="list-unstyled mb-0">
-          <li v-for="(s,i) in suggestions" :key="i" class="mb-1">• {{ s.text }}</li>
+          <li v-for="(s, i) in suggestions" :key="i" class="mb-1">• {{ s.text }}</li>
         </ul>
       </div>
     </div>
@@ -808,15 +788,19 @@ watch([schedules, selectedDate], () => {
       <div class="card-body">
         <label class="form-label">Search foods (OpenFoodFacts)</label>
         <div class="input-group">
-          <input class="form-control" v-model="mealSearch" @keyup.enter="searchFoods" placeholder="e.g., chicken rice" />
-          <button class="btn btn-outline-secondary" @click="searchFoods" :disabled="searching">{{ searching ? "Searching…" : "Search" }}</button>
+          <input class="form-control" v-model="mealSearch" @keyup.enter="searchFoods"
+            placeholder="e.g., chicken rice" />
+          <button class="btn btn-outline-secondary" @click="searchFoods" :disabled="searching">{{ searching ?
+            "Searching…" : "Search" }}</button>
         </div>
         <ul v-if="mealResults.length" class="list-group mt-2">
-          <li v-for="r in mealResults" :key="r.name+r.brand" class="list-group-item d-flex justify-content-between align-items-center">
+          <li v-for="r in mealResults" :key="r.name + r.brand"
+            class="list-group-item d-flex justify-content-between align-items-center">
             <div class="me-2">
               <div class="fw-semibold">{{ r.name }}</div>
               <div class="small text-secondary" v-if="r.brand">{{ r.brand }}</div>
-              <div class="small text-muted">per 100g: {{ r.kcal100||0 }} kcal • P{{ r.p100||0 }} C{{ r.c100||0 }} F{{ r.f100||0 }}</div>
+              <div class="small text-muted">per 100g: {{ r.kcal100 || 0 }} kcal • P{{ r.p100 || 0 }} C{{
+                r.c100 || 0 }} F{{ r.f100 || 0 }}</div>
             </div>
             <button class="btn btn-sm btn-primary" @click="useResult(r, true)">Add</button>
           </li>
@@ -860,7 +844,7 @@ watch([schedules, selectedDate], () => {
           </div>
         </div>
         <div class="d-flex gap-2 mt-3">
-          <button class="btn save-button" @click="addMeal" :disabled="!mealForm.name || calculatedCalories<=0">
+          <button class="btn save-button" @click="addMeal" :disabled="!mealForm.name || calculatedCalories <= 0">
             <i class="mdi mdi-plus"></i>
             Add
           </button>
@@ -880,7 +864,8 @@ watch([schedules, selectedDate], () => {
               </div>
               <div class="col-3 col-md-2">
                 <label class="form-label small text-muted mb-1">Calories (auto)</label>
-                <input class="form-control bg-light" type="number" placeholder="0" :value="calculatedTemplateCalories" readonly />
+                <input class="form-control bg-light" type="number" placeholder="0" :value="calculatedTemplateCalories"
+                  readonly />
               </div>
               <div class="col-3 col-md-2">
                 <label class="form-label small text-muted mb-1">Protein (g)</label>
@@ -900,7 +885,8 @@ watch([schedules, selectedDate], () => {
               Add template
             </button>
             <div class="d-flex flex-wrap gap-2">
-              <div v-for="t in mealTemplates" :key="t.id" class="badge text-bg-light p-2 d-flex align-items-center gap-2">
+              <div v-for="t in mealTemplates" :key="t.id"
+                class="badge text-bg-light p-2 d-flex align-items-center gap-2">
                 <div>
                   <div>{{ t.name }}</div>
                   <div class="text-muted">{{ t.calories }} kcal</div>
@@ -929,14 +915,8 @@ watch([schedules, selectedDate], () => {
                 </select>
               </div>
               <div class="col-6 col-md-3">
-                <input
-                  class="form-control"
-                  type="text"
-                  inputmode="numeric"
-                  placeholder="Min"
-                  :value="newWorkoutTemplate.dur"
-                  @input="e=>newWorkoutTemplate.dur=digitsOnly(e.target.value)"
-                />
+                <input class="form-control" type="text" inputmode="numeric" placeholder="Min"
+                  :value="newWorkoutTemplate.dur" @input="e => newWorkoutTemplate.dur = digitsOnly(e.target.value)" />
               </div>
             </div>
             <button class="btn btn-sm btn-dark mb-2" @click="addWorkoutTemplate">
@@ -965,13 +945,9 @@ watch([schedules, selectedDate], () => {
         <div class="mb-3">
           <label class="form-label small text-muted">Select Activity</label>
           <div class="d-flex flex-wrap gap-2">
-            <button
-              v-for="a in QUICK_ACTIVITIES"
-              :key="a.name"
-              class="btn btn-sm rounded-pill px-3 py-1"
-              :class="workoutForm.activity===a.name ? 'btn-secondary' : 'btn-outline-secondary'"
-              @click="workoutForm.activity=a.name"
-            >
+            <button v-for="a in QUICK_ACTIVITIES" :key="a.name" class="btn btn-sm rounded-pill px-3 py-1"
+              :class="workoutForm.activity === a.name ? 'btn-secondary' : 'btn-outline-secondary'"
+              @click="workoutForm.activity = a.name">
               {{ a.icon }} {{ a.name }}
             </button>
           </div>
@@ -980,45 +956,35 @@ watch([schedules, selectedDate], () => {
         <div class="mb-2">
           <label class="form-label small text-muted">Intensity</label>
           <div class="d-flex gap-2">
-            <button class="btn btn-sm rounded-pill" :class="workoutForm.intensity==='easy'?'btn-outline-secondary active':'btn-outline-secondary'" @click="workoutForm.intensity='easy'">Easy</button>
-            <button class="btn btn-sm rounded-pill" :class="workoutForm.intensity==='moderate'?'btn-outline-secondary active':'btn-outline-secondary'" @click="workoutForm.intensity='moderate'">Moderate</button>
-            <button class="btn btn-sm rounded-pill" :class="workoutForm.intensity==='vigorous'?'btn-outline-secondary active':'btn-outline-secondary'" @click="workoutForm.intensity='vigorous'">Vigorous</button>
+            <button class="btn btn-sm rounded-pill"
+              :class="workoutForm.intensity === 'easy' ? 'btn-outline-secondary active' : 'btn-outline-secondary'"
+              @click="workoutForm.intensity = 'easy'">Easy</button>
+            <button class="btn btn-sm rounded-pill"
+              :class="workoutForm.intensity === 'moderate' ? 'btn-outline-secondary active' : 'btn-outline-secondary'"
+              @click="workoutForm.intensity = 'moderate'">Moderate</button>
+            <button class="btn btn-sm rounded-pill"
+              :class="workoutForm.intensity === 'vigorous' ? 'btn-outline-secondary active' : 'btn-outline-secondary'"
+              @click="workoutForm.intensity = 'vigorous'">Vigorous</button>
           </div>
         </div>
 
         <div class="mb-3">
           <label class="form-label small text-muted">Duration (minutes) and kcal (optional)</label>
           <div class="d-flex gap-2 flex-wrap align-items-center">
-            <button
-              v-for="d in QUICK_DURATIONS"
-              :key="d"
-              class="btn btn-sm rounded-pill"
-              :class="String(workoutForm.minutes)===String(d)?'btn-secondary':'btn-outline-secondary'"
-              @click="workoutForm.minutes=String(d)"
-            >
+            <button v-for="d in QUICK_DURATIONS" :key="d" class="btn btn-sm rounded-pill"
+              :class="String(workoutForm.minutes) === String(d) ? 'btn-secondary' : 'btn-outline-secondary'"
+              @click="workoutForm.minutes = String(d)">
               {{ d }} min
             </button>
             <div class="input-group w-auto">
-              <input
-                type="text"
-                inputmode="numeric"
-                class="form-control form-control-sm rounded-pill text-center"
-                placeholder="Custom min"
-                :value="workoutForm.minutes"
-                @input="e=>workoutForm.minutes=digitsOnly(e.target.value)"
-                style="width:110px;"
-              />
+              <input type="text" inputmode="numeric" class="form-control form-control-sm rounded-pill text-center"
+                placeholder="Custom min" :value="workoutForm.minutes"
+                @input="e => workoutForm.minutes = digitsOnly(e.target.value)" style="width:110px;" />
             </div>
             <div class="input-group w-auto">
-              <input
-                type="text"
-                inputmode="numeric"
-                class="form-control form-control-sm rounded-pill text-center"
-                placeholder="kcal (optional)"
-                :value="workoutForm.kcalOverride"
-                @input="e=>workoutForm.kcalOverride=digitsOnly(e.target.value)"
-                style="width:130px;"
-              />
+              <input type="text" inputmode="numeric" class="form-control form-control-sm rounded-pill text-center"
+                placeholder="kcal (optional)" :value="workoutForm.kcalOverride"
+                @input="e => workoutForm.kcalOverride = digitsOnly(e.target.value)" style="width:130px;" />
             </div>
           </div>
         </div>
@@ -1031,7 +997,8 @@ watch([schedules, selectedDate], () => {
             ≈
             <span class="fw-bold text-success">{{ previewKcal }} kcal</span>
           </div>
-          <button class="btn save-button ms-auto" :disabled="!workoutForm.activity || !(previewMinutes || hasOverride)" @click="addWorkout">
+          <button class="btn save-button ms-auto" :disabled="!workoutForm.activity || !(previewMinutes || hasOverride)"
+            @click="addWorkout">
             <i class="mdi mdi-plus"></i>
             Add
           </button>
@@ -1061,14 +1028,8 @@ watch([schedules, selectedDate], () => {
           </div>
           <div class="col-6 col-md-2">
             <label class="form-label small text-muted mb-1">Minutes</label>
-            <input
-              class="form-control"
-              type="text"
-              inputmode="numeric"
-              :value="newSchedule.minutes"
-              @input="e=>newSchedule.minutes=digitsOnly(e.target.value)"
-              placeholder="e.g., 60"
-            />
+            <input class="form-control" type="text" inputmode="numeric" :value="newSchedule.minutes"
+              @input="e => newSchedule.minutes = digitsOnly(e.target.value)" placeholder="e.g., 60" />
           </div>
           <div class="col-12 col-md-2 d-flex align-items-end">
             <button class="btn save-button w-100" @click="addSchedule">
@@ -1081,14 +1042,9 @@ watch([schedules, selectedDate], () => {
         <div class="mt-2">
           <label class="form-label small text-muted mb-1">Days</label>
           <div class="d-flex gap-2 flex-nowrap overflow-auto py-1">
-            <button
-              v-for="d in weekDays"
-              :key="d.val"
-              type="button"
-              class="btn btn-sm"
+            <button v-for="d in weekDays" :key="d.val" type="button" class="btn btn-sm"
               :class="newSchedule.days.includes(d.val) ? 'day-btn-selected' : 'day-btn'"
-              @click="toggleScheduleDay(d.val)"
-            >
+              @click="toggleScheduleDay(d.val)">
               {{ d.label }}
             </button>
           </div>
@@ -1097,7 +1053,8 @@ watch([schedules, selectedDate], () => {
         <hr />
         <div v-if="schedules.length === 0" class="text-muted">No recurring workouts yet.</div>
         <ul v-else class="list-group">
-          <li v-for="s in schedules" :key="s.id" class="list-group-item d-flex justify-content-between align-items-center">
+          <li v-for="s in schedules" :key="s.id"
+            class="list-group-item d-flex justify-content-between align-items-center">
             <div>
               <div class="fw-semibold">
                 {{ s.name }} — {{ s.minutes }} min ({{ s.intensity }})
@@ -1119,9 +1076,10 @@ watch([schedules, selectedDate], () => {
           Today's Workouts
         </h6>
         <div v-if="!userId" class="text-muted">Sign in to log workouts.</div>
-        <div v-else-if="workoutsSorted.length===0" class="text-muted">No workouts yet.</div>
+        <div v-else-if="workoutsSorted.length === 0" class="text-muted">No workouts yet.</div>
         <ul class="list-group">
-          <li v-for="w in workoutsSorted" :key="w.id" class="list-group-item d-flex justify-content-between align-items-center">
+          <li v-for="w in workoutsSorted" :key="w.id"
+            class="list-group-item d-flex justify-content-between align-items-center">
             <div>
               <div class="fw-semibold">{{ w.activity }}</div>
               <div class="small text-secondary">
@@ -1138,21 +1096,15 @@ watch([schedules, selectedDate], () => {
       </div>
     </div>
 
-    <div
-      ref="toastRef"
-      class="toast position-fixed bottom-0 start-50 translate-middle-x m-3"
-      role="alert"
-      aria-live="assertive"
-      aria-atomic="true"
-      data-bs-delay="3000"
-      data-bs-autohide="true"
-    >
+    <div ref="toastRef" class="toast position-fixed bottom-0 start-50 translate-middle-x m-3" role="alert"
+      aria-live="assertive" aria-atomic="true" data-bs-delay="3000" data-bs-autohide="true">
       <div class="toast-body">
         {{ toastMessage }}
       </div>
     </div>
 
-    <div class="modal fade" :class="{ show: generalDialog, 'd-block': generalDialog }" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+    <div class="modal fade" :class="{ show: generalDialog, 'd-block': generalDialog }" tabindex="-1"
+      style="background-color: rgba(0,0,0,0.5);">
       <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
           <div class="modal-header">
@@ -1179,12 +1131,14 @@ watch([schedules, selectedDate], () => {
   background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
   color: #fff;
 }
+
 .text-gradient {
   background: linear-gradient(90deg, var(--bs-primary), #6c63ff);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
+
 .card {
   border-radius: 0.75rem;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
@@ -1192,6 +1146,7 @@ watch([schedules, selectedDate], () => {
   background-color: #f5f5f5;
   border: 0;
 }
+
 .card:hover {
   transform: translateY(-4px);
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.05);
@@ -1250,12 +1205,12 @@ watch([schedules, selectedDate], () => {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
-.ios-switch-input:checked + .ios-switch-label .ios-switch-slider {
+.ios-switch-input:checked+.ios-switch-label .ios-switch-slider {
   background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
   box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
 }
 
-.ios-switch-input:checked + .ios-switch-label .ios-switch-slider::before {
+.ios-switch-input:checked+.ios-switch-label .ios-switch-slider::before {
   transform: translateX(18px);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
 }
@@ -1264,16 +1219,16 @@ watch([schedules, selectedDate], () => {
   box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
 }
 
-.ios-switch-input:active + .ios-switch-label .ios-switch-slider::before {
+.ios-switch-input:active+.ios-switch-label .ios-switch-slider::before {
   width: 24px;
 }
 
-.ios-switch-input:focus + .ios-switch-label .ios-switch-slider {
+.ios-switch-input:focus+.ios-switch-label .ios-switch-slider {
   outline: 2px solid #667eea;
   outline-offset: 2px;
 }
 
-.ios-switch-input:disabled + .ios-switch-label {
+.ios-switch-input:disabled+.ios-switch-label {
   opacity: 0.5;
   cursor: not-allowed;
 }
@@ -1383,5 +1338,4 @@ watch([schedules, selectedDate], () => {
   padding: 4px 10px;
   box-shadow: 0 4px 10px rgba(102, 126, 234, 0.3);
 }
-
 </style>

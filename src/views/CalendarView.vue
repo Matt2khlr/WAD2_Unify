@@ -1,807 +1,3 @@
-<template>
-  <div class="container h-100">
-
-    <div class="mt-2 mb-2 text-center">
-      <h1 class="display-4 fw-bold d-flex align-items-center gap-3">
-        Calendar
-      </h1>
-    </div>
-    
-    <div class="row h-100">
-
-      <!-- Calendar Section -->
-      <div class="col-lg-9 d-flex flex-column">
-        <div class="card h-100 shadow-soft">
-          <div class="card-header">
-            <div class="d-flex align-items-center">
-
-              <!-- View Selector Dropdown -->
-              <div class="dropdown me-3">
-                <button 
-                  class="btn btn-sm view-dropdown-btn dropdown-toggle" 
-                  type="button" 
-                  id="viewDropdown" 
-                  data-bs-toggle="dropdown" 
-                  aria-expanded="false"
-                >
-                  <i class="mdi mdi-calendar-month me-1"></i>
-                  {{ calendarView.charAt(0).toUpperCase() + calendarView.slice(1) }}
-                </button>
-                <ul class="dropdown-menu dropdown-menu-styled" aria-labelledby="viewDropdown">
-                  <li>
-                    <a 
-                      class="dropdown-item" 
-                      :class="{ 'active': calendarView === 'day' }"
-                      href="#" 
-                      @click.prevent="calendarView = 'day'"
-                    >
-                      <i class="mdi mdi-calendar-today me-2"></i>
-                      Day
-                    </a>
-                  </li>
-                  <li>
-                    <a 
-                      class="dropdown-item" 
-                      :class="{ 'active': calendarView === 'week' }"
-                      href="#" 
-                      @click.prevent="calendarView = 'week'"
-                    >
-                      <i class="mdi mdi-calendar-week me-2"></i>
-                      Week
-                    </a>
-                  </li>
-                  <li>
-                    <a 
-                      class="dropdown-item" 
-                      :class="{ 'active': calendarView === 'month' }"
-                      href="#" 
-                      @click.prevent="calendarView = 'month'"
-                    >
-                      <i class="mdi mdi-calendar-month me-2"></i>
-                      Month
-                    </a>
-                  </li>
-                </ul>
-              </div>
-
-              <!-- Navigation Buttons-->
-              <div class="btn-group nav-btn-group">
-                <button class="btn btn-sm nav-btn" @click="prev">
-                  <i class="mdi mdi-chevron-left"></i>
-                </button>
-                <button class="btn btn-sm nav-btn nav-btn-today" @click="setToday">
-                  Today
-                </button>
-                <button class="btn btn-sm nav-btn" @click="next">
-                  <i class="mdi mdi-chevron-right"></i>
-                </button>
-              </div>
-              
-              <!-- Current Period -->
-              <span class="ms-3 text-light fw-semibold">{{ currentPeriod }}</span>
-              
-              <div class="ms-auto d-flex align-items-center">
-                <!-- Google Calendar Sync Toggle -->
-                <div class="ios-switch-container me-3">
-                  <input 
-                      type="checkbox" 
-                      id="googleSync"
-                      class="ios-switch-input"
-                      v-model="syncEnabled"
-                      @change="toggleSync"
-                  >
-                  <label class="ios-switch-label" for="googleSync">
-                      <span class="ios-switch-slider"></span>
-                  </label>
-                  <label class="form-check-label ms-2" for="googleSync">
-                    <i class="mdi mdi-google"></i> Sync with Google
-                  </label>
-                </div>
-                
-                <!-- Add Event Button -->
-                <button class="btn add-event" @click="openAddDialog">
-                  <i class="mdi mdi-calendar-plus"></i> Add Event
-                </button>
-              </div>
-            </div>
-          </div>
-          
-          <div class="card-body p-2 pb-3" style="height: 600px;">
-            <v-calendar
-              ref="calendar"
-              v-model="focus"
-              :events="allEvents"
-              :type="calendarView"
-              @click:time="handleClick"
-              @click:day="handleClick"
-              @click:date="handleClick"
-              style="height: 100%;"
-            >
-            <template v-slot:event="{ event, timed }">
-                <div 
-                  @click.stop="showEventDetails(event)"
-                  @mousedown.stop
-                  @touchstart.stop
-                  class="event-item"
-                  :class="{ 'event-timed': timed }"
-                  :style="{ backgroundColor: event.color, padding: '0px 5px' }"
-                >
-                  <div v-if="calendarView === 'month'">
-                    <i v-if="event.isRecurring" class="mdi mdi-repeat" style="font-size: 0.7rem;"></i>
-                    {{ formatTime(event.start) }} &nbsp;
-                    <strong>{{ event.name }}</strong>
-                  </div>
-                  <div v-if="(calendarView === 'week' || calendarView === 'day')">
-                    <strong>
-                      <i v-if="event.isRecurring" class="mdi mdi-repeat me-1"></i>
-                      {{ event.name }}
-                    </strong>
-                  </div>
-                  <div v-if="timed && (calendarView === 'week' || calendarView === 'day')" class="text-xs">
-                    {{ formatTime(event.start) }} - {{ formatTime(event.end) }}
-                  </div>
-                </div>
-              </template>
-            </v-calendar>
-          </div>
-        </div>
-      </div>
-      
-      <!-- Event List - Grouped by Day -->
-      <div class="col-lg-3 mt-lg-0 mt-4 mb-lg-0 mb-4">
-        <div class="card h-100 mb-1 shadow-soft">
-          <div class="card-header" style="padding-top: 17px; padding-bottom: 17px;">
-            <h6 class="mb-0 fw-semibold">Upcoming Events</h6>
-          </div>
-          <div class="card-body p-3">
-            <!-- Events List Grouped by Day -->
-            <div class="flex-grow-1" style="overflow-y: auto; max-height: calc(100vh - 250px);">
-              <div v-if="upcomingEventsByDay.length > 0" class="d-flex flex-column gap-3">
-                <div v-for="(dayGroup, index) in upcomingEventsByDay" :key="index">
-                  <!-- Day Header -->
-                  <div class="d-flex align-items-center mb-2">
-                    <span class="badge fw-medium px-2 py-1" style="font-size: 0.75rem; background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);">
-                      {{ dayGroup.dayLabel }}
-                    </span>
-                    <div class="flex-grow-1 ms-2" style="height: 1px; background: #e0e0e0;"></div>
-                  </div>
-
-                  <!-- Events for this day -->
-                  <div class="d-flex flex-column gap-2">
-                    <div 
-                      v-for="event in dayGroup.events" 
-                      :key="event.id"
-                      class="event-card py-2 px-3 rounded-2 border"
-                      :style="{ backgroundColor: event.colour, color: getContrastColor(event.colour) }"
-                      @click="showEventDetails(event)"
-                      style="cursor: pointer;"
-                    >
-                      <div class="d-flex align-items-start justify-content-between gap-2">
-                        <div class="flex-grow-1">
-                          <!-- Event Name -->
-                          <div class="fw-medium mb-1" style="font-size: 1rem; line-height: 1.3;">
-                            <i v-if="event.isRecurring" class="mdi mdi-repeat me-1"></i>
-                            {{ event.name }}
-                          </div>
-                          
-                          <!-- Event Information -->
-                          <div class="d-flex align-items-center gap-2 flex-wrap" style="font-size: 0.8rem;">
-
-                            <!-- Date -->
-                            <span class="d-flex align-items-center gap-1">
-                            <i class="mdi mdi-calendar-blank" style="font-size: 0.8rem;"></i>
-                            {{ formatShortDate(event.start) }}
-                            </span>
-                            
-                            <!-- Time -->
-                            <span class="d-flex align-items-center gap-1">
-                              <i class="mdi mdi-clock-outline" style="font-size: 0.8rem;"></i>
-                              {{ formatEventTime(event.start) }}
-                            </span>
-                            
-                            <!-- Priority Badge -->
-                            <span 
-                              v-if="event.priority"
-                              class="badge"
-                              :class="{
-                                'bg-danger': event.priority === 'High',
-                                'bg-warning text-dark': event.priority === 'Medium',
-                                'bg-success': event.priority === 'Low'
-                              }"
-                              style="font-size: 0.8rem; padding: 2px 6px;"
-                            >
-                              {{ event.priority }}
-                            </span>
-                          </div>
-                        </div>
-
-                        <!-- Google Maps Button -->
-                        <button 
-                          v-if="event.location || event.locationName"
-                          @click.stop="openMap(event)"
-                          class="map-button"
-                          title="Open in Google Maps"
-                          style="display: flex; margin-top: 7.5px;"
-                        >
-                          <i class="mdi mdi-map-marker map-icon"></i>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Empty State -->
-              <div v-else class="text-center py-5">
-                <i class="mdi mdi-calendar-blank-outline text-muted" style="font-size: 3rem; opacity: 0.3;"></i>
-                <p class="text-muted mt-2 mb-0">No Upcoming Events</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Create Event Dialog -->
-    <div 
-      class="modal fade" 
-      :class="{ show: createDialog, 'd-block': createDialog }"
-      tabindex="-1"
-      style="background-color: rgba(0,0,0,0.5);"
-    >
-      <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">
-              <i class="mdi mdi-calendar-plus me-2"></i>
-              Create Event</h5>
-            <button type="button" class="btn-close btn-close-white" @click="closeCreateDialog"></button>
-          </div>
-          <div class="modal-body">
-            <div class="mb-3">
-              <label class="form-label">Event Name</label>
-              <input 
-                type="text" 
-                class="form-control" 
-                v-model="currentEvent.name"
-              >
-            </div>
-            
-            <div class="mb-3">
-              <label class="form-label">Description</label>
-              <textarea 
-                class="form-control" 
-                rows="3"
-                v-model="currentEvent.description"
-              ></textarea>
-            </div>
-            
-            <div class="row">
-              <div class="col-md-6 mb-3">
-                <label class="form-label">Start</label>
-                <input 
-                  type="datetime-local" 
-                  class="form-control"
-                  v-model="currentEvent.start"
-                >
-              </div>
-              
-              <div class="col-md-6 mb-3">
-                <label class="form-label">End</label>
-                <input 
-                  type="datetime-local" 
-                  class="form-control"
-                  v-model="currentEvent.end"
-                >
-              </div>
-            </div>
-
-            <!-- Recurring Event Toggle -->
-            <div class="mb-3">
-              <div class="ios-switch-container">
-                <input 
-                  type="checkbox" 
-                  id="recurringSwitch"
-                  class="ios-switch-input"
-                  v-model="currentEvent.isRecurring"
-                  @change="toggleRecurring"
-                >
-                <label class="ios-switch-label" for="recurringSwitch">
-                  <span class="ios-switch-slider"></span>
-                </label>
-                <label class="form-check-label ms-2" for="recurringSwitch">
-                  <i class="mdi mdi-repeat"></i> Recurring Event
-                </label>
-              </div>
-            </div>
-
-            <!-- Recurrence Settings -->
-            <div v-if="currentEvent.isRecurring" class="mb-3 p-3" style="background: #f8f9fa; border-radius: 8px;">
-              <div class="mb-3">
-                <label class="form-label">Repeat</label>
-                <select class="form-select" v-model="currentEvent.recurrence.frequency">
-                  <option value="DAILY">Daily</option>
-                  <option value="WEEKLY">Weekly</option>
-                  <option value="MONTHLY">Monthly</option>
-                  <option value="YEARLY">Yearly</option>
-                </select>
-              </div>
-
-              <!-- Weekly Options -->
-              <div v-if="currentEvent.recurrence.frequency === 'WEEKLY'" class="mb-3">
-                <label class="form-label">Repeats Every</label>
-                <div class="d-flex gap-2">
-                  <button
-                    v-for="day in weekDays"
-                    :key="day.value"
-                    type="button"
-                    class="btn btn-sm"
-                    :class="currentEvent.recurrence.byWeekDay.includes(day.value) ? 'day-btn-selected' : 'day-btn'"
-                    @click="toggleWeekDay(day.value)"
-                  >
-                    {{ day.label }}
-                  </button>
-                </div>
-              </div>
-
-              <!-- Monthly Options -->
-              <div v-if="currentEvent.recurrence.frequency === 'MONTHLY'" class="mb-3">
-                <label class="form-label">Monthly Repeat Type</label>
-                <select class="form-select" v-model="currentEvent.recurrence.monthlyType">
-                  <option value="dayOfMonth">On Day {{ getDayOfMonth() }} of Each Month</option>
-                  <option value="dayOfWeek">On {{ getOrdinal() }} {{ getDayName() }} of Each Month</option>
-                </select>
-              </div>
-
-              <!-- End Options -->
-              <div class="mb-3">
-                <label class="form-label">Ends</label>
-                <select class="form-select mb-2" v-model="currentEvent.recurrence.endType">
-                  <option value="never">Never</option>
-                  <option value="on">On Specific Date</option>
-                  <option value="after">After Nunber of Instances</option>
-                </select>
-
-                <!-- End Date -->
-                <input 
-                  v-if="currentEvent.recurrence.endType === 'on'"
-                  type="date" 
-                  class="form-control mt-2"
-                  v-model="currentEvent.recurrence.endDate"
-                >
-
-                <!-- Count -->
-                <input 
-                  v-if="currentEvent.recurrence.endType === 'after'"
-                  type="number" 
-                  class="form-control mt-2"
-                  v-model.number="currentEvent.recurrence.count"
-                  min="1"
-                  placeholder="Number of Instances"
-                >
-              </div>
-            </div>
-
-            <div class="row">
-              <div class="col-md-6 mb-3">
-                <label class="form-label">Event Priority</label>
-                <select class="form-select" v-model="currentEvent.priority">
-                  <option value="High">High</option>
-                  <option value="Medium">Medium</option>
-                  <option value="Low">Low</option>
-                </select>
-              </div>
-              
-              <div class="col-md-6 mb-3">
-                <label class="form-label">Event Category</label>
-                <select class="form-select" v-model="currentEvent.category">
-                  <option value="Class">Class</option>
-                  <option value="Exam">Exam</option>
-                  <option value="Assignment">Assignment</option>
-                  <option value="CCA">CCA</option>
-                  <option value="Work">Work</option>
-                  <option value="Fitness">Fitness</option>
-                  <option value="Family">Family</option>
-                  <option value="Friends">Friends</option>
-                  <option value="Travel">Travel</option>
-                  <option value="Others">Others</option>
-                </select>
-              </div>
-            </div>
-            
-            <div class="mb-3">
-              <label class="form-label">Event Location</label>
-              <div class="d-flex gap-2">
-                <div class="flex-grow-1">
-                  <input 
-                    v-if="currentEvent.locationName"
-                    type="text"
-                    class="form-control"
-                    v-model="currentEvent.locationName"
-                    @click="clearAndShowAutocomplete"
-                    readonly
-                  >
-                  <div v-else ref="placeAutocompleteContainer" class="form-control-wrapper"></div>
-                </div>
-                <button 
-                  v-if="currentEvent.locationName"
-                  class="btn close-button"
-                  @click="clearLocation"
-                  title="Clear location"
-                >
-                  <i class="mdi mdi-close"></i>
-                </button>
-              </div>
-            </div>
-            
-            <div class="mb-3">
-              <label class="form-label">Color</label>
-              <input 
-                type="color" 
-                class="form-control form-control-color"
-                v-model="currentEvent.colour"
-                style="width: 100px;"
-              >
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button class="btn cancel-button" @click="closeCreateDialog">Cancel</button>
-            <button class="btn save-button" @click="saveEvent">Create</button>
-          </div>
-        </div>
-      </div>
-    </div>
-    
-    <!-- Event Dialog -->
-    <div 
-      class="modal fade" 
-      :class="{ show: eventDialog, 'd-block': eventDialog }"
-      tabindex="-1"
-      style="background-color: rgba(0,0,0,0.5);"
-    >
-      <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">
-              <i v-if="currentEvent.isRecurring" class="mdi mdi-repeat me-2"></i>
-              {{ editMode ? 'Update Event' : 'Event Details' }}
-            </h5>
-            <button type="button" class="btn-close btn-close-white" @click="closeEventDialog"></button>
-          </div>
-          <div class="modal-body">
-            <div class="mb-3">
-              <label class="form-label">Event Name</label>
-              <input
-                :disabled="!editMode" 
-                type="text" 
-                class="form-control" 
-                v-model="currentEvent.name"
-              >
-            </div>
-            
-            <div class="mb-3">
-              <label class="form-label">Event Description</label>
-              <textarea 
-                :disabled="!editMode" 
-                class="form-control" 
-                rows="3"
-                v-model="currentEvent.description"
-              ></textarea>
-            </div>
-            
-            <div class="row">
-              <div class="col-md-6 mb-3">
-                <label class="form-label">Event Start</label>
-                <input 
-                  :disabled="!editMode" 
-                  type="datetime-local" 
-                  class="form-control"
-                  v-model="currentEvent.start"
-                >
-              </div>
-              
-              <div class="col-md-6 mb-3">
-                <label class="form-label">Event End</label>
-                <input 
-                  :disabled="!editMode" 
-                  type="datetime-local" 
-                  class="form-control"
-                  v-model="currentEvent.end"
-                >
-              </div>
-            </div>
-
-            <!-- Recurrence Information (View Mode) -->
-            <div v-if="currentEvent.isRecurring && !editMode" class="mb-3">
-              <label class="form-label">
-                <i class="mdi mdi-repeat me-1"></i>Recurrence Pattern
-              </label>
-              <p class="mb-0">{{ getRecurrenceDescription() }}</p>
-            </div>
-
-           <!-- Recurrence Information (Edit Mode) -->
-            <div v-if="currentEvent.isRecurring && editMode" class="mb-3">
-              <div class="ios-switch-container">
-                <input 
-                  type="checkbox" 
-                  id="recurringEditSwitch"
-                  class="ios-switch-input"
-                  v-model="currentEvent.isRecurring"
-                  @change="toggleRecurring"
-                >
-                <label class="ios-switch-label" for="recurringEditSwitch">
-                  <span class="ios-switch-slider"></span>
-                </label>
-                <label class="form-check-label ms-2" for="recurringEditSwitch">
-                  <i class="mdi mdi-repeat"></i> Recurring Event
-                </label>
-              </div>
-            </div>
-
-            <!-- Recurrence Settings in Edit Mode -->
-            <div v-if="currentEvent.isRecurring && editMode" class="mb-3 p-3" style="background: #f8f9fa; border-radius: 8px;">
-              <div class="mb-3">
-                <label class="form-label">Repeat</label>
-                <select class="form-select" v-model="currentEvent.recurrence.frequency">
-                  <option value="DAILY">Daily</option>
-                  <option value="WEEKLY">Weekly</option>
-                  <option value="MONTHLY">Monthly</option>
-                  <option value="YEARLY">Yearly</option>
-                </select>
-              </div>
-
-              <!-- Weekly Options -->
-              <div v-if="currentEvent.recurrence.frequency === 'WEEKLY'" class="mb-3">
-                <label class="form-label">Repeats Every</label>
-                <div class="d-flex gap-2">
-                  <button
-                    v-for="day in weekDays"
-                    :key="day.value"
-                    type="button"
-                    class="btn btn-sm"
-                    :class="currentEvent.recurrence.byWeekDay.includes(day.value) ? 'day-btn-selected' : 'day-btn'"
-                    @click="toggleWeekDay(day.value)"
-                  >
-                    {{ day.label }}
-                  </button>
-                </div>
-              </div>
-
-              <!-- Monthly Options -->
-              <div v-if="currentEvent.recurrence.frequency === 'MONTHLY'" class="mb-3">
-                <label class="form-label">Monthly Repeat Type</label>
-                <select class="form-select" v-model="currentEvent.recurrence.monthlyType">
-                  <option value="dayOfMonth">On day {{ getDayOfMonth() }} of Each Month</option>
-                  <option value="dayOfWeek">On the {{ getOrdinal() }} {{ getDayName() }} of Each Month</option>
-                </select>
-              </div>
-
-              <!-- End Options -->
-              <div class="mb-3">
-                <label class="form-label">Ends</label>
-                <select class="form-select mb-2" v-model="currentEvent.recurrence.endType">
-                  <option value="never">Never</option>
-                  <option value="on">On Specific Date</option>
-                  <option value="after">After Number of Instances</option>
-                </select>
-
-                <!-- End Date -->
-                <input 
-                  v-if="currentEvent.recurrence.endType === 'on'"
-                  type="date" 
-                  class="form-control mt-2"
-                  v-model="currentEvent.recurrence.endDate"
-                >
-
-                <!-- Count -->
-                <input 
-                  v-if="currentEvent.recurrence.endType === 'after'"
-                  type="number" 
-                  class="form-control mt-2"
-                  v-model.number="currentEvent.recurrence.count"
-                  min="1"
-                  placeholder="Number of Instances"
-                >
-              </div>
-            </div>
-
-            <div class="row" v-if="!editMode">
-              <div class="col-md-6 mb-3">
-                <label class="form-label">Event Priority</label>
-                <input 
-                    :disabled="!editMode" 
-                    type="text" 
-                    class="form-control"
-                    v-model="currentEvent.priority"
-                >
-              </div>
-              
-              <div class="col-md-6 mb-3">
-                <label class="form-label">Event Category</label>
-                <input 
-                    :disabled="!editMode" 
-                    type="text" 
-                    class="form-control"
-                    v-model="currentEvent.category"
-                >
-              </div>
-            </div>
-
-            <div class="row" v-if="editMode">
-              <div class="col-md-6 mb-3">
-                <label class="form-label">Event Priority</label>
-                <select class="form-select" v-model="currentEvent.priority">
-                  <option value="High">High</option>
-                  <option value="Medium">Medium</option>
-                  <option value="Low">Low</option>
-                </select>
-              </div>
-              
-              <div class="col-md-6 mb-3">
-                <label class="form-label">Event Category</label>
-                <select class="form-select" v-model="currentEvent.category">
-                  <option value="Class">Class</option>
-                  <option value="Exam">Exam</option>
-                  <option value="Assignment">Assignment</option>
-                  <option value="CCA">CCA</option>
-                  <option value="Work">Work</option>
-                  <option value="Fitness">Fitness</option>
-                  <option value="Family">Family</option>
-                  <option value="Friends">Friends</option>
-                  <option value="Travel">Travel</option>
-                  <option value="Others">Others</option>
-                </select>
-              </div>
-            </div>
-            
-            <div class="mb-3">
-              <label class="form-label" v-if="editMode">Event Location</label>
-              <div class="d-flex gap-2" v-if="editMode">
-                <div class="flex-grow-1">
-                  <input 
-                    v-if="currentEvent.locationName"
-                    type="text"
-                    class="form-control"
-                    v-model="currentEvent.locationName"
-                    @click="clearAndShowAutocomplete"
-                    readonly
-                  >
-                  <div v-else ref="placeAutocompleteContainer"></div>
-                </div>
-                <button 
-                  v-if="currentEvent.locationName"
-                  class="btn close-button"
-                  @click="clearLocation"
-                  title="Clear Location"
-                >
-                  <i class="mdi mdi-close"></i>
-                </button>
-              </div>
-              <div v-if="!editMode">
-                <label class="form-label" v-if="currentEvent.location">Event Location</label>
-                <div v-if="currentEvent.location" class="text">
-                  📍 {{ currentEvent.locationName }}&nbsp;&nbsp;
-                  <button 
-                    @click.stop="openMap(currentEvent)"
-                    class="map-button"
-                    title="Open in Google Maps"
-                  >
-                    <i class="mdi mdi-map-marker map-icon"></i>
-                  </button>
-                </div>
-              </div>
-            </div>
-            
-            <div class="mb-3" v-if="editMode">
-              <label class="form-label">Event Colour</label>
-              <input 
-                :disabled="!editMode"
-                type="color" 
-                class="form-control form-control-color"
-                v-model="currentEvent.colour"
-                style="width: 100px;"
-              >
-            </div>
-
-          </div>
-          <div class="modal-footer">
-            <button 
-              class="btn cancel-button" 
-              @click="deleteEvent"
-            >
-              Delete
-            </button>
-            <button class="btn save-button" @click="switchToUpdateMode" v-if="!editMode">Update</button>
-            <button class="btn save-button" @click="saveEvent" v-if="editMode">Save</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Delete Confirmation Dialog -->
-    <div 
-      class="modal fade" 
-      :class="{ show: deleteConfirmDialog, 'd-block': deleteConfirmDialog }"
-      tabindex="-1"
-      style="background-color: rgba(0,0,0,0.5);"
-    >
-      <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">
-              <i class="mdi mdi-alert-circle-outline me-2"></i>
-              Confirm Delete
-            </h5>
-            <button type="button" class="btn-close btn-close-white" @click="closeDeleteConfirm"></button>
-          </div>
-          <div class="modal-body">
-            <p v-if="currentEvent.isRecurring" class="mb-0">
-              <i class="mdi mdi-repeat me-2"></i>
-              This is a recurring event. Deleting it will remove <strong>all instances</strong>. Are you sure you want to continue?
-            </p>
-            <p v-else class="mb-0">
-              Are you sure you want to delete the event <strong>{{ currentEvent.name }}</strong>?
-            </p>
-          </div>
-          <div class="modal-footer">
-            <button class="btn save-button" @click="closeDeleteConfirm">
-              Cancel
-            </button>
-            <button class="btn cancel-button" @click="confirmDelete">
-              Delete
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- General Dialog -->
-    <div 
-      class="modal fade" 
-      :class="{ show: generalDialog, 'd-block': generalDialog }"
-      tabindex="-1"
-      style="background-color: rgba(0,0,0,0.5);"
-    >
-      <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">
-              <i class="mdi mdi-message-alert-outline me-2"></i>
-              Message
-            </h5>
-            <button type="button" class="btn-close btn-close-white" @click="closeGeneralDialog"></button>
-          </div>
-          <div class="modal-body">
-            <p class="mb-0">
-              {{dialogMessage}}
-            </p>
-          </div>
-          <div class="modal-footer">
-            <button class="btn cancel-button" @click="closeGeneralDialog">
-              Close
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Toast -->
-    <div
-      ref="toast"
-      class="toast position-fixed bottom-0 start-50 translate-middle-x m-3"
-      role="alert"
-      aria-live="assertive"
-      aria-atomic="true"
-      data-bs-delay="3000"
-    >
-      <div class="toast-body">
-        {{ toastMessage }}
-      </div>
-    </div>
-
-  </div>
-</template>
-
 <script>
 import { collection, addDoc, updateDoc, deleteDoc, doc, setDoc, query, where, onSnapshot, GeoPoint } from 'firebase/firestore';
 import { db, auth } from '@/firebase';
@@ -868,7 +64,7 @@ export default {
   computed: {
     allEvents() {
       const expandedEvents = [];
-      
+
       for (const event of this.events) {
         if (event.isRecurring && event.recurrenceRule) {
           // Expand Recurring Events
@@ -886,14 +82,14 @@ export default {
           });
         }
       }
-      
+
       return expandedEvents;
     },
 
     upcomingEventsByDay() {
       const now = new Date()
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-      
+
       // Filter Upcoming and Ongoing Events
       const upcomingEvents = this.allEvents.filter(event => {
         const eventStart = new Date(event.start)
@@ -903,15 +99,15 @@ export default {
 
       // Group Events by Day
       const grouped = {}
-      
+
       upcomingEvents.forEach(event => {
         const eventStart = new Date(event.start)
         const eventEnd = new Date(event.end)
-        
+
         // Group Ongoing Events under Today
         let displayDate = eventStart >= today ? eventStart : today
         const dateKey = displayDate.toDateString()
-        
+
         if (!grouped[dateKey]) {
           grouped[dateKey] = {
             date: displayDate,
@@ -919,23 +115,23 @@ export default {
             events: []
           }
         }
-        
+
         const eventWithStatus = {
           ...event,
           isOngoing: eventStart < today && eventEnd >= today
         }
-        
+
         grouped[dateKey].events.push(eventWithStatus)
       })
 
       // Sort Events by Time and Priority Level
       const priorityOrder = { 'High': 1, 'Medium': 2, 'Low': 3 }
-      
+
       Object.values(grouped).forEach(dayGroup => {
         dayGroup.events.sort((a, b) => {
           if (a.isOngoing && !b.isOngoing) return -1
           if (!a.isOngoing && b.isOngoing) return 1
-          
+
           const timeCompare = new Date(a.start) - new Date(b.start)
           if (timeCompare !== 0) return timeCompare
           return (priorityOrder[a.priority] || 999) - (priorityOrder[b.priority] || 999)
@@ -946,10 +142,10 @@ export default {
       return Object.values(grouped)
         .sort((a, b) => a.date - b.date)
     },
-        
+
     currentPeriod() {
       const date = new Date(this.focus)
-      
+
       if (this.calendarView === 'day') {
         return date.toLocaleDateString('en-UK', {
           weekday: 'long',
@@ -961,10 +157,10 @@ export default {
         // Calculate Week Start and End
         const weekStart = new Date(date)
         weekStart.setDate(date.getDate() - date.getDay())
-        
+
         const weekEnd = new Date(weekStart)
         weekEnd.setDate(weekStart.getDate() + 6)
-        
+
         return `${weekStart.toLocaleDateString('en-UK', { month: 'short', day: 'numeric' })} - ${weekEnd.toLocaleDateString('en-UK', { month: 'short', day: 'numeric', year: 'numeric' })}`
       } else {
         return date.toLocaleDateString('en-UK', {
@@ -984,7 +180,7 @@ export default {
     // Navigate to Previous Period
     prev() {
       const date = new Date(this.focus)
-      
+
       if (this.calendarView === 'day') {
         date.setDate(date.getDate() - 1)
       } else if (this.calendarView === 'week') {
@@ -992,14 +188,14 @@ export default {
       } else {
         date.setMonth(date.getMonth() - 1)
       }
-      
+
       this.focus = date
     },
 
     // Navigate to Next Period
     next() {
       const date = new Date(this.focus)
-      
+
       if (this.calendarView === 'day') {
         date.setDate(date.getDate() + 1)
       } else if (this.calendarView === 'week') {
@@ -1007,7 +203,7 @@ export default {
       } else {
         date.setMonth(date.getMonth() + 1)
       }
-      
+
       this.focus = date
     },
 
@@ -1025,7 +221,7 @@ export default {
         // Initialize Recurrence Defaults (Based on Start Date)
         const startDate = new Date(this.currentEvent.start);
         const dayOfWeek = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'][startDate.getDay()];
-        
+
         this.currentEvent.recurrence = {
           frequency: 'WEEKLY',
           byWeekDay: [dayOfWeek],
@@ -1059,7 +255,7 @@ export default {
       const date = new Date(this.currentEvent.start);
       const dayOfMonth = date.getDate();
       const weekOfMonth = Math.ceil(dayOfMonth / 7);
-      
+
       const ordinals = ['first', 'second', 'third', 'fourth', 'fifth'];
       return ordinals[weekOfMonth - 1] || 'last';
     },
@@ -1117,11 +313,11 @@ export default {
       if (!rruleString) return recurrence;
 
       const parts = rruleString.split(';');
-      
+
       parts.forEach(part => {
         const [key, value] = part.split('=');
-        
-        switch(key) {
+
+        switch (key) {
           case 'FREQ':
             recurrence.frequency = value;
             break;
@@ -1162,7 +358,7 @@ export default {
       const rec = this.currentEvent.recurrence;
       let description = '';
 
-      switch(rec.frequency) {
+      switch (rec.frequency) {
         case 'DAILY':
           description = 'Daily';
           break;
@@ -1202,7 +398,7 @@ export default {
     expandRecurringEvent(event) {
       const instances = [];
       const rrule = event.recurrenceRule;
-      
+
       if (!rrule) return instances;
 
       const startDate = new Date(event.start);
@@ -1211,7 +407,7 @@ export default {
 
       // Parse Recurrence Rule
       const rec = this.parseRRule(rrule);
-      
+
       // Calculate Visible Date Range (1 Year from Focus Date)
       const rangeStart = new Date(this.focus);
       rangeStart.setMonth(rangeStart.getMonth() - 6);
@@ -1233,7 +429,7 @@ export default {
         // Check if End Date has been past
         if (endLimit && currentDate > endLimit) {
           break;
-        } 
+        }
 
         let includeInstance = false;
 
@@ -1242,7 +438,7 @@ export default {
         } else if (rec.frequency === 'WEEKLY') {
           // Get Current Day of Week in RRULE format
           const currentDayCode = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'][currentDate.getDay()];
-          
+
           if (rec.byWeekDay.length === 0 || rec.byWeekDay.includes(currentDayCode)) {
             includeInstance = true;
           }
@@ -1260,8 +456,8 @@ export default {
             }
           }
         } else if (rec.frequency === 'YEARLY') {
-          if (currentDate.getMonth() === startDate.getMonth() && 
-              currentDate.getDate() === startDate.getDate()) {
+          if (currentDate.getMonth() === startDate.getMonth() &&
+            currentDate.getDate() === startDate.getDate()) {
             includeInstance = true;
           }
         }
@@ -1289,7 +485,7 @@ export default {
 
         // Advance to Next Day
         currentDate.setDate(currentDate.getDate() + 1);
-        
+
         // Prevent Loops
         if (currentDate > rangeEnd) {
           break
@@ -1338,7 +534,7 @@ export default {
             this.syncEnabled = false;
             return
           }
-          
+
           this.accessToken = response.access_token;
           sessionStorage.setItem('google_token', this.accessToken);
 
@@ -1352,7 +548,7 @@ export default {
           this.startAutoSync();
         }
       })
-      
+
       tokenClient.requestAccessToken()
     },
 
@@ -1361,7 +557,7 @@ export default {
       if (this.syncInterval) {
         clearInterval(this.syncInterval);
       }
-      
+
       sessionStorage.removeItem('google_token')
       this.accessToken = null;
       console.log("Disconnected from Google Calendar API.")
@@ -1372,7 +568,7 @@ export default {
     //   if (this.syncInterval) {
     //     clearInterval(this.syncInterval);
     //   }
-      
+
     //   this.syncInterval = setInterval(() => {
     //     this.syncWithGoogle()
     //   }, 1 * 60 * 1000)
@@ -1460,11 +656,11 @@ export default {
         });
 
         const googleApiEvents = response.result.items || [];
-        
+
         // Extract Base Event IDs (from Direct Events and recurringEventId references)
         const baseRecurringEventIds = new Set();
         const googleEventIdsFromApi = new Set();
-        
+
         for (const item of googleApiEvents) {
           if (item.recurringEventId) {
             // Only Recurring Event Instances have recurringEventID field
@@ -1492,16 +688,16 @@ export default {
             console.log(`Skipping Instance ${item.id} (Belongs to ${item.recurringEventId})`);
             continue;
           }
-          
+
           let location = null;
           let locationName = '';
-          
+
           if (item.location) {
             const parsed = await this.geocodeLocation(item.location);
             if (parsed) {
               location = parsed.geopoint;
               locationName = parsed.name;
-            } 
+            }
             else {
               locationName = item.location;
             }
@@ -1510,7 +706,7 @@ export default {
           // Handle Recurring Events
           let isRecurring = false;
           let recurrenceRule = null;
-          
+
           if (item.recurrence && item.recurrence.length > 0) {
             isRecurring = true;
             // Extract RRULE from Recurrence Array
@@ -1540,7 +736,7 @@ export default {
             const firestoreDocId = gEventIdToDocIdMap.get(item.id);
             console.log(`Updating Firestore Event ${firestoreDocId} with Google Calendar Event ${item.id}`);
             await updateDoc(doc(db, 'events', firestoreDocId), eventData);
-          } 
+          }
           else {
             // Create new Firestore document with Google Calendar Event ID as Document ID
             eventData.colour = '#9FE1E7';
@@ -1555,7 +751,7 @@ export default {
         const localGoogleEvents = this.events.filter(event => event.source === 'google');
         for (const localEvent of localGoogleEvents) {
           const shouldDelete = !googleEventIdsFromApi.has(localEvent.id) && !baseRecurringEventIds.has(localEvent.id);
-          
+
           if (shouldDelete) {
             console.log(`Deleting Google Event from Cloud Firestore: ${localEvent.name} (${localEvent.id})`);
             await deleteDoc(doc(db, 'events', localEvent.id));
@@ -1566,17 +762,17 @@ export default {
 
         // Add unsynced Cloud Firestore Events to Google Calendar
         const eventsToPush = this.events.filter(event => event.source === 'firestore' && !event.synced);
-        
+
         for (const event of eventsToPush) {
           try {
             const resource = {
               summary: event.name,
               description: event.description,
-              start: { 
+              start: {
                 dateTime: new Date(event.start).toISOString(),
                 timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
               },
-              end: { 
+              end: {
                 dateTime: new Date(event.end).toISOString(),
                 timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
               },
@@ -1592,7 +788,7 @@ export default {
               calendarId: 'primary',
               resource: resource
             });
-            
+
             // Update Sync Status in Cloud Firestore
             if (insertResponse.result) {
               await updateDoc(doc(db, 'events', event.id), {
@@ -1629,7 +825,7 @@ export default {
     async geocodeLocation(address) {
       try {
         const { Place } = await google.maps.importLibrary("places");
-        
+
         const request = {
           textQuery: address,
           fields: ['displayName', 'formattedAddress', 'location'],
@@ -1637,11 +833,11 @@ export default {
         };
 
         const { places } = await Place.searchByText(request);
-        
+
         if (places && places.length > 0) {
           const place = places[0];
           const loc = place.location;
-          
+
           return {
             geopoint: new GeoPoint(loc.lat, loc.lng),
             name: place.displayName ? `${place.displayName}, ${place.formattedAddress}` : place.formattedAddress
@@ -1665,7 +861,7 @@ export default {
       date.setHours(date.getHours() + 1)
       const endUnix = this.roundTime(date.getTime(), false);
       const endTS = new Date(endUnix).toISOString().substring(0, 16);
-      
+
       this.editMode = false
       this.currentEvent = {
         id: null,
@@ -1691,7 +887,7 @@ export default {
         recurrenceRule: null
       }
       this.createDialog = true
-      
+
       this.$nextTick(() => {
         this.setupPlacesAutocomplete();
       })
@@ -1701,35 +897,35 @@ export default {
     handleClick(data, tms) {
 
       const date = new Date().toISOString().split('T')[0]
-      
+
       this.editMode = false
       if (this.calendarView === 'month') {
-        
+
         const startTS = new Date(this.getStart(tms)).toISOString().substring(0, 10);
         const endTS = new Date(this.getEnd(tms)).toISOString().substring(0, 10);
 
         this.currentEvent = {
-        id: null,
-        name: '',
-        description: '',
-        category: 'Class',
-        start: `${startTS}T09:00`,
-        end: `${endTS}T10:00`,
-        colour: '#667EEA',
-        priority: 'Low',
-        location: null,
-        locationName: null,
-        source: 'firestore',
-        isRecurring: false,
-        recurrence: {
-          frequency: 'WEEKLY',
-          byWeekDay: [],
-          monthlyType: 'dayOfMonth',
-          endType: 'never',
-          endDate: null,
-          count: null
-        },
-        recurrenceRule: null
+          id: null,
+          name: '',
+          description: '',
+          category: 'Class',
+          start: `${startTS}T09:00`,
+          end: `${endTS}T10:00`,
+          colour: '#667EEA',
+          priority: 'Low',
+          location: null,
+          locationName: null,
+          source: 'firestore',
+          isRecurring: false,
+          recurrence: {
+            frequency: 'WEEKLY',
+            byWeekDay: [],
+            monthlyType: 'dayOfMonth',
+            endType: 'never',
+            endDate: null,
+            count: null
+          },
+          recurrenceRule: null
         }
       }
       else {
@@ -1740,45 +936,45 @@ export default {
         const endTS = new Date(endUnix).toISOString().substring(0, 16);
 
         this.currentEvent = {
-        id: null,
-        name: '',
-        description: '',
-        category: 'Class',
-        start: `${startTS}`,
-        end: `${endTS}`,
-        colour: '#667EEA',
-        priority: 'Low',
-        location: null,
-        locationName: null,
-        source: 'firestore',
-        isRecurring: false,
-        recurrence: {
-          frequency: 'WEEKLY',
-          byWeekDay: [],
-          monthlyType: 'dayOfMonth',
-          endType: 'never',
-          endDate: null,
-          count: null
-        },
-        recurrenceRule: null
+          id: null,
+          name: '',
+          description: '',
+          category: 'Class',
+          start: `${startTS}`,
+          end: `${endTS}`,
+          colour: '#667EEA',
+          priority: 'Low',
+          location: null,
+          locationName: null,
+          source: 'firestore',
+          isRecurring: false,
+          recurrence: {
+            frequency: 'WEEKLY',
+            byWeekDay: [],
+            monthlyType: 'dayOfMonth',
+            endType: 'never',
+            endDate: null,
+            count: null
+          },
+          recurrenceRule: null
         }
       }
       this.createDialog = true
-      
+
       this.$nextTick(() => {
         this.setupPlacesAutocomplete();
       })
     },
 
-    getStart (tms) {
+    getStart(tms) {
       return new Date(tms.year, tms.month - 1, tms.day, tms.hour + 8, tms.minute).getTime();
     },
 
-    getEnd (tms) {
+    getEnd(tms) {
       return new Date(tms.year, tms.month - 1, tms.day, tms.hour + 9, tms.minute).getTime();
     },
 
-    roundTime (time, down = true) {
+    roundTime(time, down = true) {
       const roundTo = 15 //Minutes
       const roundDownTime = roundTo * 60 * 1000
 
@@ -1790,7 +986,7 @@ export default {
     // Show Events Details in Event Dialog
     showEventDetails(event) {
       let fullEvent;
-      
+
       // Check if Recurring Event
       if (event.recurringEventId) {
         fullEvent = this.events.find(e => e.id === event.recurringEventId);
@@ -1800,12 +996,12 @@ export default {
       } else {
         fullEvent = this.events.find(e => e.id === event.id);
       }
-      
+
       if (!fullEvent) {
         console.error('Event Not Found:', event.id);
         return;
       }
-      
+
       this.currentEvent = {
         id: fullEvent.id,
         name: fullEvent.name,
@@ -1901,7 +1097,7 @@ export default {
         if (this.editMode) {
           // Update Event in Cloud Firestore
           await updateDoc(doc(db, 'events', this.currentEvent.id), eventData);
-          
+
           // Update Event in Google Calendar (Syncing)
           if (this.syncEnabled && this.currentEvent.gEventId) {
             await this.updateInGoogle(this.currentEvent.gEventId, eventData);
@@ -1910,9 +1106,9 @@ export default {
           // Create New Event in Cloud Firestore
           eventData.synced = false
           eventData.gEventId = null
-          
+
           const docRef = await addDoc(collection(db, 'events'), eventData);
-          
+
           // Create New Event in Google Calendar (Syncing)
           if (this.syncEnabled && this.accessToken) {
             const googleEventId = await this.addToGoogle(eventData);
@@ -1924,7 +1120,7 @@ export default {
             }
           }
         }
-        
+
         if (this.editMode) {
           this.closeEventDialog();
         } else {
@@ -1968,7 +1164,7 @@ export default {
           eventId: eventId,
           resource: resource
         })
-      } 
+      }
       catch (error) {
         console.log('Error Updating Event in Google Calendar:', error);
       }
@@ -2008,295 +1204,912 @@ export default {
         })
 
         console.log('Event Added to Google Calendar:', response.result.id)
-        return response.result.id
-      } 
-      catch (error) {
-        console.error('Error Adding Event to Google Calendar:', error)
-        return null
-      }
-    },
-
-    // Delete Event Confirmation
-    async deleteEvent() {
-      if (this.currentEvent.isRecurring) {
-        // Recurring Event
-        if (!confirm('This is a recurring event. Deleting it will remove all instances. Are you sure?')) {
-          return;
-        };
-      } else {
-        // Single Event
-        if (!confirm('Are you sure you want to delete this event?')) {
-          return;
-        }
-      }
-
-      await this.performDelete();
-    },
-
-    // Close General Dialog
-    closeGeneralDialog() {
-      this.generalDialog = false;
-      this.dialogMessage = '';
-    },
-
-    // Show Delete Confirmation Dialog
-    async deleteEvent() {
-      this.deleteConfirmDialog = true;
-    },
-
-    // Close Delete Confirmation Dialog
-    closeDeleteConfirm() {
-      this.deleteConfirmDialog = false;
-    },
-
-    // Confirm and Perform Delete
-    async confirmDelete() {
-      this.closeDeleteConfirm();
-      await this.performDelete();
-    },
-
-    // Backend Deletion
-    async performDelete() {
-      try {
-        // Delete from Google Calendar
-        if (this.syncEnabled && this.currentEvent.gEventId) {
-          try {
-            await gapi.client.calendar.events.delete({
-              calendarId: 'primary',
-              eventId: this.currentEvent.gEventId
-            });
-            console.log('Event deleted from Google Calendar.');
-          } catch (error) {
-            console.error('Error deleting event from Google Calendar:', error);
-          }
-        }
-        
-        // Delete from Cloud Firestore
-        await deleteDoc(doc(db, 'events', this.currentEvent.id));
-        console.log('Event deleted from Firestore.');
-        
-        this.closeEventDialog();
-        this.showToast('Event deleted successfully', 'success'); // Optional: Add toast notification
-      } catch (error) {
-        this.showToast('Error deleting event: ' + error.message, 'error'); // Optional: Add toast notification
-        console.error('Error deleting event:', error);
-      }
-    },
-
-    // Clear Current Event Location in Event Dialog
-    clearLocation() {
-      this.currentEvent.location = null
-      this.currentEvent.locationName = ''
-      this.showAutocomplete = true
-      
-      this.$nextTick(() => {
-        this.setupPlacesAutocomplete()
-      })
-    },
-
-    // Initialise Google Places API
-    async setupPlacesAutocomplete() {
-      if (!window.google?.maps || this.currentEvent.location) {
-        return
-      }
-
-      try {
-        const { PlaceAutocompleteElement } = await google.maps.importLibrary("places")
-        
-        if (this.placeAutocomplete) {
-          this.placeAutocomplete.remove()
-        }
-
-        this.placeAutocomplete = new PlaceAutocompleteElement()
-
-        const container = this.$refs.placeAutocompleteContainer
-        if (container) {
-          container.innerText = ''
-          container.appendChild(this.placeAutocomplete)
-        }
-
-        this.placeAutocomplete.addEventListener('gmp-select', async (event) => {
-          const place = event.placePrediction.toPlace()
-          
-          await place.fetchFields({
-            fields: ['displayName', 'formattedAddress', 'location']
-          })
-
-          if (place.location) {
-            this.currentEvent.location = new GeoPoint(
-              place.location.lat(),
-              place.location.lng()
-            )
-            this.currentEvent.locationName =  place.displayName + ", " + place.formattedAddress
-            this.showAutocomplete = false
-            
-            if (this.placeAutocomplete) {
-              this.placeAutocomplete.remove()
-              this.placeAutocomplete = null
+                return response.result.id
             }
-          }
-        })
-      } catch (err) {
-        console.error('Error Retrieving Places:', err)
-      }
+            catch (error) {
+                console.error('Error Adding Event to Google Calendar:', error)
+                return null
+            }
+        },
+
+        // Delete Event Confirmation
+        async deleteEvent() {
+            if (this.currentEvent.isRecurring) {
+                // Recurring Event
+                if (!confirm('This is a recurring event. Deleting it will remove all instances. Are you sure?')) {
+                    return;
+                };
+            } else {
+                // Single Event
+                if (!confirm('Are you sure you want to delete this event?')) {
+                    return;
+                }
+            }
+
+            await this.performDelete();
+        },
+
+        // Close General Dialog
+        closeGeneralDialog() {
+            this.generalDialog = false;
+            this.dialogMessage = '';
+        },
+
+        // Show Delete Confirmation Dialog
+        async deleteEvent() {
+            this.deleteConfirmDialog = true;
+        },
+
+        // Close Delete Confirmation Dialog
+        closeDeleteConfirm() {
+            this.deleteConfirmDialog = false;
+        },
+
+        // Confirm and Perform Delete
+        async confirmDelete() {
+            this.closeDeleteConfirm();
+            await this.performDelete();
+        },
+
+        // Backend Deletion
+        async performDelete() {
+            try {
+                // Delete from Google Calendar
+                if (this.syncEnabled && this.currentEvent.gEventId) {
+                    try {
+                        await gapi.client.calendar.events.delete({
+                            calendarId: 'primary',
+                            eventId: this.currentEvent.gEventId
+                        });
+                        console.log('Event deleted from Google Calendar.');
+                    } catch (error) {
+                        console.error('Error deleting event from Google Calendar:', error);
+                    }
+                }
+
+                // Delete from Cloud Firestore
+                await deleteDoc(doc(db, 'events', this.currentEvent.id));
+                console.log('Event deleted from Firestore.');
+
+                this.closeEventDialog();
+                this.showToast('Event deleted successfully', 'success'); // Optional: Add toast notification
+            } catch (error) {
+                this.showToast('Error deleting event: ' + error.message, 'error'); // Optional: Add toast notification
+                console.error('Error deleting event:', error);
+            }
+        },
+
+        // Clear Current Event Location in Event Dialog
+        clearLocation() {
+            this.currentEvent.location = null
+            this.currentEvent.locationName = ''
+            this.showAutocomplete = true
+
+            this.$nextTick(() => {
+                this.setupPlacesAutocomplete()
+            })
+        },
+
+        // Initialise Google Places API
+        async setupPlacesAutocomplete() {
+            if (!window.google?.maps || this.currentEvent.location) {
+                return
+            }
+
+            try {
+                const { PlaceAutocompleteElement } = await google.maps.importLibrary("places")
+
+                if (this.placeAutocomplete) {
+                    this.placeAutocomplete.remove()
+                }
+
+                this.placeAutocomplete = new PlaceAutocompleteElement()
+
+                const container = this.$refs.placeAutocompleteContainer
+                if (container) {
+                    container.innerText = ''
+                    container.appendChild(this.placeAutocomplete)
+                }
+
+                this.placeAutocomplete.addEventListener('gmp-select', async (event) => {
+                    const place = event.placePrediction.toPlace()
+
+                    await place.fetchFields({
+                        fields: ['displayName', 'formattedAddress', 'location']
+                    })
+
+                    if (place.location) {
+                        this.currentEvent.location = new GeoPoint(
+                            place.location.lat(),
+                            place.location.lng()
+                        )
+                        this.currentEvent.locationName = place.displayName + ", " + place.formattedAddress
+                        this.showAutocomplete = false
+
+                        if (this.placeAutocomplete) {
+                            this.placeAutocomplete.remove()
+                            this.placeAutocomplete = null
+                        }
+                    }
+                })
+            } catch (err) {
+                console.error('Error Retrieving Places:', err)
+            }
+        },
+
+        // Open Google Maps
+        openMap(event) {
+            if (!event.location) return
+
+            const lat = event.location.latitude
+            const lng = event.location.longitude
+            window.open(`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`, '_blank');
+        },
+
+        // Format Date for Display
+        formatDateTime(date) {
+            return new Date(date).toLocaleString('en-UK', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        },
+
+        // Format Time for Display
+        formatTime(date) {
+            return new Date(date).toLocaleTimeString('en-UK', {
+                hour: '2-digit',
+                minute: '2-digit'
+            })
+        },
+
+        formatShortDate(dateTime) {
+            const date = new Date(dateTime)
+            return date.toLocaleDateString('en-UK', {
+                day: 'numeric',
+                month: 'short'
+            })
+        },
+
+        // Format Event Time
+        formatEventTime(dateTime) {
+            const date = new Date(dateTime)
+            return date.toLocaleTimeString('en-UK', {
+                hour: '2-digit',
+                minute: '2-digit',
+            })
+        },
+
+        getContrastColor(hexColor) {
+            const color = hexColor.replace('#', '')
+            const r = parseInt(color.substr(0, 2), 16)
+            const g = parseInt(color.substr(2, 2), 16)
+            const b = parseInt(color.substr(4, 2), 16)
+            const brightness = (r * 299 + g * 587 + b * 114) / 1000
+            return brightness > 128 ? '#000000' : '#ffffff'
+        },
+
+        // Format Date for Cloud Firestore
+        formatForInput(date) {
+            const d = new Date(date);
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            const hours = String(d.getHours()).padStart(2, '0');
+            const minutes = String(d.getMinutes()).padStart(2, '0');
+            return `${year}-${month}-${day}T${hours}:${minutes}`;
+        },
+
+        formatDayLabel(date) {
+            const today = new Date()
+            const tomorrow = new Date(today)
+            tomorrow.setDate(tomorrow.getDate() + 1)
+
+            const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+            const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+            const tomorrowOnly = new Date(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate())
+
+            if (dateOnly.getTime() === todayOnly.getTime()) {
+                return 'Today'
+            } else if (dateOnly.getTime() === tomorrowOnly.getTime()) {
+                return 'Tomorrow'
+            } else {
+                return date.toLocaleDateString('en-US', {
+                    weekday: 'short',
+                    month: 'short',
+                    day: 'numeric'
+                })
+            }
+        },
+
+        // Listen to Cloud Firestore and Get Events
+        listenToEvents() {
+            const q = query(collection(db, 'events'), where('userId', '==', this.userId));
+            onSnapshot(q, (snapshot) => {
+                this.events = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data(),
+                    start: doc.data().start.toDate(),
+                    end: doc.data().end.toDate(),
+                }))
+            });
+        },
     },
 
-    // Open Google Maps
-    openMap(event) {
-      if (!event.location) return
-      
-      const lat = event.location.latitude
-      const lng = event.location.longitude
-      window.open(`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`, '_blank');
+    // async mounted() {
+    //   await loadGoogleMaps()
+    //   this.listenToEvents();
+    //   await this.initGoogle();
+
+    //   // Check for Saved Session
+    //   const savedToken = sessionStorage.getItem('google_token')
+    //   if (savedToken) {
+    //     this.syncEnabled = true;
+    //     this.accessToken = savedToken;
+
+    //     await this.waitForGoogleAPI()
+    //     await this.syncWithGoogle()
+    //     this.startAutoSync()
+    //   }
+    // },
+
+    async mounted() {
+        await loadGoogleMaps();
+        this.listenToEvents();
+        await this.initGoogle();
+
+        const savedToken = sessionStorage.getItem('google_token');
+        if (savedToken) {
+            this.syncEnabled = true;
+            this.accessToken = savedToken;
+
+            // Bind the token first, then wait for API, then sync
+            if (window.gapi?.client) {
+                gapi.client.setToken({ access_token: savedToken });
+            }
+
+            await this.waitForGoogleAPI();
+            try {
+                await this.syncWithGoogle();
+                this.startAutoSync();
+            } catch (e) {
+                console.error('Initial sync failed:', e);
+                this.syncEnabled = false;
+            }
+        }
     },
 
-    // Format Date for Display
-    formatDateTime(date) {
-      return new Date(date).toLocaleString('en-UK', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    },
-
-    // Format Time for Display
-    formatTime(date) {
-      return new Date(date).toLocaleTimeString('en-UK', {
-        hour: '2-digit',
-        minute: '2-digit'
-      })
-    },
-
-    formatShortDate(dateTime) {
-        const date = new Date(dateTime)
-        return date.toLocaleDateString('en-UK', {
-            day: 'numeric',
-            month: 'short'
-        })
-    },
-
-    // Format Event Time
-    formatEventTime(dateTime) {
-        const date = new Date(dateTime)
-        return date.toLocaleTimeString('en-UK', {
-        hour: '2-digit',
-        minute: '2-digit',
-        })
-    },
-
-    getContrastColor(hexColor) {
-      const color = hexColor.replace('#', '')
-      const r = parseInt(color.substr(0, 2), 16)
-      const g = parseInt(color.substr(2, 2), 16)
-      const b = parseInt(color.substr(4, 2), 16)
-      const brightness = (r * 299 + g * 587 + b * 114) / 1000
-      return brightness > 128 ? '#000000' : '#ffffff'
-    },
-
-    // Format Date for Cloud Firestore
-    formatForInput(date) {
-      const d = new Date(date);
-      const year = d.getFullYear();
-      const month = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      const hours = String(d.getHours()).padStart(2, '0');
-      const minutes = String(d.getMinutes()).padStart(2, '0');
-      return `${year}-${month}-${day}T${hours}:${minutes}`;
-    },
-
-    formatDayLabel(date) {
-      const today = new Date()
-      const tomorrow = new Date(today)
-      tomorrow.setDate(tomorrow.getDate() + 1)
-
-      const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate())
-      const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate())
-      const tomorrowOnly = new Date(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate())
-
-      if (dateOnly.getTime() === todayOnly.getTime()) {
-        return 'Today'
-      } else if (dateOnly.getTime() === tomorrowOnly.getTime()) {
-        return 'Tomorrow'
-      } else {
-        return date.toLocaleDateString('en-US', { 
-          weekday: 'short', 
-          month: 'short', 
-          day: 'numeric' 
-        })
-      }
-    },
-
-    // Listen to Cloud Firestore and Get Events
-    listenToEvents() {
-      const q = query(collection(db, 'events'), where('userId', '==', this.userId));
-      onSnapshot(q, (snapshot) => {
-        this.events = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          start: doc.data().start.toDate(),
-          end: doc.data().end.toDate(),
-        }))
-      });
-    },
-  },
-
-  // async mounted() {
-  //   await loadGoogleMaps()
-  //   this.listenToEvents();
-  //   await this.initGoogle();
-    
-  //   // Check for Saved Session
-  //   const savedToken = sessionStorage.getItem('google_token')
-  //   if (savedToken) {
-  //     this.syncEnabled = true;
-  //     this.accessToken = savedToken;
-      
-  //     await this.waitForGoogleAPI()
-  //     await this.syncWithGoogle()
-  //     this.startAutoSync()
-  //   }
-  // },
-
-  async mounted() {
-    await loadGoogleMaps();
-    this.listenToEvents();
-    await this.initGoogle();
-
-    const savedToken = sessionStorage.getItem('google_token');
-    if (savedToken) {
-      this.syncEnabled = true;
-      this.accessToken = savedToken;
-
-      // Bind the token first, then wait for API, then sync
-      if (window.gapi?.client) {
-        gapi.client.setToken({ access_token: savedToken });
-      }
-
-      await this.waitForGoogleAPI();
-      try {
-        await this.syncWithGoogle();
-        this.startAutoSync();
-      } catch (e) {
-        console.error('Initial sync failed:', e);
-        this.syncEnabled = false;
-      }
+    beforeUnmount() {
+        if (this.syncInterval) {
+            clearInterval(this.syncInterval);
+        }
     }
-  },
-
-  beforeUnmount() {
-    if (this.syncInterval) {
-      clearInterval(this.syncInterval);
-    }
-  }
 }
 </script>
+
+<template>
+  <div class="container h-100">
+
+    <div class="mt-2 mb-2 text-center">
+      <h1 class="display-4 fw-bold d-flex align-items-center gap-3">
+        Calendar
+      </h1>
+    </div>
+
+    <div class="row h-100">
+
+      <!-- Calendar Section -->
+      <div class="col-lg-9 d-flex flex-column">
+        <div class="card h-100 shadow-soft">
+          <div class="card-header">
+            <div class="d-flex align-items-center">
+
+              <!-- View Selector Dropdown -->
+              <div class="dropdown me-3">
+                <button class="btn btn-sm view-dropdown-btn dropdown-toggle" type="button" id="viewDropdown"
+                  data-bs-toggle="dropdown" aria-expanded="false">
+                  <i class="mdi mdi-calendar-month me-1"></i>
+                  {{ calendarView.charAt(0).toUpperCase() + calendarView.slice(1) }}
+                </button>
+                <ul class="dropdown-menu dropdown-menu-styled" aria-labelledby="viewDropdown">
+                  <li>
+                    <a class="dropdown-item" :class="{ 'active': calendarView === 'day' }" href="#"
+                      @click.prevent="calendarView = 'day'">
+                      <i class="mdi mdi-calendar-today me-2"></i>
+                      Day
+                    </a>
+                  </li>
+                  <li>
+                    <a class="dropdown-item" :class="{ 'active': calendarView === 'week' }" href="#"
+                      @click.prevent="calendarView = 'week'">
+                      <i class="mdi mdi-calendar-week me-2"></i>
+                      Week
+                    </a>
+                  </li>
+                  <li>
+                    <a class="dropdown-item" :class="{ 'active': calendarView === 'month' }" href="#"
+                      @click.prevent="calendarView = 'month'">
+                      <i class="mdi mdi-calendar-month me-2"></i>
+                      Month
+                    </a>
+                  </li>
+                </ul>
+              </div>
+
+              <!-- Navigation Buttons-->
+              <div class="btn-group nav-btn-group">
+                <button class="btn btn-sm nav-btn" @click="prev">
+                  <i class="mdi mdi-chevron-left"></i>
+                </button>
+                <button class="btn btn-sm nav-btn nav-btn-today" @click="setToday">
+                  Today
+                </button>
+                <button class="btn btn-sm nav-btn" @click="next">
+                  <i class="mdi mdi-chevron-right"></i>
+                </button>
+              </div>
+
+              <!-- Current Period -->
+              <span class="ms-3 text-light fw-semibold">{{ currentPeriod }}</span>
+
+              <div class="ms-auto d-flex align-items-center">
+                <!-- Google Calendar Sync Toggle -->
+                <div class="ios-switch-container me-3">
+                  <input type="checkbox" id="googleSync" class="ios-switch-input" v-model="syncEnabled"
+                    @change="toggleSync">
+                  <label class="ios-switch-label" for="googleSync">
+                    <span class="ios-switch-slider"></span>
+                  </label>
+                  <label class="form-check-label ms-2" for="googleSync">
+                    <i class="mdi mdi-google"></i> Sync with Google
+                  </label>
+                </div>
+
+                <!-- Add Event Button -->
+                <button class="btn add-event" @click="openAddDialog">
+                  <i class="mdi mdi-calendar-plus"></i> Add Event
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="card-body p-2 pb-3" style="height: 600px;">
+            <v-calendar ref="calendar" v-model="focus" :events="allEvents" :type="calendarView"
+              @click:time="handleClick" @click:day="handleClick" @click:date="handleClick" style="height: 100%;">
+              <template v-slot:event="{ event, timed }">
+                <div @click.stop="showEventDetails(event)" @mousedown.stop @touchstart.stop class="event-item"
+                  :class="{ 'event-timed': timed }" :style="{ backgroundColor: event.color, padding: '0px 5px' }">
+                  <div v-if="calendarView === 'month'">
+                    <i v-if="event.isRecurring" class="mdi mdi-repeat" style="font-size: 0.7rem;"></i>
+                    {{ formatTime(event.start) }} &nbsp;
+                    <strong>{{ event.name }}</strong>
+                  </div>
+                  <div v-if="(calendarView === 'week' || calendarView === 'day')">
+                    <strong>
+                      <i v-if="event.isRecurring" class="mdi mdi-repeat me-1"></i>
+                      {{ event.name }}
+                    </strong>
+                  </div>
+                  <div v-if="timed && (calendarView === 'week' || calendarView === 'day')" class="text-xs">
+                    {{ formatTime(event.start) }} - {{ formatTime(event.end) }}
+                  </div>
+                </div>
+              </template>
+            </v-calendar>
+          </div>
+        </div>
+      </div>
+
+      <!-- Event List - Grouped by Day -->
+      <div class="col-lg-3 mt-lg-0 mt-4 mb-lg-0 mb-4">
+        <div class="card h-100 mb-1 shadow-soft">
+          <div class="card-header" style="padding-top: 17px; padding-bottom: 17px;">
+            <h6 class="mb-0 fw-semibold">Upcoming Events</h6>
+          </div>
+          <div class="card-body p-3">
+            <!-- Events List Grouped by Day -->
+            <div class="flex-grow-1" style="overflow-y: auto; max-height: calc(100vh - 250px);">
+              <div v-if="upcomingEventsByDay.length > 0" class="d-flex flex-column gap-3">
+                <div v-for="(dayGroup, index) in upcomingEventsByDay" :key="index">
+                  <!-- Day Header -->
+                  <div class="d-flex align-items-center mb-2">
+                    <span class="badge fw-medium px-2 py-1"
+                      style="font-size: 0.75rem; background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);">
+                      {{ dayGroup.dayLabel }}
+                    </span>
+                    <div class="flex-grow-1 ms-2" style="height: 1px; background: #e0e0e0;"></div>
+                  </div>
+
+                  <!-- Events for this day -->
+                  <div class="d-flex flex-column gap-2">
+                    <div v-for="event in dayGroup.events" :key="event.id" class="event-card py-2 px-3 rounded-2 border"
+                      :style="{ backgroundColor: event.colour, color: getContrastColor(event.colour) }"
+                      @click="showEventDetails(event)" style="cursor: pointer;">
+                      <div class="d-flex align-items-start justify-content-between gap-2">
+                        <div class="flex-grow-1">
+                          <!-- Event Name -->
+                          <div class="fw-medium mb-1" style="font-size: 1rem; line-height: 1.3;">
+                            <i v-if="event.isRecurring" class="mdi mdi-repeat me-1"></i>
+                            {{ event.name }}
+                          </div>
+
+                          <!-- Event Information -->
+                          <div class="d-flex align-items-center gap-2 flex-wrap" style="font-size: 0.8rem;">
+
+                            <!-- Date -->
+                            <span class="d-flex align-items-center gap-1">
+                              <i class="mdi mdi-calendar-blank" style="font-size: 0.8rem;"></i>
+                              {{ formatShortDate(event.start) }}
+                            </span>
+
+                            <!-- Time -->
+                            <span class="d-flex align-items-center gap-1">
+                              <i class="mdi mdi-clock-outline" style="font-size: 0.8rem;"></i>
+                              {{ formatEventTime(event.start) }}
+                            </span>
+
+                            <!-- Priority Badge -->
+                            <span v-if="event.priority" class="badge" :class="{
+                              'bg-danger': event.priority === 'High',
+                              'bg-warning text-dark': event.priority === 'Medium',
+                                                            'bg-success': event.priority === 'Low'
+                                                        }" style="font-size: 0.8rem; padding: 2px 6px;">
+                              {{ event.priority }}
+                            </span>
+                          </div>
+                        </div>
+
+                        <!-- Google Maps Button -->
+                        <button v-if="event.location || event.locationName" @click.stop="openMap(event)"
+                          class="map-button" title="Open in Google Maps" style="display: flex; margin-top: 7.5px;">
+                          <i class="mdi mdi-map-marker map-icon"></i>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Empty State -->
+              <div v-else class="text-center py-5">
+                <i class="mdi mdi-calendar-blank-outline text-muted" style="font-size: 3rem; opacity: 0.3;"></i>
+                <p class="text-muted mt-2 mb-0">No Upcoming Events</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Create Event Dialog -->
+    <div class="modal fade" :class="{ show: createDialog, 'd-block': createDialog }" tabindex="-1"
+      style="background-color: rgba(0,0,0,0.5);">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">
+              <i class="mdi mdi-calendar-plus me-2"></i>
+              Create Event
+            </h5>
+            <button type="button" class="btn-close btn-close-white" @click="closeCreateDialog"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <label class="form-label">Event Name</label>
+              <input type="text" class="form-control" v-model="currentEvent.name">
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Description</label>
+              <textarea class="form-control" rows="3" v-model="currentEvent.description"></textarea>
+            </div>
+
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Start</label>
+                <input type="datetime-local" class="form-control" v-model="currentEvent.start">
+              </div>
+
+              <div class="col-md-6 mb-3">
+                <label class="form-label">End</label>
+                <input type="datetime-local" class="form-control" v-model="currentEvent.end">
+              </div>
+            </div>
+
+            <!-- Recurring Event Toggle -->
+            <div class="mb-3">
+              <div class="ios-switch-container">
+                <input type="checkbox" id="recurringSwitch" class="ios-switch-input" v-model="currentEvent.isRecurring"
+                  @change="toggleRecurring">
+                <label class="ios-switch-label" for="recurringSwitch">
+                  <span class="ios-switch-slider"></span>
+                </label>
+                <label class="form-check-label ms-2" for="recurringSwitch">
+                  <i class="mdi mdi-repeat"></i> Recurring Event
+                </label>
+              </div>
+            </div>
+
+            <!-- Recurrence Settings -->
+            <div v-if="currentEvent.isRecurring" class="mb-3 p-3" style="background: #f8f9fa; border-radius: 8px;">
+              <div class="mb-3">
+                <label class="form-label">Repeat</label>
+                <select class="form-select" v-model="currentEvent.recurrence.frequency">
+                  <option value="DAILY">Daily</option>
+                  <option value="WEEKLY">Weekly</option>
+                  <option value="MONTHLY">Monthly</option>
+                  <option value="YEARLY">Yearly</option>
+                </select>
+              </div>
+
+              <!-- Weekly Options -->
+              <div v-if="currentEvent.recurrence.frequency === 'WEEKLY'" class="mb-3">
+                <label class="form-label">Repeats Every</label>
+                <div class="d-flex gap-2">
+                  <button v-for="day in weekDays" :key="day.value" type="button" class="btn btn-sm"
+                    :class="currentEvent.recurrence.byWeekDay.includes(day.value) ? 'day-btn-selected' : 'day-btn'"
+                    @click="toggleWeekDay(day.value)">
+                    {{ day.label }}
+                  </button>
+                </div>
+              </div>
+
+              <!-- Monthly Options -->
+              <div v-if="currentEvent.recurrence.frequency === 'MONTHLY'" class="mb-3">
+                <label class="form-label">Monthly Repeat Type</label>
+                <select class="form-select" v-model="currentEvent.recurrence.monthlyType">
+                  <option value="dayOfMonth">On Day {{ getDayOfMonth() }} of Each Month</option>
+                  <option value="dayOfWeek">On {{ getOrdinal() }} {{ getDayName() }} of Each Month
+                  </option>
+                </select>
+              </div>
+
+              <!-- End Options -->
+              <div class="mb-3">
+                <label class="form-label">Ends</label>
+                <select class="form-select mb-2" v-model="currentEvent.recurrence.endType">
+                  <option value="never">Never</option>
+                  <option value="on">On Specific Date</option>
+                  <option value="after">After Nunber of Instances</option>
+                </select>
+
+                <!-- End Date -->
+                <input v-if="currentEvent.recurrence.endType === 'on'" type="date" class="form-control mt-2"
+                  v-model="currentEvent.recurrence.endDate">
+
+                <!-- Count -->
+                <input v-if="currentEvent.recurrence.endType === 'after'" type="number" class="form-control mt-2"
+                  v-model.number="currentEvent.recurrence.count" min="1" placeholder="Number of Instances">
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Event Priority</label>
+                <select class="form-select" v-model="currentEvent.priority">
+                  <option value="High">High</option>
+                  <option value="Medium">Medium</option>
+                  <option value="Low">Low</option>
+                </select>
+              </div>
+
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Event Category</label>
+                <select class="form-select" v-model="currentEvent.category">
+                  <option value="Class">Class</option>
+                  <option value="Exam">Exam</option>
+                  <option value="Assignment">Assignment</option>
+                  <option value="CCA">CCA</option>
+                  <option value="Work">Work</option>
+                  <option value="Fitness">Fitness</option>
+                  <option value="Family">Family</option>
+                  <option value="Friends">Friends</option>
+                  <option value="Travel">Travel</option>
+                  <option value="Others">Others</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Event Location</label>
+              <div class="d-flex gap-2">
+                <div class="flex-grow-1">
+                  <input v-if="currentEvent.locationName" type="text" class="form-control"
+                    v-model="currentEvent.locationName" @click="clearAndShowAutocomplete" readonly>
+                  <div v-else ref="placeAutocompleteContainer" class="form-control-wrapper"></div>
+                </div>
+                <button v-if="currentEvent.locationName" class="btn close-button" @click="clearLocation"
+                  title="Clear location">
+                  <i class="mdi mdi-close"></i>
+                </button>
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Color</label>
+              <input type="color" class="form-control form-control-color" v-model="currentEvent.colour"
+                style="width: 100px;">
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn cancel-button" @click="closeCreateDialog">Cancel</button>
+            <button class="btn save-button" @click="saveEvent">Create</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Event Dialog -->
+    <div class="modal fade" :class="{ show: eventDialog, 'd-block': eventDialog }" tabindex="-1"
+      style="background-color: rgba(0,0,0,0.5);">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">
+              <i v-if="currentEvent.isRecurring" class="mdi mdi-repeat me-2"></i>
+              {{ editMode ? 'Update Event' : 'Event Details' }}
+            </h5>
+            <button type="button" class="btn-close btn-close-white" @click="closeEventDialog"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <label class="form-label">Event Name</label>
+              <input :disabled="!editMode" type="text" class="form-control" v-model="currentEvent.name">
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Event Description</label>
+              <textarea :disabled="!editMode" class="form-control" rows="3"
+                v-model="currentEvent.description"></textarea>
+            </div>
+
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Event Start</label>
+                <input :disabled="!editMode" type="datetime-local" class="form-control" v-model="currentEvent.start">
+              </div>
+
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Event End</label>
+                <input :disabled="!editMode" type="datetime-local" class="form-control" v-model="currentEvent.end">
+              </div>
+            </div>
+
+            <!-- Recurrence Information (View Mode) -->
+            <div v-if="currentEvent.isRecurring && !editMode" class="mb-3">
+              <label class="form-label">
+                <i class="mdi mdi-repeat me-1"></i>Recurrence Pattern
+              </label>
+              <p class="mb-0">{{ getRecurrenceDescription() }}</p>
+            </div>
+
+            <!-- Recurrence Information (Edit Mode) -->
+            <div v-if="currentEvent.isRecurring && editMode" class="mb-3">
+              <div class="ios-switch-container">
+                <input type="checkbox" id="recurringEditSwitch" class="ios-switch-input"
+                  v-model="currentEvent.isRecurring" @change="toggleRecurring">
+                <label class="ios-switch-label" for="recurringEditSwitch">
+                  <span class="ios-switch-slider"></span>
+                </label>
+                <label class="form-check-label ms-2" for="recurringEditSwitch">
+                  <i class="mdi mdi-repeat"></i> Recurring Event
+                </label>
+              </div>
+            </div>
+
+            <!-- Recurrence Settings in Edit Mode -->
+            <div v-if="currentEvent.isRecurring && editMode" class="mb-3 p-3"
+              style="background: #f8f9fa; border-radius: 8px;">
+              <div class="mb-3">
+                <label class="form-label">Repeat</label>
+                <select class="form-select" v-model="currentEvent.recurrence.frequency">
+                  <option value="DAILY">Daily</option>
+                  <option value="WEEKLY">Weekly</option>
+                  <option value="MONTHLY">Monthly</option>
+                  <option value="YEARLY">Yearly</option>
+                </select>
+              </div>
+
+              <!-- Weekly Options -->
+              <div v-if="currentEvent.recurrence.frequency === 'WEEKLY'" class="mb-3">
+                <label class="form-label">Repeats Every</label>
+                <div class="d-flex gap-2">
+                  <button v-for="day in weekDays" :key="day.value" type="button" class="btn btn-sm"
+                    :class="currentEvent.recurrence.byWeekDay.includes(day.value) ? 'day-btn-selected' : 'day-btn'"
+                    @click="toggleWeekDay(day.value)">
+                    {{ day.label }}
+                  </button>
+                </div>
+              </div>
+
+              <!-- Monthly Options -->
+              <div v-if="currentEvent.recurrence.frequency === 'MONTHLY'" class="mb-3">
+                <label class="form-label">Monthly Repeat Type</label>
+                <select class="form-select" v-model="currentEvent.recurrence.monthlyType">
+                  <option value="dayOfMonth">On day {{ getDayOfMonth() }} of Each Month</option>
+                  <option value="dayOfWeek">On the {{ getOrdinal() }} {{ getDayName() }} of Each Month
+                  </option>
+                </select>
+              </div>
+
+              <!-- End Options -->
+              <div class="mb-3">
+                <label class="form-label">Ends</label>
+                <select class="form-select mb-2" v-model="currentEvent.recurrence.endType">
+                  <option value="never">Never</option>
+                  <option value="on">On Specific Date</option>
+                  <option value="after">After Number of Instances</option>
+                </select>
+
+                <!-- End Date -->
+                <input v-if="currentEvent.recurrence.endType === 'on'" type="date" class="form-control mt-2"
+                  v-model="currentEvent.recurrence.endDate">
+
+                <!-- Count -->
+                <input v-if="currentEvent.recurrence.endType === 'after'" type="number" class="form-control mt-2"
+                  v-model.number="currentEvent.recurrence.count" min="1" placeholder="Number of Instances">
+              </div>
+            </div>
+
+            <div class="row" v-if="!editMode">
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Event Priority</label>
+                <input :disabled="!editMode" type="text" class="form-control" v-model="currentEvent.priority">
+              </div>
+
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Event Category</label>
+                <input :disabled="!editMode" type="text" class="form-control" v-model="currentEvent.category">
+              </div>
+            </div>
+
+            <div class="row" v-if="editMode">
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Event Priority</label>
+                <select class="form-select" v-model="currentEvent.priority">
+                  <option value="High">High</option>
+                  <option value="Medium">Medium</option>
+                  <option value="Low">Low</option>
+                </select>
+              </div>
+
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Event Category</label>
+                <select class="form-select" v-model="currentEvent.category">
+                  <option value="Class">Class</option>
+                  <option value="Exam">Exam</option>
+                  <option value="Assignment">Assignment</option>
+                  <option value="CCA">CCA</option>
+                  <option value="Work">Work</option>
+                  <option value="Fitness">Fitness</option>
+                  <option value="Family">Family</option>
+                  <option value="Friends">Friends</option>
+                  <option value="Travel">Travel</option>
+                  <option value="Others">Others</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label" v-if="editMode">Event Location</label>
+              <div class="d-flex gap-2" v-if="editMode">
+                <div class="flex-grow-1">
+                  <input v-if="currentEvent.locationName" type="text" class="form-control"
+                    v-model="currentEvent.locationName" @click="clearAndShowAutocomplete" readonly>
+                  <div v-else ref="placeAutocompleteContainer"></div>
+                </div>
+                <button v-if="currentEvent.locationName" class="btn close-button" @click="clearLocation"
+                  title="Clear Location">
+                  <i class="mdi mdi-close"></i>
+                </button>
+              </div>
+              <div v-if="!editMode">
+                <label class="form-label" v-if="currentEvent.location">Event Location</label>
+                <div v-if="currentEvent.location" class="text">
+                  📍 {{ currentEvent.locationName }}&nbsp;&nbsp;
+                  <button @click.stop="openMap(currentEvent)" class="map-button" title="Open in Google Maps">
+                    <i class="mdi mdi-map-marker map-icon"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="mb-3" v-if="editMode">
+              <label class="form-label">Event Colour</label>
+              <input :disabled="!editMode" type="color" class="form-control form-control-color"
+                v-model="currentEvent.colour" style="width: 100px;">
+            </div>
+
+          </div>
+          <div class="modal-footer">
+            <button class="btn cancel-button" @click="deleteEvent">
+              Delete
+            </button>
+            <button class="btn save-button" @click="switchToUpdateMode" v-if="!editMode">Update</button>
+            <button class="btn save-button" @click="saveEvent" v-if="editMode">Save</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Delete Confirmation Dialog -->
+    <div class="modal fade" :class="{ show: deleteConfirmDialog, 'd-block': deleteConfirmDialog }" tabindex="-1"
+      style="background-color: rgba(0,0,0,0.5);">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">
+              <i class="mdi mdi-alert-circle-outline me-2"></i>
+              Confirm Delete
+            </h5>
+            <button type="button" class="btn-close btn-close-white" @click="closeDeleteConfirm"></button>
+          </div>
+          <div class="modal-body">
+            <p v-if="currentEvent.isRecurring" class="mb-0">
+              <i class="mdi mdi-repeat me-2"></i>
+              This is a recurring event. Deleting it will remove <strong>all instances</strong>. Are you
+              sure you
+              want to continue?
+            </p>
+            <p v-else class="mb-0">
+              Are you sure you want to delete the event <strong>{{ currentEvent.name }}</strong>?
+            </p>
+          </div>
+          <div class="modal-footer">
+            <button class="btn save-button" @click="closeDeleteConfirm">
+              Cancel
+            </button>
+            <button class="btn cancel-button" @click="confirmDelete">
+              Delete
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- General Dialog -->
+    <div class="modal fade" :class="{ show: generalDialog, 'd-block': generalDialog }" tabindex="-1"
+      style="background-color: rgba(0,0,0,0.5);">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">
+              <i class="mdi mdi-message-alert-outline me-2"></i>
+              Message
+            </h5>
+            <button type="button" class="btn-close btn-close-white" @click="closeGeneralDialog"></button>
+          </div>
+          <div class="modal-body">
+            <p class="mb-0">
+              {{ dialogMessage }}
+            </p>
+          </div>
+          <div class="modal-footer">
+            <button class="btn cancel-button" @click="closeGeneralDialog">
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast -->
+    <div ref="toast" class="toast position-fixed bottom-0 start-50 translate-middle-x m-3" role="alert"
+      aria-live="assertive" aria-atomic="true" data-bs-delay="3000">
+      <div class="toast-body">
+        {{ toastMessage }}
+      </div>
+    </div>
+
+  </div>
+</template>
 
 <style scoped>
 .card-header {
   background: #667eea;
-	color: white;
+  color: white;
 }
 
 .event-item:hover {
@@ -2340,7 +2153,7 @@ export default {
 }
 
 .shadow-soft {
-    box-shadow: 0 8px 24px rgba(0, 0, 0, .06);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .06);
 }
 
 .form-label {
@@ -2363,14 +2176,14 @@ export default {
 
 /* Cards */
 .card {
-    border-radius: 1rem;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  border-radius: 1rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 /* Card Hover Effect */
 .card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.05);
+  transform: translateY(-4px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.05);
 }
 
 /* CSS for Toggle Switch */
@@ -2424,13 +2237,13 @@ export default {
 }
 
 /* Checked State - Gradient Background */
-.ios-switch-input:checked + .ios-switch-label .ios-switch-slider {
+.ios-switch-input:checked+.ios-switch-label .ios-switch-slider {
   background: #5BC236;
   box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
 }
 
 /* Checked State - Move Knob */
-.ios-switch-input:checked + .ios-switch-label .ios-switch-slider::before {
+.ios-switch-input:checked+.ios-switch-label .ios-switch-slider::before {
   transform: translateX(18px);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
 }
@@ -2441,18 +2254,18 @@ export default {
 }
 
 /* Active/Pressed Effect */
-.ios-switch-input:active + .ios-switch-label .ios-switch-slider::before {
+.ios-switch-input:active+.ios-switch-label .ios-switch-slider::before {
   width: 24px;
 }
 
 /* Focus State */
-.ios-switch-input:focus + .ios-switch-label .ios-switch-slider {
+.ios-switch-input:focus+.ios-switch-label .ios-switch-slider {
   outline: 2px solid #667eea;
   outline-offset: 2px;
 }
 
 /* Disabled State */
-.ios-switch-input:disabled + .ios-switch-label {
+.ios-switch-input:disabled+.ios-switch-label {
   opacity: 0.5;
   cursor: not-allowed;
 }
@@ -2529,7 +2342,7 @@ export default {
 /* CSS for Dropdown Button */
 .view-dropdown-btn {
   background-color: white;
-  color:#667eea;
+  color: #667eea;
   border: 1.5px solid white;
   padding: 0.4rem 1rem;
   font-weight: 500;
@@ -2593,7 +2406,7 @@ export default {
 /* CSS for Dialogs */
 .modal-header {
   background: #667eea;
-	color: white;
+  color: white;
 }
 
 .modal input {
@@ -2662,47 +2475,38 @@ export default {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  border: 1px solid black;
-  box-shadow: 0 8px 16px rgba(102, 126, 234, 0.4);
-  transform: translateY(-3px);
-  transition: all 0.3s ease;
+    border: 1px solid black;
+    box-shadow: 0 8px 16px rgba(102, 126, 234, 0.4);
+    transform: translateY(-3px);
+    transition: all 0.3s ease;
 }
 
 /* CSS for Recurrence Button */
 .day-btn {
-  width: 45px;
-  height: 32px;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid black;
-  border-radius: 20px;
-  background: white;
+    width: 45px;
+    height: 32px;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid black;
+    border-radius: 20px;
+    background: white;
 }
 
 .day-btn-selected {
-  width: 45px;
-  height: 32px;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid black;
-  border-radius: 20px;
-  background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
-  color: white;
+    width: 45px;
+    height: 32px;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid black;
+    border-radius: 20px;
+    background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
+    color: white;
 }
 
 .toast {
-  background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
-  color: white;
-}
-
-</style>
-
-<style>
-html, body {
-  margin: 0;
-  padding: 0;
-  overflow: auto;
+    background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
+    color: white;
 }
 </style>

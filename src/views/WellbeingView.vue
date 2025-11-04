@@ -16,7 +16,6 @@ const sleepData = ref([
   { day: "Sun", hours: 7 },
 ]);
 
-
 const stressLevel = ref(40);
 
 // Default stress factors
@@ -35,7 +34,6 @@ const stressFactors = [
 const canvasRef = ref(null);
 const fetchedFactors = ref([]);
 
-
 const toastMessage = ref('');
 const toastRef = ref(null);
 
@@ -43,7 +41,6 @@ const averageSleep = computed(() => {
   const total = sleepData.value.reduce((sum, d) => sum + d.hours, 0);
   return (total / sleepData.value.length).toFixed(1);
 });
-
 
 function showToast(message) {
   toastMessage.value = message;
@@ -137,7 +134,6 @@ function subscribeToStressFactorsRealtime(userId) {
   });
 }
 
-
 const stressLabel = computed(() => {
   if (stressLevel.value < 30) return 'Low';
   if (stressLevel.value < 70) return 'Moderate';
@@ -151,7 +147,6 @@ const stressColorClass = computed(() => {
 });
 
 const selectedFactors = ref([]);
-
 
 function toggleFactor(factor) {
   const idx = selectedFactors.value.indexOf(factor);
@@ -185,7 +180,6 @@ function drawWordCloud(factors) {
     ],
   });
 }
-
 
 onMounted(() => {
   onAuthStateChanged(auth, async (user) => {
@@ -267,7 +261,8 @@ watch(fetchedFactors, (newFactors) => {
                 </div>
                 <input type="range" min="0" max="100" step="1" v-model="stressLevel" class="form-range"
                   aria-label="Stress level slider" />
-                <p :class="['text-center', 'fs-3', 'fw-bold', stressColorClass, 'mb-0']">{{ stressLabel }}</p>
+                <p :class="['text-center', 'fs-3', 'fw-bold', stressColorClass, 'mb-0']">{{ stressLabel
+                }}</p>
               </div>
               <div class="rounded p-3 mb-3 flex-grow-1 bg-light">
                 <h4 class="fw-semibold mb-2">Stress Factors Today:</h4>

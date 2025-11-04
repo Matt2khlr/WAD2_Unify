@@ -1,7 +1,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import Navbar from "./components/Navbar.vue"
+import Navbar from "@/components/Navbar.vue"
 
 const route = useRoute()
 
@@ -32,5 +32,4 @@ const hideNavbar = computed(() => {
   background: linear-gradient(135deg, #ebebf5 0%, #e0def5 100%);
   min-height: 100vh;
 }
-
 </style>
