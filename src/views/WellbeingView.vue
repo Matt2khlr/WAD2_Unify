@@ -6,18 +6,18 @@ import { collection, where, addDoc, query, orderBy, limit, onSnapshot, getDocs }
 import { onAuthStateChanged } from "firebase/auth";
 import bootstrap from 'bootstrap/dist/js/bootstrap.bundle';
 
-// Data for sleep tracking
+// Default sleep data
 const sleepData = ref([
   { day: "Mon", hours: 7 },
-  { day: "Tue", hours: 6.5 },
-  { day: "Wed", hours: 8 },
-  { day: "Thu", hours: 7.5 },
-  { day: "Fri", hours: 6 },
-  { day: "Sat", hours: 9 },
-  { day: "Sun", hours: 8.5 },
+  { day: "Tue", hours: 7 },
+  { day: "Wed", hours: 7 },
+  { day: "Thu", hours: 7 },
+  { day: "Fri", hours: 7 },
+  { day: "Sat", hours: 7 },
+  { day: "Sun", hours: 7 },
 ]);
 
-// Stress level slider value
+
 const stressLevel = ref(40);
 
 // Default stress factors
@@ -34,9 +34,9 @@ const stressFactors = [
 ];
 
 const canvasRef = ref(null);
-const fetchedFactors = ref([]);  // Will hold dynamically fetched stress factors
+const fetchedFactors = ref([]);  
 
-// Toast message management
+
 const toastMessage = ref('');
 const toastRef = ref(null);
 
@@ -45,7 +45,7 @@ const averageSleep = computed(() => {
   return (total / sleepData.value.length).toFixed(1);
 });
 
-// Show toast notification
+
 function showToast(message) {
   toastMessage.value = message;
   if (!toastRef.value) return;
@@ -53,13 +53,12 @@ function showToast(message) {
   toast.show();
 }
 
-// Reset stress level and factors after logging
 function resetStressInputs() {
   stressLevel.value = 40;
   selectedFactors.value = [];
 }
 
-// Log sleep data
+// Log sleep 
 async function logSleep() {
   const user = auth.currentUser;
   if (!user) {
@@ -77,7 +76,7 @@ async function logSleep() {
   showToast('Sleep data logged!');
 }
 
-// Log mood/stress
+// Log mood
 async function logMood() {
   const user = auth.currentUser;
   if (!user) {
@@ -97,7 +96,7 @@ async function logMood() {
   resetStressInputs();
 }
 
-// Fetch latest sleep log for the user
+// Fetch latest sleep 
 async function fetchLatestSleepLog() {
   const user = auth.currentUser;
   if (!user) return;
@@ -117,7 +116,7 @@ async function fetchLatestSleepLog() {
   }
 }
 
-// Real-time listener for stress factors from moodLogs
+// Listener
 function subscribeToStressFactorsRealtime(userId) {
   const q = query(
     collection(db, "moodLogs"),
@@ -139,7 +138,7 @@ function subscribeToStressFactorsRealtime(userId) {
   });
 }
 
-// Computed for stress label display
+
 const stressLabel = computed(() => {
   if (stressLevel.value < 30) return 'Low';
   if (stressLevel.value < 70) return 'Moderate';
@@ -154,7 +153,7 @@ const stressColorClass = computed(() => {
 
 const selectedFactors = ref([]);
 
-// Toggle stress factor selection
+
 function toggleFactor(factor) {
   const idx = selectedFactors.value.indexOf(factor);
   if (idx === -1) {
@@ -188,16 +187,16 @@ function drawWordCloud(factors) {
   });
 }
 
-// On mount, setup auth, subscriptions, canvas size
+
 onMounted(() => {
   onAuthStateChanged(auth, async (user) => {
     if (user) {
       await fetchLatestSleepLog();
-      // Subscribe for real-time stress factors updates
+      
       subscribeToStressFactorsRealtime(user.uid);
     }
   });
-  // Canvas setup for dpr
+  
   const canvas = canvasRef.value;
   if (!canvas) return;
   const dpr = window.devicePixelRatio || 1;
@@ -208,14 +207,14 @@ onMounted(() => {
   ctx.scale(dpr, dpr);
 });
 
-// Watch fetchedFactors reactively redraws word cloud
+
 watch(fetchedFactors, (newFactors) => {
   drawWordCloud(newFactors);
 }, { immediate: true, deep: true });
 </script>
 
 <template>
-  <div class="min-vh-100 py-5">
+  <div class="min-vh-100 py-5 px-4">
     <div
       ref="toastRef"
       class="toast position-fixed bottom-0 start-50 translate-middle-x m-3"
@@ -235,7 +234,7 @@ watch(fetchedFactors, (newFactors) => {
     </div>
 
     <div class="row mb-4 g-4">
-      <!-- Sleep Tracker -->
+      <!-- Sleep -->
       <div class="col-12 col-lg-6">
         <div class="card shadow h-100">
           <div class="card-header">
@@ -295,53 +294,24 @@ watch(fetchedFactors, (newFactors) => {
       </div>
     </div>
 
-    <!-- Wellness Tips -->
-    <div class="card shadow bg-gradient rounded">
-      <div class="card-header">
-        Wellness Recommendations
-      </div>
-      <div class="card-body p-4">
-        <div class="row g-4">
-          <div class="col-12 col-md-6">
-            <div class="p-3 rounded shadow-sm bg-white">
-              <h5 class="fw-medium mb-2">Better Sleep Hygiene</h5>
-              <p class="text-muted mb-0">Aim for 7-9 hours of sleep. Keep a consistent sleep schedule.</p>
-            </div>
-          </div>
-          <div class="col-12 col-md-6">
-            <div class="p-3 rounded shadow-sm bg-white">
-              <h5 class="fw-medium mb-2">Manage Stress</h5>
-              <p class="text-muted mb-0">Try meditation, deep breathing, or short walks between study sessions.</p>
-            </div>
-          </div>
-          <div class="col-12 col-md-6">
-            <div class="p-3 rounded shadow-sm bg-white">
-              <h5 class="fw-medium mb-2">Stay Social</h5>
-              <p class="text-muted mb-0">Connect with friends and family regularly for emotional support.</p>
-            </div>
-          </div>
-          <div class="col-12 col-md-6">
-            <div class="p-3 rounded shadow-sm bg-white">
-              <h5 class="fw-medium mb-2">Take Breaks</h5>
-              <p class="text-muted mb-0">Regular breaks improve focus and reduce mental fatigue.</p>
-            </div>
-          </div>
-          <div class="card shadow p-4 mt-4">
-            <h3 class="mb-3">Common Stress Factors this week</h3>
-            <canvas ref="canvasRef" width="600" height="300" style="width: 100%; height: 600px;"></canvas>
-          </div>
-        </div>
-      </div>
-    </div>
+  <div class="card bg-gradient">
+  <div class="card-header">
+    Common Stress Factors
+  </div>
+  <div class="card-body p-4">
+    <canvas ref="canvasRef" width="600" height="300" style="width: 100%; height: 600px;"></canvas>
+  </div>
+</div>
   </div>
 </template>
 
 <style scoped>
+
 .card {
   border-radius: 15px;
   box-shadow: 0 10px 30px rgba(0,0,0,0.2);
   margin-bottom: 2rem;
-  overflow: visible;
+  overflow: hidden;
   position: relative;
 }
 
@@ -375,7 +345,9 @@ watch(fetchedFactors, (newFactors) => {
 .toast {
   background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
   color: white;
-  z-index: 1055; /* Bootstrap modals use 1050, so this ensures toast is higher */
-  position: fixed; /* Confirm fixed positioning */
+  z-index: 1055; 
+  position: fixed; 
 }
+
+
 </style>
