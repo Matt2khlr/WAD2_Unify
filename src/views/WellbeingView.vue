@@ -223,7 +223,7 @@ watch(fetchedFactors, (newFactors) => {
 
 
 <template>
-  <div class="min-vh-100 bg-light py-5">
+  <div class="min-vh-100 py-5">
     <div
     ref="toastRef"
     class="toast position-fixed bottom-0 start-50 translate-middle-x m-3"
