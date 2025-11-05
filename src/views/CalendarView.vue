@@ -793,65 +793,56 @@ export default {
       })
     },
 
+    // Geocode Location for Google Calendar Events
     async geocodeLocation(address) {
       try {
-        const { PlacesService } = await google.maps.importLibrary("places");
-        const { Geocoder } = await google.maps.importLibrary("geocoding");
-        
+        const [{ Geocoder }, { Place }] = await Promise.all([
+          google.maps.importLibrary('geocoding'),
+          google.maps.importLibrary('places'),
+        ]);
+
         const geocoder = new Geocoder();
-        
-        return new Promise((resolve) => {
-          // Geocode Location
-          geocoder.geocode({ address: address }, async (results, status) => {
-            if (status === 'OK' && results[0]) {
-              const loc = results[0].geometry.location;
-              let displayName = address;
-              
-              // Get Place Details
-              if (results[0].place_id) {
-                try {
-                  const service = new PlacesService(document.createElement('div'));
-                  
-                  service.getDetails(
-                    { placeId: results[0].place_id },
-                    (place, placeStatus) => {
-                      if (placeStatus === 'OK' && place) {
-                        displayName = place.name 
-                          ? `${place.name}, ${place.formatted_address}`
-                          : place.formatted_address || address;
-                      } 
-                      else {
-                        displayName = address;
-                      }
-                      
-                      resolve({
-                        geopoint: new GeoPoint(loc.lat(), loc.lng()),
-                        name: displayName
-                      });
-                    }
-                  );
-                } 
-                catch (err) {
-                  resolve({
-                    geopoint: new GeoPoint(loc.lat(), loc.lng()),
-                    name: address
-                  });
-                }
-              } 
-              else {
-                resolve({
-                  geopoint: new GeoPoint(loc.lat(), loc.lng()),
-                  name: address
-                });
-              }
-            } 
-            else {
-              resolve(null);
-            }
+
+        const geocodeResp = await new Promise((resolve) => {
+          geocoder.geocode({ address }, (results, status) => {
+            resolve({ results, status });
           });
         });
+
+        if (geocodeResp.status !== 'OK' || !geocodeResp.results?.[0]) {
+          return null;
+        }
+
+        const result = geocodeResp.results[0];
+        const loc = result.geometry.location;
+
+        let displayName = address;
+
+        if (result.place_id) {
+          try {
+            const place = new Place({
+              id: result.place_id
+            });
+
+            await place.fetchFields({
+              fields: ['displayName.text', 'formattedAddress', 'googleMapsURI'],
+            });
+
+            const disp = place.displayName?.text;
+            const addr = place.formattedAddress;
+            displayName = disp ? `${disp}, ${addr ?? ''}`.trim().replace(/,\s*$/, '') : (addr ?? address);
+          } 
+          catch (error) {
+            displayName = address;
+          }
+        }
+
+        return {
+          geopoint: new GeoPoint(loc.lat(), loc.lng()),
+          name: displayName,
+        };
       } 
-      catch (err) {
+      catch (error) {
         return null;
       }
     },
@@ -1392,7 +1383,7 @@ export default {
             const g = parseInt(color.substr(2, 2), 16)
             const b = parseInt(color.substr(4, 2), 16)
             const brightness = (r * 299 + g * 587 + b * 114) / 1000
-            return brightness > 128 ? '#000000' : '#ffffff'
+            return brightness > 120 ? '#000000' : '#ffffff'
         },
 
         // Format Date for Cloud Firestore
@@ -1510,7 +1501,7 @@ export default {
 </script>
 
 <template>
-  <div class="container h-100 py-3">
+  <div class="container h-100">
 
     <div class="mt-2 mb-2 text-center">
       <h1 class="display-4 fw-bold d-flex justify-content-center align-items-center gap-3">
@@ -2424,7 +2415,7 @@ h1 {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  border: 1px solid lightgray;
+  border: 1px solid #667eea;
   box-shadow: 0 8px 16px rgba(102, 126, 234, 0.4);
   transform: translateY(-3px);
   transition: all 0.3s ease;
@@ -2443,7 +2434,7 @@ h1 {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  border: 1px solid lightgray;
+  border: 1px solid #ff6b6b;
   box-shadow: 0 8px 16px rgba(255, 107, 107, 0.4);
   transform: translateY(-3px);
   transition: all 0.3s ease;
@@ -2510,7 +2501,7 @@ h1 {
 
 /* Hover state */
 .map-button:hover {
-  border: 1px solid lightgray;
+  border: 1px solid #667eea;
   box-shadow: 0 8px 16px rgba(102, 126, 234, 0.4);
   transform: translateY(-3px);
 }
@@ -2630,5 +2621,12 @@ h1 {
   .header-controls {
     flex-wrap: nowrap;
   }
+}
+</style>
+
+<style>
+html {
+  overflow: auto !important;
+  min-height: 100vh;
 }
 </style>

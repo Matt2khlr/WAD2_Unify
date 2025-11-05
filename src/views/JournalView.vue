@@ -299,10 +299,10 @@ onMounted(() => {
                   </span>
 
                   <div class="action-buttons" role="group" v-if="!entry.isSaving">
-                    <button type="button" class="btn btn-sm action-edit me-2" @click="openEditDialog(entry)">
+                    <button type="button" class="btn btn-sm save-button me-1" @click="openEditDialog(entry)">
                       <i class="bi bi-pencil"></i> Edit
                     </button>
-                    <button type="button" class="btn btn-sm action-delete" @click="deleteJournalEntry(entry.id)">
+                    <button type="button" class="btn btn-sm cancel-button" @click="deleteJournalEntry(entry.id)">
                       <i class="bi bi-trash"></i> Delete
                     </button>
                   </div>
@@ -412,7 +412,7 @@ h1 {
 }
 
 .journal-card .card-header-style {
-  background: #667eea;
+  background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
   color: white;
   font-weight: 600;
   font-size: 1.3rem;
@@ -443,6 +443,7 @@ h1 {
 .save-button:hover {
   background: #fff;
   color: #667eea;
+  border: 1px solid #667eea;
   box-shadow: 0 8px 16px rgba(102, 126, 234, 0.4);
   transform: translateY(-3px);
 }
@@ -480,44 +481,11 @@ h1 {
   box-shadow: 0 8px 16px rgba(102, 126, 234, 0.4);
   transform: translateY(-3px);
   transition: all 0.3s ease;
+  border: 1px solid #667eea;
 }
 
 .action-buttons {
   display: flex;
   gap: 8px;
-}
-
-.action-edit {
-  background-color: #e3f2fd;
-  color: #0d47a1;
-  border: none;
-  border-radius: 20px;
-  font-weight: 500;
-  transition: all 0.3s ease;
-  padding: 0.25rem 0.5rem;
-}
-
-.action-edit:hover {
-  background-color: #bbdefb;
-  color: #0d47a1;
-  box-shadow: 0 8px 16px rgba(102, 126, 234, 0.4);
-  transform: translateY(-3px);
-}
-
-.action-delete {
-  background-color: #ffebee;
-  color: #b71c1c;
-  border: none;
-  border-radius: 20px;
-  font-weight: 500;
-  transition: all 0.3s ease;
-  padding: 0.25rem 0.5rem;
-}
-
-.action-delete:hover {
-  background-color: #ffcdd2;
-  color: #b71c1c;
-  box-shadow: 0 8px 16px rgba(255, 107, 107, 0.4);
-  transform: translateY(-3px);
 }
 </style>

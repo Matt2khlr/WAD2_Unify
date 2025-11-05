@@ -1414,8 +1414,13 @@ export default {
                 <input type="text" class="form-control" v-model="newTopic.name" placeholder="Enter topic to study..."
                   @keyup.enter="addTopic">
               </div>
-              <div class="col-md-2">
-                <button class="btn btn-primary w-100" @click="addTopic">
+              <div class="col-md-2" v-if="newTopic.module === 'custom'">
+                <button class="btn add-button w-100 mt-3" @click="addTopic">
+                  <i class="fas fa-plus"></i> Add Topic
+                </button>
+              </div>
+              <div class="col-md-2" v-else>
+                <button class="btn add-button w-100" @click="addTopic">
                   <i class="fas fa-plus"></i> Add Topic
                 </button>
               </div>
@@ -1427,10 +1432,10 @@ export default {
             <div class="d-flex justify-content-between align-items-center mb-3">
               <h6 class="mb-0"><i class="fas fa-calendar-alt"></i> Exam Dates</h6>
               <div class="d-flex gap-2">
-                <button class="btn btn-sm btn-primary" @click="showExamModal = true">
+                <button class="btn btn-sm add-button" @click="showExamModal = true">
                   <i class="fas fa-plus"></i> Add Exam
                 </button>
-                <button v-if="exams.length > 0" class="btn btn-sm btn-danger" @click="deleteAllExams">
+                <button v-if="exams.length > 0" class="btn btn-sm cancel-button" @click="deleteAllExams">
                   <i class="fas fa-trash-alt"></i> Delete All
                 </button>
               </div>
@@ -1464,7 +1469,7 @@ export default {
                 <span class="badge bg-info me-2">
                   Progress: {{ completedTopicsCount }} / {{ topics.length }}
                 </span>
-                <button class="btn btn-sm btn-outline-danger" @click="clearAllTopics">
+                <button class="btn btn-sm cancel-button" @click="clearAllTopics">
                   <i class="fas fa-trash"></i> Clear All
                 </button>
               </div>
@@ -1502,7 +1507,7 @@ export default {
                     <small class="text-muted me-3">
                       {{ formatTopicDate(topic.addedDate) }}
                     </small>
-                    <button class="cancel-button" @click="deleteTopic(topic.id, topic.name)" title="Delete this topic">
+                    <button class="delete-button" @click="deleteTopic(topic.id, topic.name)" title="Delete this topic">
                       Delete
                     </button>
                   </div>
@@ -1600,13 +1605,13 @@ export default {
           </div>
 
           <!-- Timer Controls -->
-          <button class="btn btn-success timer-btn" @click="startTimer" v-if="!isRunning">
+          <button class="btn start-button timer-btn" @click="startTimer" v-if="!isRunning">
             <i class="fas fa-play"></i> Start
           </button>
-          <button class="btn btn-warning timer-btn" @click="pauseTimer" v-if="isRunning">
+          <button class="btn pause-button timer-btn" @click="pauseTimer" v-if="isRunning">
             <i class="fas fa-pause"></i> Pause
           </button>
-          <button class="btn btn-danger timer-btn" @click="resetTimer">
+          <button class="btn cancel-button timer-btn" style="border-radius: 100px;" @click="resetTimer">
             <i class="fas fa-redo"></i> Reset
           </button>
         </div>
@@ -1647,7 +1652,7 @@ export default {
         <div class="card-body">
           <!-- Add Flashcard Form -->
           <div class="mb-4">
-            <button class="btn btn-primary" @click="toggleAddCard()">
+            <button class="btn add-button" @click="toggleAddCard()">
               <i class="fas fa-plus"></i> Add New Flashcard
             </button>
           </div>
@@ -1681,10 +1686,10 @@ export default {
               <label class="form-label">Answer/Back:</label>
               <textarea class="form-control" v-model="newCard.answer" rows="3" placeholder="Enter answer..."></textarea>
             </div>
-            <button class="btn btn-success" @click="addFlashcard">
+            <button class="btn start-button" @click="addFlashcard">
               <i class="fas fa-save"></i> Save Card
             </button>
-            <button class="btn btn-secondary ms-2" @click="showAddCard = false">
+            <button class="btn cancel-button ms-2" @click="showAddCard = false">
               Cancel
             </button>
           </div>
@@ -2061,7 +2066,7 @@ h1 {
 }
 
 .card-header {
-  background: #667eea;
+  background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
   color: white;
   border-radius: 15px 15px 0 0;
   padding: 1.5rem;
@@ -2537,8 +2542,62 @@ h1 {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  border: 1px solid lightgray;
+  border: 1px solid #667eea;
   box-shadow: 0 8px 16px rgba(102, 126, 234, 0.4);
+  transform: translateY(-3px);
+  transition: all 0.3s ease;
+}
+
+.add-button {
+  background: linear-gradient(120deg, #0d6efd 0%, #0056b3 100%);
+  color: white;
+  border-radius: 20px;
+  transition: all 0.3s ease;
+}
+
+.add-button:hover {
+  background: linear-gradient(120deg, #0d6efd 0%, #0056b3 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  border: 1px solid #0d6efd;
+  box-shadow: 0 8px 16px rgba(13, 110, 253, 0.4);
+  transform: translateY(-3px);
+  transition: all 0.3s ease;
+}
+
+.start-button {
+  background: linear-gradient(120deg, #198754 0%, #145235 100%);
+  color: white;
+  border-radius: 100px;
+  transition: all 0.3s ease;
+}
+
+.start-button:hover {
+  background: linear-gradient(120deg, #198754 0%, #145235 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  border: 1px solid #198754;
+  box-shadow: 0 8px 16px rgba(25, 135, 84, 0.4);
+  transform: translateY(-3px);
+  transition: all 0.3s ease;
+}
+
+.pause-button {
+  background: linear-gradient(120deg, #ffc107 0%, #fd7e14 100%);
+  color: white;
+  border-radius: 100px;
+  transition: all 0.3s ease;
+}
+
+.pause-button:hover {
+  background: linear-gradient(120deg, #ffc107 0%, #fd7e14 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  border: 1px solid #ffc107;
+  box-shadow: 0 8px 16px rgba(25, 135, 84, 0.4);
   transform: translateY(-3px);
   transition: all 0.3s ease;
 }
@@ -2555,8 +2614,8 @@ h1 {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  border: 1px solid lightgray;
-  box-shadow: 0 8px 16px rgba(102, 126, 234, 0.4);
+  border: 1px solid #ff6b6b;
+  box-shadow: 0 8px 16px rgba(255, 107, 107, 0.4);
   transform: translateY(-3px);
   transition: all 0.3s ease;
 }
@@ -2577,7 +2636,7 @@ h1 {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  border: 1px solid lightgray;
+  border: 1px solid #ff6b6b;
   box-shadow: 0 8px 16px rgba(255, 107, 107, 0.4);
   transform: translateY(-3px);
   transition: all 0.3s ease;
@@ -2599,7 +2658,7 @@ h1 {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  border: 1px solid lightgray;
+  border: 1px solid #ffa500;
   box-shadow: 0 8px 16px rgba(255, 165, 0, 0.4);
   transform: translateY(-3px);
   transition: all 0.3s ease;
@@ -2621,7 +2680,7 @@ h1 {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  border: 1px solid lightgray;
+  border: 1px solid #667eea;
   box-shadow: 0 8px 16px rgba(102, 126, 234, 0.4);
   transform: translateY(-3px);
   transition: all 0.3s ease;

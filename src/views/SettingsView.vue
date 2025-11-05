@@ -302,7 +302,7 @@ function showToast(message) {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  border: 1px solid lightgray;
+  border: 1px solid #667eea;
   box-shadow: 0 8px 16px rgba(102, 126, 234, 0.4);
   transform: translateY(-3px);
   transition: all 0.3s ease;
@@ -320,7 +320,7 @@ function showToast(message) {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  border: 1px solid lightgray;
+  border: 1px solid #ff6b6b;
   box-shadow: 0 8px 16px rgba(255, 107, 107, 0.4);
   transform: translateY(-3px);
   transition: all 0.3s ease;

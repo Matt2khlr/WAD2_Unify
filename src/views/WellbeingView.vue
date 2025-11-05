@@ -224,7 +224,7 @@ watch(fetchedFactors, (newFactors) => {
       <div class="row mb-4 g-4">
         <!-- Sleep -->
         <div class="col-12 col-lg-6">
-          <div class="card shadow h-100">
+          <div class="card shadow-soft h-100">
             <div class="card-header">
               Sleep Tracking
             </div>
@@ -249,7 +249,7 @@ watch(fetchedFactors, (newFactors) => {
 
         <!-- Stress Level -->
         <div class="col-12 col-lg-6">
-          <div class="card shadow h-100 d-flex flex-column">
+          <div class="card shadow-soft h-100 d-flex flex-column">
             <div class="card-header">
               Current Stress Level
             </div>
@@ -338,7 +338,7 @@ h1 {
 }
 
 .card-header {
-  background: #667eea;
+  background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
   color: white;
   border-radius: 15px 15px 0 0 !important;
   padding: 1.5rem;
@@ -350,6 +350,10 @@ h1 {
   padding: 1.5rem;
   background: white;
   border-radius: 0 0 15px 15px;
+}
+
+.shadow-soft {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
 }
 
 .badge-custom {

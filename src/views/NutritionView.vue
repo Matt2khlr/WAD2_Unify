@@ -43,7 +43,36 @@ function bindMets() {
 }
 
 const selectedDate = ref(toISO(new Date()));
+const showDatePicker = ref(false);
 const userId = ref(null);
+const errorMessage = ref("");
+
+const dateInputValue = computed(() => {
+  const parts = selectedDate.value.split('-');
+  if (parts.length !== 3) return '';
+  return selectedDate.value;
+});
+
+function selectDate(event) {
+  const dateStr = event.target.value;
+  errorMessage.value = "";
+  
+  if (!dateStr) return;
+  
+  const [year, month, day] = dateStr.split('-');
+  const selectedDateObj = new Date(year, month - 1, day);
+  
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  if (selectedDateObj > today) {
+    errorMessage.value = "Cannot select a future date";
+    return;
+  }
+  
+  selectedDate.value = dateStr;
+  showDatePicker.value = false;
+}
 
 const initialUseAutoCalorie = String(localStorage.getItem("useAutoCalorie") ?? "true") !== "false";
 const initialManualStr = localStorage.getItem("calorieTarget") ?? "";
@@ -539,6 +568,15 @@ const QUICK_DURATIONS = [15, 30, 45, 60];
 function changeDate(days) {
   const d = new Date(selectedDate.value);
   d.setDate(d.getDate() + days);
+  
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  if (d > today) {
+    showToast("Cannot select a future date");
+    return;
+  }
+  
   selectedDate.value = toISO(d);
 }
 
@@ -638,487 +676,535 @@ watch([schedules, selectedDate], () => {
 </script>
 
 <template>
-  <section class="container py-3">
-    <div class="d-flex align-items-center justify-content-between mb-3">
-      <h1 class="mb-0 fw-bold text-gradient">Fuel &amp; Move</h1>
-      <div class="nav-btn-group d-flex align-items-center">
-        <button class="btn btn-sm nav-btn" @click="changeDate(-1)">
-          <ChevronLeft :size="18" />
-        </button>
-        <div class="d-flex align-items-center gap-2 px-2">
-          <Calendar :size="16" class="text-secondary" />
-          <span class="fw-semibold small">{{ fmtDate(selectedDate) }}</span>
-        </div>
-        <button class="btn btn-sm nav-btn" @click="changeDate(1)">
-          <ChevronRight :size="18" />
-        </button>
+  <section class="container">
+    <div class="min-vh-100 p-3 p-md-5">
+      <div class="mb-5 text-center">
+        <h1 class="display-4 fw-bold d-flex justify-content-center align-items-center gap-3">
+          Nutrition Tracker
+        </h1>
+        <p class="text-muted fs-5">Track your nutrition and movement to optimise your wellness.</p>
       </div>
-    </div>
 
-    <div class="row g-3 mb-3">
-      <div class="col-12 col-md-6">
-        <div class="card h-100 shadow-sm">
-          <div class="card-body d-flex align-items-center justify-content-around">
-            <div class="text-center">
-              <Flame class="text-primary mb-2" :size="24" />
-              <div class="fw-bold">{{ totalsMeals.kcal }}</div>
-              <div class="small text-muted">Meals kcal</div>
-            </div>
-            <div class="text-center">
-              <Activity class="text-success mb-2" :size="24" />
-              <div class="fw-bold">{{ totalsWorkouts.minutes }}</div>
-              <div class="small text-muted">Workout min</div>
-            </div>
-            <div class="text-center">
-              <TrendingUp class="text-info mb-2" :size="24" />
-              <div class="fw-bold">{{ totalsWorkouts.kcal }}</div>
-              <div class="small text-muted">Burned kcal</div>
-            </div>
-            <div class="text-center">
-              <Utensils class="text-dark mb-2" :size="24" />
-              <div class="fw-bold">{{ netCaloriesDisplay }}</div>
-              <div class="small text-muted">Net kcal</div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="col-12 col-md-6">
-        <div class="card h-100 shadow-sm">
-          <div class="card-body">
-            <h6 class="mb-3 d-flex align-items-center gap-2">
-              <TrendingUp class="text-primary" :size="18" />
-              Macros
-            </h6>
-            <div class="mb-2">
-              <div class="d-flex justify-content-between small">
-                <span>Protein</span>
-                <span>{{ totalsMeals.protein }} g / {{ proteinTarget }} g</span>
-              </div>
-              <div class="progress">
-                <div class="progress-bar bg-primary"
-                  :style="{ width: Math.min(100, (totalsMeals.protein / proteinTarget) * 100) + '%' }">
-                </div>
-              </div>
-            </div>
-            <div class="mb-2">
-              <div class="d-flex justify-content-between small">
-                <span>Carbs</span>
-                <span>{{ totalsMeals.carbs }} g / {{ carbsTarget }} g</span>
-              </div>
-              <div class="progress">
-                <div class="progress-bar bg-info"
-                  :style="{ width: Math.min(100, (totalsMeals.carbs / carbsTarget) * 100) + '%' }">
-                </div>
-              </div>
-            </div>
-            <div>
-              <div class="d-flex justify-content-between small">
-                <span>Fat</span>
-                <span>{{ totalsMeals.fat }} g / {{ fatTarget }} g</span>
-              </div>
-              <div class="progress">
-                <div class="progress-bar bg-warning"
-                  :style="{ width: Math.min(100, (totalsMeals.fat / fatTarget) * 100) + '%' }"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="card shadow-sm mb-3">
-      <div class="card-body">
-        <div class="row g-2 align-items-end">
-          <div class="col-12 col-md-5">
-            <label class="form-label">Goal</label>
-            <div class="btn-group w-100">
-              <button class="btn" :class="goal === 'weight-loss' ? 'btn-primary' : 'btn-outline-primary'"
-                @click="goal = 'weight-loss'">Weight loss</button>
-              <button class="btn" :class="goal === 'maintenance' ? 'btn-primary' : 'btn-outline-primary'"
-                @click="goal = 'maintenance'">Maintenance</button>
-              <button class="btn" :class="goal === 'muscle-gain' ? 'btn-primary' : 'btn-outline-primary'"
-                @click="goal = 'muscle-gain'">Muscle gain</button>
-            </div>
-          </div>
-          <div class="col-6 col-md-3">
-            <label class="form-label">Height (cm)</label>
-            <input type="number" min="1" class="form-control" v-model.number="targets.heightCm"
-              placeholder="e.g., 175" />
-          </div>
-          <div class="col-6 col-md-2">
-            <label class="form-label">Weight (kg)</label>
-            <input type="number" min="1" class="form-control" v-model.number="targets.weightKg"
-              placeholder="e.g., 70" />
-          </div>
-          <div class="col-12 col-md-2">
-            <label class="form-label d-flex align-items-center justify-content-between">
-              <span>Calorie Target</span>
-              <div class="ios-switch-container">
-                <input type="checkbox" id="autoKcal" class="ios-switch-input" v-model="useAutoCalorie">
-                <label class="ios-switch-label" for="autoKcal">
-                  <span class="ios-switch-slider"></span>
-                </label>
-                <label class="form-check-label ms-2" for="autoKcal">Auto</label>
-              </div>
-            </label>
-            <input v-if="useAutoCalorie" type="number" class="form-control" :value="suggestedCalorie" disabled />
-            <input v-else ref="kcalInputRef" type="number" min="0" class="form-control" v-model="calorieInput"
-              placeholder="e.g., 2000" @keydown.stop @keyup.stop @keypress.stop />
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="card shadow-sm mb-3">
-      <div class="card-body">
-        <h6 class="mb-2 d-flex align-items-center gap-2">
-          <Clock class="text-secondary" :size="18" />
-          Suggestions
-        </h6>
-        <div v-if="suggestions.length === 0" class="text-success">
-          You're tracking well — no action needed.
-        </div>
-        <ul v-else class="list-unstyled mb-0">
-          <li v-for="(s, i) in suggestions" :key="i" class="mb-1">• {{ s.text }}</li>
-        </ul>
-      </div>
-    </div>
-
-    <div class="card shadow-sm mb-3">
-      <div class="card-body">
-        <label class="form-label">Search foods (OpenFoodFacts)</label>
-        <div class="input-group">
-          <input class="form-control" v-model="mealSearch" @keyup.enter="searchFoods"
-            placeholder="e.g., chicken rice" />
-          <button class="btn btn-outline-secondary" @click="searchFoods" :disabled="searching">{{ searching ?
-            "Searching…" : "Search" }}</button>
-        </div>
-        <ul v-if="mealResults.length" class="list-group mt-2">
-          <li v-for="r in mealResults" :key="r.name + r.brand"
-            class="list-group-item d-flex justify-content-between align-items-center">
-            <div class="me-2">
-              <div class="fw-semibold">{{ r.name }}</div>
-              <div class="small text-secondary" v-if="r.brand">{{ r.brand }}</div>
-              <div class="small text-muted">per 100g: {{ r.kcal100 || 0 }} kcal • P{{ r.p100 || 0 }} C{{
-                r.c100 || 0 }} F{{ r.f100 || 0 }}</div>
-            </div>
-            <button class="btn btn-sm btn-primary" @click="useResult(r, true)">Add</button>
-          </li>
-        </ul>
-        <div v-else-if="searching" class="small text-muted mt-2">Searching…</div>
-      </div>
-    </div>
-
-    <div class="card shadow-sm mb-3">
-      <div class="card-body">
-        <h6 class="mb-2">Add Meal</h6>
-        <div class="row g-2 align-items-end">
-          <div class="col-12 col-md-3">
-            <label class="form-label small text-muted mb-1">Type</label>
-            <select class="form-select" v-model="mealForm.type">
-              <option>Breakfast</option>
-              <option>Lunch</option>
-              <option>Dinner</option>
-              <option>Snack</option>
-            </select>
-          </div>
-          <div class="col-12 col-md-5">
-            <label class="form-label small text-muted mb-1">Meal name</label>
-            <input class="form-control" placeholder="e.g., Chicken rice" v-model.trim="mealForm.name" />
-          </div>
-          <div class="col-4 col-md-1">
-            <label class="form-label small text-muted mb-1">P (g)</label>
-            <input class="form-control" type="number" min="0" v-model.number="mealForm.protein" />
-          </div>
-          <div class="col-4 col-md-1">
-            <label class="form-label small text-muted mb-1">C (g)</label>
-            <input class="form-control" type="number" min="0" v-model.number="mealForm.carbs" />
-          </div>
-          <div class="col-4 col-md-1">
-            <label class="form-label small text-muted mb-1">F (g)</label>
-            <input class="form-control" type="number" min="0" v-model.number="mealForm.fat" />
-          </div>
-          <div class="col-6 col-md-1">
-            <label class="form-label small text-muted mb-1">kcal</label>
-            <input class="form-control bg-light" type="number" :value="calculatedCalories" readonly />
-          </div>
-        </div>
-        <div class="d-flex gap-2 mt-3">
-          <button class="btn save-button" @click="addMeal" :disabled="!mealForm.name || calculatedCalories <= 0">
-            <i class="mdi mdi-plus"></i>
-            Add
+      <div class="d-flex align-items-center justify-content-center mb-4">
+        <div class="nav-btn-group d-flex align-items-center">
+          <button class="btn btn-sm nav-btn" @click="changeDate(-1)">
+            <ChevronLeft :size="18" />
+          </button>
+          <button class="d-flex align-items-center gap-2 px-2 fw-semibold small" @click="showDatePicker = true">
+            <Calendar :size="16" class="text-secondary" />
+            {{ fmtDate(selectedDate) }}
+          </button>
+          <button class="btn btn-sm nav-btn" @click="changeDate(1)">
+            <ChevronRight :size="18" />
           </button>
         </div>
       </div>
-    </div>
 
-    <div class="row g-3 mb-3">
-      <div class="col-12 col-lg-6">
-        <div class="card h-100 shadow-sm">
-          <div class="card-body">
-            <h6 class="mb-2">Meal Templates</h6>
-            <div class="row g-2 mb-2 align-items-end">
-              <div class="col-12 col-md-4">
-                <label class="form-label small text-muted mb-1">Template Name</label>
-                <input class="form-control" placeholder="e.g., Protein Shake" v-model.trim="newMealTemplate.name" />
+      <!-- Date Picker Modal -->
+      <div class="modal fade" :class="{ show: showDatePicker, 'd-block': showDatePicker }" 
+        tabindex="-1" style="background-color: rgba(0,0,0,0.5);" v-show="showDatePicker">
+        <div class="modal-dialog modal-dialog-centered">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">Select Date</h5>
+              <button type="button" class="btn-close btn-close-white" @click="showDatePicker = false; errorMessage = ''"></button>
+            </div>
+            <div class="modal-body">
+              <input 
+                type="date" 
+                class="form-control" 
+                :value="dateInputValue"
+                @change="selectDate"
+              />
+              <span style="color: red;">{{ errorMessage }}</span>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn cancel-button" @click="showDatePicker = false; errorMessage = ''">
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row g-3 mb-3">
+        <div class="col-12 col-md-6">
+          <div class="card h-100 shadow-soft">
+            <div class="card-body d-flex align-items-center justify-content-around">
+              <div class="text-center">
+                <Flame class="text-primary mb-2" :size="24" />
+                <div class="fw-bold">{{ totalsMeals.kcal }}</div>
+                <div class="small text-muted">Meals kcal</div>
               </div>
-              <div class="col-3 col-md-2">
-                <label class="form-label small text-muted mb-1">Calories (auto)</label>
-                <input class="form-control bg-light" type="number" placeholder="0" :value="calculatedTemplateCalories"
-                  readonly />
+              <div class="text-center">
+                <Activity class="text-success mb-2" :size="24" />
+                <div class="fw-bold">{{ totalsWorkouts.minutes }}</div>
+                <div class="small text-muted">Workout min</div>
               </div>
-              <div class="col-3 col-md-2">
-                <label class="form-label small text-muted mb-1">Protein (g)</label>
-                <input class="form-control" type="number" min="0" placeholder="0" v-model.number="newMealTemplate.p" />
+              <div class="text-center">
+                <TrendingUp class="text-info mb-2" :size="24" />
+                <div class="fw-bold">{{ totalsWorkouts.kcal }}</div>
+                <div class="small text-muted">Burned kcal</div>
               </div>
-              <div class="col-3 col-md-2">
-                <label class="form-label small text-muted mb-1">Carbs (g)</label>
-                <input class="form-control" type="number" min="0" placeholder="0" v-model.number="newMealTemplate.c" />
-              </div>
-              <div class="col-3 col-md-2">
-                <label class="form-label small text-muted mb-1">Fat (g)</label>
-                <input class="form-control" type="number" min="0" placeholder="0" v-model.number="newMealTemplate.f" />
+              <div class="text-center">
+                <Utensils class="text-dark mb-2" :size="24" />
+                <div class="fw-bold">{{ netCaloriesDisplay }}</div>
+                <div class="small text-muted">Net kcal</div>
               </div>
             </div>
-            <button class="btn btn-sm btn-dark mb-2" @click="addMealTemplate">
-              <Plus :size="14" class="me-1" />
-              Add template
-            </button>
-            <div class="d-flex flex-wrap gap-2">
-              <div v-for="t in mealTemplates" :key="t.id"
-                class="badge text-bg-light p-2 d-flex align-items-center gap-2">
-                <div>
-                  <div>{{ t.name }}</div>
-                  <div class="text-muted">{{ t.calories }} kcal</div>
+          </div>
+        </div>
+        <div class="col-12 col-md-6">
+          <div class="card h-100 shadow-soft">
+            <div class="card-body">
+              <h6 class="mb-3 d-flex align-items-center gap-2">
+                <TrendingUp class="text-primary" :size="18" />
+                Macros
+              </h6>
+              <div class="mb-2">
+                <div class="d-flex justify-content-between small">
+                  <span>Protein</span>
+                  <span>{{ totalsMeals.protein }} g / {{ proteinTarget }} g</span>
                 </div>
-                <button class="btn btn-xs btn-outline-primary" @click="applyMealTemplate(t)">Use</button>
-                <button class="btn btn-xs btn-outline-danger" @click="removeMealTemplate(t.id)">Remove</button>
+                <div class="progress">
+                  <div class="progress-bar bg-primary"
+                    :style="{ width: Math.min(100, (totalsMeals.protein / proteinTarget) * 100) + '%' }">
+                  </div>
+                </div>
+              </div>
+              <div class="mb-2">
+                <div class="d-flex justify-content-between small">
+                  <span>Carbs</span>
+                  <span>{{ totalsMeals.carbs }} g / {{ carbsTarget }} g</span>
+                </div>
+                <div class="progress">
+                  <div class="progress-bar bg-info"
+                    :style="{ width: Math.min(100, (totalsMeals.carbs / carbsTarget) * 100) + '%' }">
+                  </div>
+                </div>
+              </div>
+              <div>
+                <div class="d-flex justify-content-between small">
+                  <span>Fat</span>
+                  <span>{{ totalsMeals.fat }} g / {{ fatTarget }} g</span>
+                </div>
+                <div class="progress">
+                  <div class="progress-bar bg-warning"
+                    :style="{ width: Math.min(100, (totalsMeals.fat / fatTarget) * 100) + '%' }"></div>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      <div class="col-12 col-lg-6">
-        <div class="card h-100 shadow-sm">
-          <div class="card-body">
-            <h6 class="mb-2">Workout Templates</h6>
-            <div class="row g-2 mb-2">
-              <div class="col-12 col-md-5">
-                <input class="form-control" placeholder="Activity" v-model.trim="newWorkoutTemplate.name" />
-              </div>
-              <div class="col-6 col-md-4">
-                <select class="form-select" v-model="newWorkoutTemplate.intensity">
-                  <option value="easy">Easy</option>
-                  <option value="moderate">Moderate</option>
-                  <option value="vigorous">Vigorous</option>
-                </select>
-              </div>
-              <div class="col-6 col-md-3">
-                <input class="form-control" type="text" inputmode="numeric" placeholder="Min"
-                  :value="newWorkoutTemplate.dur" @input="e => newWorkoutTemplate.dur = digitsOnly(e.target.value)" />
+      <div class="card shadow-soft mb-3">
+        <div class="card-body">
+          <div class="row g-3">
+            <!-- Goal Section -->
+            <div class="col-12">
+              <label class="form-label fw-bold">Goal</label>
+              <div class="goal-btn-group">
+                <button 
+                  class="goal-btn" 
+                  :class="{ active: goal === 'weight-loss' }"
+                  @click="goal = 'weight-loss'">
+                  <i class="mdi mdi-minus-circle me-2"></i>Weight loss
+                </button>
+                <button 
+                  class="goal-btn" 
+                  :class="{ active: goal === 'maintenance' }"
+                  @click="goal = 'maintenance'">
+                  <i class="mdi mdi-equal-box me-2"></i>Maintenance
+                </button>
+                <button 
+                  class="goal-btn" 
+                  :class="{ active: goal === 'muscle-gain' }"
+                  @click="goal = 'muscle-gain'">
+                  <i class="mdi mdi-plus-circle me-2"></i>Muscle gain
+                </button>
               </div>
             </div>
-            <button class="btn btn-sm btn-dark mb-2" @click="addWorkoutTemplate">
-              <Plus :size="14" class="me-1" />
-              Add template
-            </button>
-            <div class="d-flex flex-wrap gap-2">
-              <div v-for="t in workoutTemplates" :key="t.id" class="badge text-bg-light p-2">
-                <span class="me-2">{{ t.name }} ({{ t.duration }}m, {{ t.intensity }})</span>
-                <button class="btn btn-xs btn-outline-primary me-1" @click="applyWorkoutTemplate(t)">Use</button>
-                <button class="btn btn-xs btn-outline-danger" @click="removeWorkoutTemplate(t.id)">Remove</button>
-              </div>
+
+            <!-- Form Inputs -->
+            <div class="col-12 col-md-6 col-lg-3">
+              <label class="form-label">Height (cm)</label>
+              <input type="number" class="form-control" v-model="targets.heightCm" />
+            </div>
+            <div class="col-12 col-md-6 col-lg-3">
+              <label class="form-label">Weight (kg)</label>
+              <input type="number" class="form-control" v-model="targets.weightKg" />
+            </div>
+            <div class="col-12 col-md-6 col-lg-3">
+              <label class="form-label d-flex align-items-center justify-content-between">
+                <span>Calorie Target</span>
+                <div class="ios-switch-container">
+                  <input type="checkbox" id="autoKcal" class="ios-switch-input" v-model="useAutoCalorie">
+                  <label class="ios-switch-label" for="autoKcal">
+                    <span class="ios-switch-slider"></span>
+                  </label>
+                  <label class="form-check-label ms-2" for="autoKcal">Auto</label>
+                </div>
+              </label>
+              <input v-if="useAutoCalorie" type="number" class="form-control" :value="suggestedCalorie" disabled />
+              <input v-else ref="kcalInputRef" type="number" min="0" class="form-control" v-model="calorieInput"
+                placeholder="e.g., 2000" @keydown.stop @keyup.stop @keypress.stop />
             </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <div class="card shadow-sm mb-3 border-0 rounded-3">
-      <div class="card-body">
-        <h6 class="mb-3 d-flex align-items-center gap-2">
-          <Activity class="text-secondary" :size="18" />
-          Add Workout
-        </h6>
-
-        <div class="mb-3">
-          <label class="form-label small text-muted">Select Activity</label>
-          <div class="d-flex flex-wrap gap-2">
-            <button v-for="a in QUICK_ACTIVITIES" :key="a.name" class="btn btn-sm rounded-pill px-3 py-1"
-              :class="workoutForm.activity === a.name ? 'btn-secondary' : 'btn-outline-secondary'"
-              @click="workoutForm.activity = a.name">
-              {{ a.icon }} {{ a.name }}
-            </button>
+      <div class="card shadow-soft mb-3">
+        <div class="card-body">
+          <h6 class="mb-2 d-flex align-items-center gap-2">
+            <Clock class="text-secondary" :size="18" />
+            Suggestions
+          </h6>
+          <div v-if="suggestions.length === 0" class="text-success">
+            You're tracking well — no action needed.
           </div>
-        </div>
-
-        <div class="mb-2">
-          <label class="form-label small text-muted">Intensity</label>
-          <div class="d-flex gap-2">
-            <button class="btn btn-sm rounded-pill"
-              :class="workoutForm.intensity === 'easy' ? 'btn-outline-secondary active' : 'btn-outline-secondary'"
-              @click="workoutForm.intensity = 'easy'">Easy</button>
-            <button class="btn btn-sm rounded-pill"
-              :class="workoutForm.intensity === 'moderate' ? 'btn-outline-secondary active' : 'btn-outline-secondary'"
-              @click="workoutForm.intensity = 'moderate'">Moderate</button>
-            <button class="btn btn-sm rounded-pill"
-              :class="workoutForm.intensity === 'vigorous' ? 'btn-outline-secondary active' : 'btn-outline-secondary'"
-              @click="workoutForm.intensity = 'vigorous'">Vigorous</button>
-          </div>
-        </div>
-
-        <div class="mb-3">
-          <label class="form-label small text-muted">Duration (minutes) and kcal (optional)</label>
-          <div class="d-flex gap-2 flex-wrap align-items-center">
-            <button v-for="d in QUICK_DURATIONS" :key="d" class="btn btn-sm rounded-pill"
-              :class="String(workoutForm.minutes) === String(d) ? 'btn-secondary' : 'btn-outline-secondary'"
-              @click="workoutForm.minutes = String(d)">
-              {{ d }} min
-            </button>
-            <div class="input-group w-auto">
-              <input type="text" inputmode="numeric" class="form-control form-control-sm rounded-pill text-center"
-                placeholder="Custom min" :value="workoutForm.minutes"
-                @input="e => workoutForm.minutes = digitsOnly(e.target.value)" style="width:110px;" />
-            </div>
-            <div class="input-group w-auto">
-              <input type="text" inputmode="numeric" class="form-control form-control-sm rounded-pill text-center"
-                placeholder="kcal (optional)" :value="workoutForm.kcalOverride"
-                @input="e => workoutForm.kcalOverride = digitsOnly(e.target.value)" style="width:130px;" />
-            </div>
-          </div>
-        </div>
-
-        <div class="d-flex justify-content-between align-items-center mt-2 flex-wrap">
-          <div class="small text-muted" v-if="workoutForm.activity && (previewMinutes || hasOverride)">
-            <span class="fw-semibold text-dark">{{ workoutForm.activity }}</span>
-            ({{ workoutForm.intensity }}) for
-            <span class="fw-semibold">{{ previewMinutes || 0 }} min</span>
-            ≈
-            <span class="fw-bold text-success">{{ previewKcal }} kcal</span>
-          </div>
-          <button class="btn save-button ms-auto" :disabled="!workoutForm.activity || !(previewMinutes || hasOverride)"
-            @click="addWorkout">
-            <i class="mdi mdi-plus"></i>
-            Add
-          </button>
+          <ul v-else class="list-unstyled mb-0">
+            <li v-for="(s, i) in suggestions" :key="i" class="mb-1">• {{ s.text }}</li>
+          </ul>
         </div>
       </div>
-    </div>
 
-    <div class="card shadow-sm mb-3">
-      <div class="card-body">
-        <h6 class="mb-3 d-flex align-items-center gap-2">
-          <Activity class="text-secondary" :size="18" />
-          Recurring Workouts
-        </h6>
+      <div class="card shadow-soft mb-3">
+        <div class="card-body">
+          <label class="form-label">Search foods (OpenFoodFacts)</label>
+          <div class="input-group">
+            <input class="form-control" v-model="mealSearch" @keyup.enter="searchFoods"
+              placeholder="e.g., chicken rice" />
+            <button class="btn btn-outline-secondary" @click="searchFoods" :disabled="searching">{{ searching ?
+              "Searching…" : "Search" }}</button>
+          </div>
+          <ul v-if="mealResults.length" class="list-group mt-2">
+            <li v-for="r in mealResults" :key="r.name + r.brand"
+              class="list-group-item d-flex justify-content-between align-items-center">
+              <div class="me-2">
+                <div class="fw-semibold">{{ r.name }}</div>
+                <div class="small text-secondary" v-if="r.brand">{{ r.brand }}</div>
+                <div class="small text-muted">per 100g: {{ r.kcal100 || 0 }} kcal • P{{ r.p100 || 0 }} C{{
+                  r.c100 || 0 }} F{{ r.f100 || 0 }}</div>
+              </div>
+              <button class="btn btn-sm btn-primary" @click="useResult(r, true)">Add</button>
+            </li>
+          </ul>
+          <div v-else-if="searching" class="small text-muted mt-2">Searching…</div>
+        </div>
+      </div>
 
-        <div class="row g-2 align-items-end">
-          <div class="col-12 col-md-5">
-            <label class="form-label small text-muted mb-1">Activity</label>
-            <input class="form-control" v-model.trim="newSchedule.name" placeholder="e.g., Running" />
+      <div class="card shadow-soft mb-3">
+        <div class="card-body">
+          <h6 class="mb-2">Add Meal</h6>
+          <div class="row g-2 align-items-end">
+            <div class="col-12 col-md-3">
+              <label class="form-label small text-muted mb-1">Type</label>
+              <select class="form-select" v-model="mealForm.type">
+                <option>Breakfast</option>
+                <option>Lunch</option>
+                <option>Dinner</option>
+                <option>Snack</option>
+              </select>
+            </div>
+            <div class="col-12 col-md-5">
+              <label class="form-label small text-muted mb-1">Meal name</label>
+              <input class="form-control" placeholder="e.g., Chicken rice" v-model.trim="mealForm.name" />
+            </div>
+            <div class="col-4 col-md-1">
+              <label class="form-label small text-muted mb-1">P (g)</label>
+              <input class="form-control" type="number" min="0" v-model.number="mealForm.protein" />
+            </div>
+            <div class="col-4 col-md-1">
+              <label class="form-label small text-muted mb-1">C (g)</label>
+              <input class="form-control" type="number" min="0" v-model.number="mealForm.carbs" />
+            </div>
+            <div class="col-4 col-md-1">
+              <label class="form-label small text-muted mb-1">F (g)</label>
+              <input class="form-control" type="number" min="0" v-model.number="mealForm.fat" />
+            </div>
+            <div class="col-6 col-md-1">
+              <label class="form-label small text-muted mb-1">kcal</label>
+              <input class="form-control bg-light" type="number" :value="calculatedCalories" readonly />
+            </div>
           </div>
-          <div class="col-6 col-md-3">
-            <label class="form-label small text-muted mb-1">Intensity</label>
-            <select class="form-select" v-model="newSchedule.intensity">
-              <option value="easy">Easy</option>
-              <option value="moderate">Moderate</option>
-              <option value="vigorous">Vigorous</option>
-            </select>
-          </div>
-          <div class="col-6 col-md-2">
-            <label class="form-label small text-muted mb-1">Minutes</label>
-            <input class="form-control" type="text" inputmode="numeric" :value="newSchedule.minutes"
-              @input="e => newSchedule.minutes = digitsOnly(e.target.value)" placeholder="e.g., 60" />
-          </div>
-          <div class="col-12 col-md-2 d-flex align-items-end">
-            <button class="btn save-button w-100" @click="addSchedule">
+          <div class="d-flex gap-2 mt-2">
+            <button class="btn save-button" @click="addMeal" :disabled="!mealForm.name || calculatedCalories <= 0">
               <i class="mdi mdi-plus"></i>
-              Add recurring
+              Add
             </button>
           </div>
         </div>
+      </div>
 
-        <div class="mt-2">
-          <label class="form-label small text-muted mb-1">Days</label>
-          <div class="d-flex gap-2 flex-nowrap overflow-auto py-1">
-            <button v-for="d in weekDays" :key="d.val" type="button" class="btn btn-sm"
-              :class="newSchedule.days.includes(d.val) ? 'day-btn-selected' : 'day-btn'"
-              @click="toggleScheduleDay(d.val)">
-              {{ d.label }}
+      <div class="row g-3 mb-3">
+        <div class="col-12 col-lg-6">
+          <div class="card h-100 shadow-soft">
+            <div class="card-body">
+              <h6 class="mb-2">Meal Templates</h6>
+              <div class="row g-2 mb-2 align-items-end">
+                <div class="col-12 col-md-4">
+                  <label class="form-label small text-muted mb-1">Template Name</label>
+                  <input class="form-control" placeholder="e.g., Protein Shake" v-model.trim="newMealTemplate.name" />
+                </div>
+                <div class="col-3 col-md-2">
+                  <label class="form-label small text-muted mb-1">Calories (auto)</label>
+                  <input class="form-control bg-light" type="number" placeholder="0" :value="calculatedTemplateCalories"
+                    readonly />
+                </div>
+                <div class="col-3 col-md-2">
+                  <label class="form-label small text-muted mb-1">Protein (g)</label>
+                  <input class="form-control" type="number" min="0" placeholder="0" v-model.number="newMealTemplate.p" />
+                </div>
+                <div class="col-3 col-md-2">
+                  <label class="form-label small text-muted mb-1">Carbs (g)</label>
+                  <input class="form-control" type="number" min="0" placeholder="0" v-model.number="newMealTemplate.c" />
+                </div>
+                <div class="col-3 col-md-2">
+                  <label class="form-label small text-muted mb-1">Fat (g)</label>
+                  <input class="form-control" type="number" min="0" placeholder="0" v-model.number="newMealTemplate.f" />
+                </div>
+              </div>
+              <button class="btn save-button mb-2" @click="addMealTemplate">
+                <i class="mdi mdi-plus"></i>
+                Add Template
+              </button>
+              <div class="d-flex flex-wrap gap-2">
+                <div v-for="t in mealTemplates" :key="t.id"
+                  class="badge text-bg-light p-2 d-flex align-items-center gap-2">
+                  <div>
+                    <div>{{ t.name }}</div>
+                    <div class="text-muted">{{ t.calories }} kcal</div>
+                  </div>
+                  <button class="btn btn-xs btn-outline-primary" @click="applyMealTemplate(t)">Use</button>
+                  <button class="btn btn-xs btn-outline-danger" @click="removeMealTemplate(t.id)">Remove</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-12 col-lg-6">
+          <div class="card h-100 shadow-soft">
+            <div class="card-body">
+              <h6 class="mb-2">Workout Templates</h6>
+              <div class="row g-2 mb-2">
+                <div class="col-12 col-md-5">
+                  <input class="form-control" placeholder="Activity" v-model.trim="newWorkoutTemplate.name" />
+                </div>
+                <div class="col-6 col-md-4">
+                  <select class="form-select" v-model="newWorkoutTemplate.intensity">
+                    <option value="easy">Easy</option>
+                    <option value="moderate">Moderate</option>
+                    <option value="vigorous">Vigorous</option>
+                  </select>
+                </div>
+                <div class="col-6 col-md-3">
+                  <input class="form-control" type="text" inputmode="numeric" placeholder="Min"
+                    :value="newWorkoutTemplate.dur" @input="e => newWorkoutTemplate.dur = digitsOnly(e.target.value)" />
+                </div>
+              </div>
+              <button class="btn save-button mb-2" @click="addWorkoutTemplate">
+                <i class="mdi mdi-plus"></i>
+                Add Template
+              </button>
+              <div class="d-flex flex-wrap gap-2">
+                <div v-for="t in workoutTemplates" :key="t.id" class="badge text-bg-light p-2">
+                  <span class="me-2">{{ t.name }} ({{ t.duration }}m, {{ t.intensity }})</span>
+                  <button class="btn btn-xs btn-outline-primary me-1" @click="applyWorkoutTemplate(t)">Use</button>
+                  <button class="btn btn-xs btn-outline-danger" @click="removeWorkoutTemplate(t.id)">Remove</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card shadow-soft mb-3 border-0 rounded-3">
+        <div class="card-body">
+          <h6 class="mb-3 d-flex align-items-center gap-2">
+            <Activity class="text-secondary" :size="18" />
+            Add Workout
+          </h6>
+
+          <div class="mb-3">
+            <label class="form-label small text-muted">Select Activity</label>
+            <div class="d-flex flex-wrap gap-2">
+              <button v-for="a in QUICK_ACTIVITIES" :key="a.name" class="btn btn-sm rounded-pill px-3 py-1"
+                :class="workoutForm.activity === a.name ? 'btn-secondary' : 'btn-outline-secondary'"
+                @click="workoutForm.activity = a.name">
+                {{ a.icon }} {{ a.name }}
+              </button>
+            </div>
+          </div>
+
+          <div class="mb-2">
+            <label class="form-label small text-muted">Intensity</label>
+            <div class="d-flex gap-2">
+              <button class="btn btn-sm rounded-pill"
+                :class="workoutForm.intensity === 'easy' ? 'btn-outline-secondary active' : 'btn-outline-secondary'"
+                @click="workoutForm.intensity = 'easy'">Easy</button>
+              <button class="btn btn-sm rounded-pill"
+                :class="workoutForm.intensity === 'moderate' ? 'btn-outline-secondary active' : 'btn-outline-secondary'"
+                @click="workoutForm.intensity = 'moderate'">Moderate</button>
+              <button class="btn btn-sm rounded-pill"
+                :class="workoutForm.intensity === 'vigorous' ? 'btn-outline-secondary active' : 'btn-outline-secondary'"
+                @click="workoutForm.intensity = 'vigorous'">Vigorous</button>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label small text-muted">Duration (minutes) and kcal (optional)</label>
+            <div class="d-flex gap-2 flex-wrap align-items-center">
+              <button v-for="d in QUICK_DURATIONS" :key="d" class="btn btn-sm rounded-pill"
+                :class="String(workoutForm.minutes) === String(d) ? 'btn-secondary' : 'btn-outline-secondary'"
+                @click="workoutForm.minutes = String(d)">
+                {{ d }} min
+              </button>
+              <div class="input-group w-auto">
+                <input type="text" inputmode="numeric" class="form-control form-control-sm rounded-pill text-center"
+                  placeholder="Custom min" :value="workoutForm.minutes"
+                  @input="e => workoutForm.minutes = digitsOnly(e.target.value)" style="width:110px;" />
+              </div>
+              <div class="input-group w-auto">
+                <input type="text" inputmode="numeric" class="form-control form-control-sm rounded-pill text-center"
+                  placeholder="kcal (optional)" :value="workoutForm.kcalOverride"
+                  @input="e => workoutForm.kcalOverride = digitsOnly(e.target.value)" style="width:130px;" />
+              </div>
+            </div>
+          </div>
+
+          <div class="d-flex justify-content-between align-items-center mt-2 flex-wrap">
+            <div class="small text-muted" v-if="workoutForm.activity && (previewMinutes || hasOverride)">
+              <span class="fw-semibold text-dark">{{ workoutForm.activity }}</span>
+              ({{ workoutForm.intensity }}) for
+              <span class="fw-semibold">{{ previewMinutes || 0 }} min</span>
+              ≈
+              <span class="fw-bold text-success">{{ previewKcal }} kcal</span>
+            </div>
+            <button class="btn save-button ms-auto" :disabled="!workoutForm.activity || !(previewMinutes || hasOverride)"
+              @click="addWorkout">
+              <i class="mdi mdi-plus"></i>
+              Add
             </button>
           </div>
         </div>
-
-        <hr />
-        <div v-if="schedules.length === 0" class="text-muted">No recurring workouts yet.</div>
-        <ul v-else class="list-group">
-          <li v-for="s in schedules" :key="s.id"
-            class="list-group-item d-flex justify-content-between align-items-center">
-            <div>
-              <div class="fw-semibold">
-                {{ s.name }} — {{ s.minutes }} min ({{ s.intensity }})
-              </div>
-              <div class="small text-secondary">
-                {{ s.days.join(", ") }}
-              </div>
-            </div>
-            <button class="btn btn-sm cancel-button" @click="removeSchedule(s.id)">Remove</button>
-          </li>
-        </ul>
       </div>
-    </div>
 
-    <div class="card shadow-sm mb-4">
-      <div class="card-body">
-        <h6 class="mb-3 d-flex align-items-center gap-2">
-          <Activity class="text-info" :size="18" />
-          Today's Workouts
-        </h6>
-        <div v-if="!userId" class="text-muted">Sign in to log workouts.</div>
-        <div v-else-if="workoutsSorted.length === 0" class="text-muted">No workouts yet.</div>
-        <ul class="list-group">
-          <li v-for="w in workoutsSorted" :key="w.id"
-            class="list-group-item d-flex justify-content-between align-items-center">
-            <div>
-              <div class="fw-semibold">{{ w.activity }}</div>
-              <div class="small text-secondary">
-                {{ w.minutes }} minutes • {{ w.kcal }} kcal • {{ w.intensity }}
-              </div>
+      <div class="card shadow-soft mb-3">
+        <div class="card-body">
+          <h6 class="mb-3 d-flex align-items-center gap-2">
+            <Activity class="text-secondary" :size="18" />
+            Recurring Workouts
+          </h6>
+
+          <div class="row g-2 align-items-end">
+            <div class="col-12 col-md-5">
+              <label class="form-label small text-muted mb-1">Activity</label>
+              <input class="form-control" v-model.trim="newSchedule.name" placeholder="e.g., Running" />
             </div>
-            <button class="btn btn-sm cancel-button" @click="removeWorkout(w.id)">Delete</button>
-          </li>
-        </ul>
-        <div class="mt-3 small">
-          <strong>Totals:</strong>
-          {{ totalsWorkouts.minutes }} min • {{ totalsWorkouts.kcal }} kcal
+            <div class="col-6 col-md-3">
+              <label class="form-label small text-muted mb-1">Intensity</label>
+              <select class="form-select" v-model="newSchedule.intensity">
+                <option value="easy">Easy</option>
+                <option value="moderate">Moderate</option>
+                <option value="vigorous">Vigorous</option>
+              </select>
+            </div>
+            <div class="col-6 col-md-2">
+              <label class="form-label small text-muted mb-1">Minutes</label>
+              <input class="form-control" type="text" inputmode="numeric" :value="newSchedule.minutes"
+                @input="e => newSchedule.minutes = digitsOnly(e.target.value)" placeholder="e.g., 60" />
+            </div>
+            <div class="col-12 col-md-2 d-flex align-items-end">
+              <button class="btn save-button w-100" @click="addSchedule">
+                <i class="mdi mdi-plus"></i>
+                Add Recurring
+              </button>
+            </div>
+          </div>
+
+          <div class="mt-2">
+            <label class="form-label small text-muted mb-1">Days</label>
+            <div class="d-flex gap-2 flex-nowrap overflow-auto py-1">
+              <button v-for="d in weekDays" :key="d.val" type="button" class="btn btn-sm"
+                :class="newSchedule.days.includes(d.val) ? 'day-btn-selected' : 'day-btn'"
+                @click="toggleScheduleDay(d.val)">
+                {{ d.label }}
+              </button>
+            </div>
+          </div>
+
+          <hr />
+          <div v-if="schedules.length === 0" class="text-muted">No recurring workouts yet.</div>
+          <ul v-else class="list-group">
+            <li v-for="s in schedules" :key="s.id"
+              class="list-group-item d-flex justify-content-between align-items-center">
+              <div>
+                <div class="fw-semibold">
+                  {{ s.name }} — {{ s.minutes }} min ({{ s.intensity }})
+                </div>
+                <div class="small text-secondary">
+                  {{ s.days.join(", ") }}
+                </div>
+              </div>
+              <button class="btn btn-sm cancel-button" @click="removeSchedule(s.id)">Remove</button>
+            </li>
+          </ul>
         </div>
       </div>
-    </div>
 
-    <div ref="toastRef" class="toast position-fixed bottom-0 start-50 translate-middle-x m-3" role="alert"
-      aria-live="assertive" aria-atomic="true" data-bs-delay="3000" data-bs-autohide="true">
-      <div class="toast-body">
-        {{ toastMessage }}
+      <div class="card shadow-soft mb-4">
+        <div class="card-body">
+          <h6 class="mb-3 d-flex align-items-center gap-2">
+            <Activity class="text-info" :size="18" />
+            Today's Workouts
+          </h6>
+          <div v-if="!userId" class="text-muted">Sign in to log workouts.</div>
+          <div v-else-if="workoutsSorted.length === 0" class="text-muted">No workouts yet.</div>
+          <ul class="list-group">
+            <li v-for="w in workoutsSorted" :key="w.id"
+              class="list-group-item d-flex justify-content-between align-items-center">
+              <div>
+                <div class="fw-semibold">{{ w.activity }}</div>
+                <div class="small text-secondary">
+                  {{ w.minutes }} minutes • {{ w.kcal }} kcal • {{ w.intensity }}
+                </div>
+              </div>
+              <button class="btn btn-sm cancel-button" @click="removeWorkout(w.id)">Delete</button>
+            </li>
+          </ul>
+          <div class="mt-3 small">
+            <strong>Totals:</strong>
+            {{ totalsWorkouts.minutes }} min • {{ totalsWorkouts.kcal }} kcal
+          </div>
+        </div>
       </div>
-    </div>
 
-    <div class="modal fade" :class="{ show: generalDialog, 'd-block': generalDialog }" tabindex="-1"
-      style="background-color: rgba(0,0,0,0.5);">
-      <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">
-              <i class="mdi mdi-alert-circle-outline me-2"></i>
-              Confirm
-            </h5>
-            <button type="button" class="btn-close btn-close-white" @click="closeGeneralDialog"></button>
-          </div>
-          <div class="modal-body">
-            <p class="mb-0">{{ dialogMessage }}</p>
-          </div>
-          <div class="modal-footer">
-            <button class="btn cancel-button" @click="closeGeneralDialog">Close</button>
+      <div ref="toastRef" class="toast position-fixed bottom-0 start-50 translate-middle-x m-3" role="alert"
+        aria-live="assertive" aria-atomic="true" data-bs-delay="3000" data-bs-autohide="true">
+        <div class="toast-body">
+          {{ toastMessage }}
+        </div>
+      </div>
+
+      <div class="modal fade" :class="{ show: generalDialog, 'd-block': generalDialog }" tabindex="-1"
+        style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-dialog-centered">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">
+                <i class="mdi mdi-alert-circle-outline me-2"></i>
+                Confirm
+              </h5>
+              <button type="button" class="btn-close btn-close-white" @click="closeGeneralDialog"></button>
+            </div>
+            <div class="modal-body">
+              <p class="mb-0">{{ dialogMessage }}</p>
+            </div>
+            <div class="modal-footer">
+              <button class="btn cancel-button" @click="closeGeneralDialog">Close</button>
+            </div>
           </div>
         </div>
       </div>
@@ -1127,6 +1213,13 @@ watch([schedules, selectedDate], () => {
 </template>
 
 <style scoped>
+h1 {
+  background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
 .toast {
   background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
   color: #fff;
@@ -1338,5 +1431,74 @@ watch([schedules, selectedDate], () => {
   border-radius: 9999px;
   padding: 4px 10px;
   box-shadow: 0 4px 10px rgba(102, 126, 234, 0.3);
+}
+
+.goal-btn-group {
+  display: flex;
+  gap: 0.5rem;
+  width: 100%;
+  background: #f8f9fa;
+  padding: 0.5rem;
+  border-radius: 12px;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.goal-btn-group {
+  display: flex;
+  gap: 0.5rem;
+  width: 100%;
+  background: #f8f9fa;
+  padding: 0.5rem;
+  border-radius: 12px;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.goal-btn {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  background: white;
+  color: #667eea;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.goal-btn:hover {
+  background: #f0f2ff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+}
+
+.goal-btn.active {
+  background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-color: #667eea;
+  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.35);
+}
+
+.goal-btn.active:hover {
+  box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+}
+
+/* Responsive */
+@media (max-width: 576px) {
+  .goal-btn {
+    padding: 0.6rem 0.5rem;
+    font-size: 0.85rem;
+  }
+  
+  .goal-btn i {
+    display: none;
+  }
+}
+
+.shadow-soft {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
 }
 </style>
