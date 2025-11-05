@@ -6,7 +6,6 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { loadGoogleMaps } from "@/plugins/googleMaps";
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { Toast } from 'bootstrap';
-
 // ==================== Reactive State ====================
 // Loading state
 const isLoading = ref(true);
@@ -1025,15 +1024,15 @@ onBeforeUnmount(() => {
     <!-- Loading in progress -->
     <div v-if="isLoading" class="loading-state d-flex align-items-center justify-content-center min-vh-100">
       <div class="text-center">
-        <div class="spinner-border spinner-text mb-3" role="status"></div>
-        <p class="spinner-text">Preparing your dashboard...</p>
+        <div class="spinner-border mb-3" role="status"></div>
+        <p>Preparing your dashboard...</p>
       </div>
     </div>
 
     <!-- Main content loaded-->
     <div v-else>
       <header>
-        <div class="container px-3 pt-4 pb-2">
+        <div class="container pt-4">
           <h1 class="display-6 fw-bold mb-2">Welcome back, {{ auth.currentUser.displayName }}!</h1>
           <p class="fs-5 mb-0">
             Here's an overview of your recent wellbeing and activities.
@@ -1042,9 +1041,9 @@ onBeforeUnmount(() => {
       </header>
 
       <!-- Recommendation section -->
-      <div class="container py-4">
+      <div class="container">
         <!-- Header -->
-        <h2>Your personalised recommendations</h2>
+        <h2>Personalised recommendations</h2>
         <p>Suggestions tailored to your current schedule and wellbeing</p>
 
         <!-- Status cards -->
@@ -1092,7 +1091,7 @@ onBeforeUnmount(() => {
 
         <!-- Dashboard section -->
         <!-- Header -->
-        <div class="mt-5">
+        <div class="dashboard-header">
           <h2>Dashboard</h2>
           <p>Check out what's happening this week</p>
         </div>
@@ -1137,7 +1136,7 @@ onBeforeUnmount(() => {
                       <!-- Events -->
                       <div class="d-flex flex-column gap-2">
                         <div v-for="event in dayGroup.events" :key="event.id"
-                          class="event-card py-2 px-3 rounded-2 border"
+                          class="card event-card py-2 px-3 rounded-2"
                           :style="{ backgroundColor: event.colour, color: getContrastColor(event.colour) }">
                           <div class="d-flex align-items-start justify-content-between gap-2">
                             <div class="flex-grow-1">
@@ -1194,7 +1193,7 @@ onBeforeUnmount(() => {
 
           <!-- Module progress -->
           <div class="col-12 col-lg-6">
-            <div class="card  h-100">
+            <div class="card h-100">
               <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                   <h5 class="mb-0 fw-semibold d-flex align-items-center gap-2">
@@ -1239,7 +1238,7 @@ onBeforeUnmount(() => {
 
                 <div v-else-if="journalHistory.length" class="d-flex flex-column gap-2 flex-grow-1">
                   <div v-for="entry in journalHistory.slice(0, 3)" :key="entry.id"
-                    class="border rounded-2 p-3 transition-all" style="border-color: #e0e0e0; background: #fafafa;">
+                    class="card rounded-2 p-3 transition-all" style="border-color: #e0e0e0; background: #fafafa;">
 
                     <div class="d-flex align-items-center justify-content-between mb-2">
                       <span class="small fw-semibold">
@@ -1306,11 +1305,11 @@ onBeforeUnmount(() => {
 <style scoped>
 /* Cards */
 .card {
+  border: none;
   border-radius: 0.75rem;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
   background-color: #f5f5f5;
-  border: 0;
 }
 
 /* Card Hover Effect */
@@ -1324,9 +1323,25 @@ onBeforeUnmount(() => {
   text-transform: capitalize;
 }
 
+/* Container */
+.container {
+  padding-bottom: 2rem;
+}
+
+h1,
+h2,
+.container>p,
+.dashboard-header p {
+  padding-left: 0.25rem;
+}
+
 /* Container Background */
 .container-color {
   background: linear-gradient(135deg, #e5e5f2 0%, #d8d6f0 100%);
+}
+
+.dashboard-header {
+  margin-top: 2.5rem;
 }
 
 /* Icon wrapper */
