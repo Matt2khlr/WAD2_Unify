@@ -57,7 +57,7 @@ export default {
         { label: 'Thu', value: 'TH' },
         { label: 'Fri', value: 'FR' },
         { label: 'Sat', value: 'SA' }
-      ]
+      ],
     }
   },
 
@@ -563,17 +563,6 @@ export default {
       console.log("Disconnected from Google Calendar API.")
     },
 
-    // Auto Sync with Google Calendar
-    // startAutoSync() {
-    //   if (this.syncInterval) {
-    //     clearInterval(this.syncInterval);
-    //   }
-
-    //   this.syncInterval = setInterval(() => {
-    //     this.syncWithGoogle()
-    //   }, 1 * 60 * 1000)
-    // },
-
     startAutoSync() {
       if (this.syncInterval) clearInterval(this.syncInterval);
       this.syncInterval = setInterval(async () => {
@@ -584,25 +573,6 @@ export default {
         }
       }, 60 * 1000);
     },
-
-    // async initGoogle() {
-    //   try {
-    //     // Load Google Calendar API Client
-    //     await new Promise((resolve) => {
-    //       gapi.load('client', resolve)
-    //     })
-
-    //     // Initialise Google Calendar Client
-    //     await gapi.client.init({
-    //       apiKey: import.meta.env.VITE_GOOGLE_API_KEY,
-    //       discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest']
-    //     })
-
-    //     console.log('Google Calendar API Initialised')
-    //   } catch (error) {
-    //     console.error('Error Initialising Google Calendar API:', error)
-    //   }
-    // },
 
     async initGoogle() {
       try {
@@ -822,28 +792,62 @@ export default {
 
     async geocodeLocation(address) {
       try {
-        const { Place } = await google.maps.importLibrary("places");
-
-        const request = {
-          textQuery: address,
-          fields: ['displayName', 'formattedAddress', 'location'],
-          maxResultCount: 1
-        };
-
-        const { places } = await Place.searchByText(request);
-
-        if (places && places.length > 0) {
-          const place = places[0];
-          const loc = place.location;
-
-          return {
-            geopoint: new GeoPoint(loc.lat, loc.lng),
-            name: place.displayName ? `${place.displayName}, ${place.formattedAddress}` : place.formattedAddress
-          };
-        } else {
-          return null;
-        }
-      }
+        const { PlacesService } = await google.maps.importLibrary("places");
+        const { Geocoder } = await google.maps.importLibrary("geocoding");
+        
+        const geocoder = new Geocoder();
+        
+        return new Promise((resolve) => {
+          // Geocode Location
+          geocoder.geocode({ address: address }, async (results, status) => {
+            if (status === 'OK' && results[0]) {
+              const loc = results[0].geometry.location;
+              let displayName = address;
+              
+              // Get Place Details
+              if (results[0].place_id) {
+                try {
+                  const service = new PlacesService(document.createElement('div'));
+                  
+                  service.getDetails(
+                    { placeId: results[0].place_id },
+                    (place, placeStatus) => {
+                      if (placeStatus === 'OK' && place) {
+                        displayName = place.name 
+                          ? `${place.name}, ${place.formatted_address}`
+                          : place.formatted_address || address;
+                      } 
+                      else {
+                        displayName = address;
+                      }
+                      
+                      resolve({
+                        geopoint: new GeoPoint(loc.lat(), loc.lng()),
+                        name: displayName
+                      });
+                    }
+                  );
+                } 
+                catch (err) {
+                  resolve({
+                    geopoint: new GeoPoint(loc.lat(), loc.lng()),
+                    name: address
+                  });
+                }
+              } 
+              else {
+                resolve({
+                  geopoint: new GeoPoint(loc.lat(), loc.lng()),
+                  name: address
+                });
+              }
+            } 
+            else {
+              resolve(null);
+            }
+          });
+        });
+      } 
       catch (err) {
         return null;
       }
@@ -1125,9 +1129,8 @@ export default {
           this.closeCreateDialog();
         }
         this.editMode = false;
-        this.showToast(this.editMode ? 'Event Updated Successfully!' : 'Event Created Successfully!');
+        this.showToast(this.editMode ? 'Event updated successfully' : 'Event created successfully');
       } catch (error) {
-        //alert('Error Saving Event: ' + error.message);
         this.showToast('Error Saving Event. Please Try Again.');
       }
     },
@@ -1191,7 +1194,7 @@ export default {
           resource.location = eventData.locationName
         }
 
-        // Add recurrence rule
+        // Add Recurrence Rule
         if (eventData.isRecurring && eventData.recurrenceRule) {
           resource.recurrence = [`RRULE:${eventData.recurrenceRule}`];
         }
@@ -1436,23 +1439,6 @@ export default {
         },
     },
 
-    // async mounted() {
-    //   await loadGoogleMaps()
-    //   this.listenToEvents();
-    //   await this.initGoogle();
-
-    //   // Check for Saved Session
-    //   const savedToken = sessionStorage.getItem('google_token')
-    //   if (savedToken) {
-    //     this.syncEnabled = true;
-    //     this.accessToken = savedToken;
-
-    //     await this.waitForGoogleAPI()
-    //     await this.syncWithGoogle()
-    //     this.startAutoSync()
-    //   }
-    // },
-
     async mounted() {
         await loadGoogleMaps();
         this.listenToEvents();
@@ -1501,10 +1487,10 @@ export default {
       <div class="col-lg-9 d-flex flex-column">
         <div class="card h-100 shadow-soft">
           <div class="card-header">
-            <div class="d-flex align-items-center">
-
+            <!-- Calendar Controls -->
+            <div class="header-controls">
               <!-- View Selector Dropdown -->
-              <div class="dropdown me-3">
+              <div class="dropdown">
                 <button class="btn btn-sm view-dropdown-btn dropdown-toggle" type="button" id="viewDropdown"
                   data-bs-toggle="dropdown" aria-expanded="false">
                   <i class="mdi mdi-calendar-month me-1"></i>
@@ -1514,29 +1500,26 @@ export default {
                   <li>
                     <a class="dropdown-item" :class="{ 'active': calendarView === 'day' }" href="#"
                       @click.prevent="calendarView = 'day'">
-                      <i class="mdi mdi-calendar-today me-2"></i>
-                      Day
+                      <i class="mdi mdi-calendar-today me-2"></i>Day
                     </a>
                   </li>
                   <li>
                     <a class="dropdown-item" :class="{ 'active': calendarView === 'week' }" href="#"
                       @click.prevent="calendarView = 'week'">
-                      <i class="mdi mdi-calendar-week me-2"></i>
-                      Week
+                      <i class="mdi mdi-calendar-week me-2"></i>Week
                     </a>
                   </li>
                   <li>
                     <a class="dropdown-item" :class="{ 'active': calendarView === 'month' }" href="#"
                       @click.prevent="calendarView = 'month'">
-                      <i class="mdi mdi-calendar-month me-2"></i>
-                      Month
+                      <i class="mdi mdi-calendar-month me-2"></i>Month
                     </a>
                   </li>
                 </ul>
               </div>
 
-              <!-- Navigation Buttons-->
-              <div class="btn-group nav-btn-group">
+              <!-- Navigation Buttons -->
+              <div class="btn-group nav-btn-group" role="group">
                 <button class="btn btn-sm nav-btn" @click="prev">
                   <i class="mdi mdi-chevron-left"></i>
                 </button>
@@ -1549,26 +1532,24 @@ export default {
               </div>
 
               <!-- Current Period -->
-              <span class="ms-3 text-light fw-semibold">{{ currentPeriod }}</span>
+              <span class="text-light fw-semibold period-text">{{ currentPeriod }}</span>
 
-              <div class="ms-auto d-flex align-items-center">
-                <!-- Google Calendar Sync Toggle -->
-                <div class="ios-switch-container me-3">
-                  <input type="checkbox" id="googleSync" class="ios-switch-input" v-model="syncEnabled"
-                    @change="toggleSync">
-                  <label class="ios-switch-label" for="googleSync">
-                    <span class="ios-switch-slider"></span>
-                  </label>
-                  <label class="form-check-label ms-2" for="googleSync">
-                    <i class="mdi mdi-google"></i> Sync with Google
-                  </label>
-                </div>
-
-                <!-- Add Event Button -->
-                <button class="btn add-event" @click="openAddDialog">
-                  <i class="mdi mdi-calendar-plus"></i> Add Event
-                </button>
+              <!-- Google Calendar Sync Toggle -->
+              <div class="ios-switch-container">
+                <input type="checkbox" id="googleSync" class="ios-switch-input" v-model="syncEnabled"
+                  @change="toggleSync">
+                <label class="ios-switch-label" for="googleSync">
+                  <span class="ios-switch-slider"></span>
+                </label>
+                <label class="form-check-label ms-2 text-light" for="googleSync" style="font-size: small;">
+                  <i class="mdi mdi-google"></i> Sync with Google
+                </label>
               </div>
+
+              <!-- Add Event Button -->
+              <button class="btn btn-sm add-event" @click="openAddDialog">
+                <i class="mdi mdi-calendar-plus"></i> Add Event
+              </button>
             </div>
           </div>
 
@@ -1602,8 +1583,8 @@ export default {
       <!-- Event List - Grouped by Day -->
       <div class="col-lg-3 mt-lg-0 mt-4 mb-lg-0 mb-4">
         <div class="card h-100 mb-1 shadow-soft">
-          <div class="card-header" style="padding-top: 17px; padding-bottom: 17px;">
-            <h6 class="mb-0 fw-semibold">Upcoming Events</h6>
+          <div class="card-header" style="padding-top: 20px; padding-bottom: 20px;">
+            <h5 class="mb-0 fw-semibold text-light">Upcoming Events</h5>
           </div>
           <div class="card-body p-3">
             <!-- Events List Grouped by Day -->
@@ -1744,8 +1725,8 @@ export default {
               <!-- Weekly Options -->
               <div v-if="currentEvent.recurrence.frequency === 'WEEKLY'" class="mb-3">
                 <label class="form-label">Repeats Every</label>
-                <div class="d-flex gap-2">
-                  <button v-for="day in weekDays" :key="day.value" type="button" class="btn btn-sm"
+                <div class="d-flex gap-2 flex-wrap">
+                  <button v-for="day in weekDays" :key="day.value" type="button" 
                     :class="currentEvent.recurrence.byWeekDay.includes(day.value) ? 'day-btn-selected' : 'day-btn'"
                     @click="toggleWeekDay(day.value)">
                     {{ day.label }}
@@ -1825,7 +1806,7 @@ export default {
             </div>
 
             <div class="mb-3">
-              <label class="form-label">Color</label>
+              <label class="form-label">Event Colour</label>
               <input type="color" class="form-control form-control-color" v-model="currentEvent.colour"
                 style="width: 100px;">
             </div>
@@ -1912,8 +1893,8 @@ export default {
               <!-- Weekly Options -->
               <div v-if="currentEvent.recurrence.frequency === 'WEEKLY'" class="mb-3">
                 <label class="form-label">Repeats Every</label>
-                <div class="d-flex gap-2">
-                  <button v-for="day in weekDays" :key="day.value" type="button" class="btn btn-sm"
+                <div class="d-flex gap-2 flex-wrap">
+                  <button v-for="day in weekDays" :key="day.value" type="button" 
                     :class="currentEvent.recurrence.byWeekDay.includes(day.value) ? 'day-btn-selected' : 'day-btn'"
                     @click="toggleWeekDay(day.value)">
                     {{ day.label }}
@@ -2006,7 +1987,7 @@ export default {
                 <label class="form-label" v-if="currentEvent.location">Event Location</label>
                 <div v-if="currentEvent.location" class="text">
                   📍 {{ currentEvent.locationName }}&nbsp;&nbsp;
-                  <button @click.stop="openMap(currentEvent)" class="map-button" title="Open in Google Maps">
+                  <button @click.stop="openMap(currentEvent)" class="map-button" title="Open in Google Maps" style="display: inline;">
                     <i class="mdi mdi-map-marker map-icon"></i>
                   </button>
                 </div>
@@ -2104,108 +2085,144 @@ export default {
 </template>
 
 <style scoped>
+/* ====== Card Header and Controls ======*/
 .card-header {
-  background: #667eea;
+  display: flex;
+  flex-direction: column;
+  padding: 0.75rem 1rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.header-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  width: 100%;
+}
+
+.period-text {
+  font-size: 1.25rem;
+  white-space: nowrap;
+}
+
+/* View Dropdown Button */
+.view-dropdown-btn {
+  background-color: white;
+  color: #667eea;
+  border: 1.5px solid white;
+  padding: 0.6rem 1rem;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.3s ease;
+  height: 38px;
+}
+
+.view-dropdown-btn:hover {
+  background: white;
+  color: #764ba2;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+  transform: translateY(-2px);
+}
+
+/* Dropdown Menu */
+.dropdown-menu-styled {
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  padding: 0.5rem;
+  min-width: 140px;
+}
+
+.dropdown-menu-styled .dropdown-item {
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+.dropdown-menu-styled .dropdown-item:hover {
+  background: #f3f4f6;
+}
+
+.dropdown-menu-styled .dropdown-item.active {
+  background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
   color: white;
 }
 
-.event-item:hover {
-  opacity: 0.85;
-}
-
-.modal.show {
-  display: block !important;
-}
-
-/* Month View */
-:deep(.v-calendar-monthly__day) {
-  min-height: 120px !important;
-}
-
-/* Week View */
-:deep(.v-calendar-weekly__day) {
-  min-height: 100px !important;
-}
-
-:deep(.v-calendar-weekly__head) {
-  margin-bottom: 0 !important;
-}
-
-/* Day View */
-:deep(.v-calendar-daily__day) {
-  min-height: 50px !important;
-}
-
-:deep(.v-calendar-weekly .event-item),
-:deep(.v-calendar-daily .event-item) {
-  padding: 4px 6px;
-  margin: 2px 0;
-  white-space: normal;
-  line-height: 1.3;
-}
-
-.btn-group .btn-sm {
-  padding: 0.25rem 0.75rem;
-  font-size: 0.875rem;
-}
-
-.shadow-soft {
-  box-shadow: 0 8px 24px rgba(0, 0, 0, .06);
-}
-
-.form-label {
-  display: block;
-  font-weight: 600;
-  color: #374151;
-  margin-bottom: 0.5rem;
-}
-
-/* CSS for Add Event Button */
-.add-event {
+/* Navigation Button Group */
+.nav-btn-group {
+  background: white;
   border-radius: 20px;
-  background-color: white;
-  color: #667eea;
+  padding: 4px;
+  gap: 2px;
+  height: 38px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
-.add-event:hover {
+.nav-btn {
+  background: transparent;
+  color: #667eea;
+  border: none;
+  padding: 0.5rem 0.8rem;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.nav-btn:hover {
+  background: #f3f4f6;
   color: #764ba2;
 }
 
-/* Cards */
-.card {
-  border-radius: 1rem;
-  overflow: hidden;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+.nav-btn-today {
+  background: transparent;
+  color: #667eea;
 }
 
-/* Card Hover Effect */
-.card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.05);
+.nav-btn-today:hover {
+  background: rgba(102, 126, 234, 0.1);
+  color: #764ba2;
 }
 
-/* Card Header Border */
-.card > .card-header {
-  border-top-left-radius: inherit;
-  border-top-right-radius: inherit;
-  border-bottom-left-radius: 0;
-  border-bottom-right-radius: 0;
+/* Add Event Button */
+.add-event {
+  background: white;
+  color: #667eea;
+  border: none;
+  padding: 0.6rem 1rem;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.3s ease;
+  height: 38px;
+  white-space: nowrap;
 }
 
-/* CSS for Toggle Switch */
-/* iOS Toggle Switch Container */
+.add-event:hover {
+  background: white;
+  color: #764ba2;
+  box-shadow: 0 8px 16px rgba(102, 126, 234, 0.4);
+  transform: translateY(-3px);
+}
+
+/* iOS Switch Container */
 .ios-switch-container {
   display: flex;
   align-items: center;
-  margin-bottom: 0;
+  gap: 0.25rem;
+  background: rgba(255, 255, 255, 0.2);
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
 }
 
-/* Hide default checkbox */
+/* ====== Toggle Switch ======*/
 .ios-switch-input {
   display: none;
 }
 
-/* Switch Label/Track */
 .ios-switch-label {
   position: relative;
   display: inline-block;
@@ -2213,9 +2230,10 @@ export default {
   height: 24px;
   cursor: pointer;
   margin: 0;
+  color: white;
+  font-size: 0.9rem;
 }
 
-/* Switch Track (background) */
 .ios-switch-slider {
   position: absolute;
   top: 0;
@@ -2228,7 +2246,6 @@ export default {
   box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-/* Switch Knob */
 .ios-switch-slider::before {
   content: '';
   position: absolute;
@@ -2242,41 +2259,155 @@ export default {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
-/* Checked State - Gradient Background */
-.ios-switch-input:checked+.ios-switch-label .ios-switch-slider {
+.ios-switch-input:checked ~ .ios-switch-label .ios-switch-slider {
   background: #5BC236;
   box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
 }
 
-/* Checked State - Move Knob */
-.ios-switch-input:checked+.ios-switch-label .ios-switch-slider::before {
+.ios-switch-input:checked ~ .ios-switch-label .ios-switch-slider::before {
   transform: translateX(18px);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
 }
 
-/* Hover Effect */
 .ios-switch-label:hover .ios-switch-slider {
   box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
 }
 
-/* Active/Pressed Effect */
-.ios-switch-input:active+.ios-switch-label .ios-switch-slider::before {
+.ios-switch-input:active ~ .ios-switch-label .ios-switch-slider::before {
   width: 24px;
 }
 
-/* Focus State */
-.ios-switch-input:focus+.ios-switch-label .ios-switch-slider {
+.ios-switch-input:focus ~ .ios-switch-label .ios-switch-slider {
   outline: 2px solid #667eea;
   outline-offset: 2px;
 }
 
-/* Disabled State */
-.ios-switch-input:disabled+.ios-switch-label {
+.ios-switch-input:disabled ~ .ios-switch-label {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-/* CSS for Map Button */
+/* ====== Cards and Containers ======*/
+.card {
+  border-radius: 1rem;
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.05);
+}
+
+.card .card-header {
+  border-top-left-radius: inherit;
+  border-top-right-radius: inherit;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.shadow-soft {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+}
+
+/* ====== Calendar View Styles ======*/
+.event-item:hover {
+  opacity: 0.85;
+}
+
+/* Month View */
+:deep(.v-calendar-monthly) .day {
+  min-height: 120px !important;
+}
+
+/* Week View */
+:deep(.v-calendar-weekly) .day {
+  min-height: 100px !important;
+}
+
+:deep(.v-calendar-weekly) .head {
+  margin-bottom: 0 !important;
+}
+
+:deep(.v-calendar-weekly) .event-item,
+:deep(.v-calendar-daily) .event-item {
+  padding: 4px 6px;
+  margin: 2px 0;
+  white-space: normal;
+  line-height: 1.3;
+}
+
+/* Day View */
+:deep(.v-calendar-daily) .day {
+  min-height: 50px !important;
+}
+
+/* ====== Dialog Buttons & Forms ======*/
+.modal-header {
+  background: #667eea;
+  color: white;
+}
+
+.modal input,
+.modal textarea,
+.modal select {
+  border: 1px solid #333;
+  border-radius: 3px;
+  height: 50px;
+}
+
+.modal textarea {
+  height: auto;
+}
+
+.form-label {
+  display: block;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 0.5rem;
+}
+
+/* Save Button */
+.save-button {
+  background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 20px;
+  transition: all 0.3s ease;
+}
+
+.save-button:hover {
+  box-shadow: 0 8px 16px rgba(102, 126, 234, 0.4);
+  transform: translateY(-3px);
+}
+
+/* Cancel Button */
+.cancel-button {
+  background: linear-gradient(120deg, #ff6b6b 0%, #ee5a6f 100%);
+  color: white;
+  border-radius: 20px;
+  transition: all 0.3s ease;
+}
+
+.cancel-button:hover {
+  box-shadow: 0 8px 16px rgba(102, 126, 234, 0.4);
+  transform: translateY(-3px);
+}
+
+/* Close Button */
+.close-button {
+  background: linear-gradient(120deg, #ff6b6b 0%, #ee5a6f 100%);
+  border: 1px solid #333;
+  border-radius: 3px;
+  color: white;
+  transition: all 0.3s ease;
+}
+
+.close-button:hover {
+  box-shadow: 0 8px 16px rgba(102, 126, 234, 0.4);
+  transform: translateY(-3px);
+}
+
+/* ====== Map Button ======*/
 .map-button {
   width: 32px;
   height: 32px;
@@ -2345,174 +2476,97 @@ export default {
   outline-offset: 2px;
 }
 
-/* CSS for Dropdown Button */
-.view-dropdown-btn {
-  background-color: white;
-  color: #667eea;
-  border: 1.5px solid white;
-  padding: 0.4rem 1rem;
-  font-weight: 500;
+/* ====== Recurrence Button ======*/
+.day-btn,
+.day-btn-selected {
+  min-width: 45px;
+  height: 32px;
+  padding: 0 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 20px;
-  transition: all 0.3s ease;
-}
-
-.view-dropdown-btn:hover {
-  background: white;
-  color: #764ba2;
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
-}
-
-/* Dropdown Menu */
-.dropdown-menu-styled {
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  padding: 0.5rem;
-  min-width: 140px;
-}
-
-.dropdown-menu-styled .dropdown-item {
-  border-radius: 6px;
-  padding: 0.5rem 0.75rem;
   transition: all 0.2s ease;
-  font-weight: 500;
+  flex-shrink: 0;
 }
 
-.dropdown-menu-styled .dropdown-item:hover {
-  background: #f3f4f6;
-}
-
-.dropdown-menu-styled .dropdown-item.active {
-  background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
-  color: white;
-}
-
-/* CSS for Button Group */
-.nav-btn-group {
-  border-radius: 20px;
-  background: white;
-  padding: 3px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-.nav-btn {
-  background: transparent;
-  color: #667eea;
-  border: none;
-  padding: 0.375rem 0.75rem;
-  font-weight: 500;
-  transition: all 0.2s ease;
-  border-radius: 6px;
-}
-
-.nav-btn:hover {
-  background: #f3f4f6;
-  color: #764ba2;
-}
-
-/* CSS for Dialogs */
-.modal-header {
-  background: #667eea;
-  color: white;
-}
-
-.modal input {
-  border: 1px solid black;
-  border-radius: 3px;
-  height: 50px;
-}
-
-.modal textarea {
-  border: 1px solid black;
-  border-radius: 3px;
-}
-
-.modal select {
-  border: 1px solid black;
-  border-radius: 3px;
-  height: 50px;
-}
-
-.save-button {
-  background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  border-radius: 20px;
-  transition: all 0.3s ease;
-}
-
-.save-button:hover {
-  background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  border: 1px solid lightgray;
-  box-shadow: 0 8px 16px rgba(102, 126, 234, 0.4);
-  transform: translateY(-3px);
-  transition: all 0.3s ease;
-}
-
-.cancel-button {
-  background: linear-gradient(120deg, #ff6b6b 0%, #ee5a6f 100%);
-  color: white;
-  border-radius: 20px;
-  transition: all 0.3s ease;
-}
-
-.cancel-button:hover {
-  background: linear-gradient(120deg, #ff6b6b 0%, #ee5a6f 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  border: 1px solid lightgray;
-  box-shadow: 0 8px 16px rgba(102, 126, 234, 0.4);
-  transform: translateY(-3px);
-  transition: all 0.3s ease;
-}
-
-.close-button {
-  background: linear-gradient(120deg, #ff6b6b 0%, #ee5a6f 100%);
-  border: 1px solid black;
-  border-radius: 3px;
-  color: white;
-  transition: all 0.3s ease;
-}
-
-.close-button:hover {
-  background: linear-gradient(120deg, #ff6b6b 0%, #ee5a6f 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-    border: 1px solid black;
-    box-shadow: 0 8px 16px rgba(102, 126, 234, 0.4);
-    transform: translateY(-3px);
-    transition: all 0.3s ease;
-}
-
-/* CSS for Recurrence Button */
 .day-btn {
-    width: 45px;
-    height: 32px;
-    flex-shrink: 0;
-    align-items: center;
-    justify-content: center;
-    border: 1px solid black;
-    border-radius: 20px;
-    background: white;
+  background: white;
+  color: black;
+  border: 1.5px solid black;
+}
+
+.day-btn:hover {
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+  transform: translateY(-2px);
 }
 
 .day-btn-selected {
-    width: 45px;
-    height: 32px;
-    flex-shrink: 0;
-    align-items: center;
-    justify-content: center;
-    border: 1px solid black;
-    border-radius: 20px;
-    background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
-    color: white;
+  background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: 1.5px solid #667eea;
 }
 
+.day-btn-selected:hover {
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+  transform: translateY(-2px);
+}
+
+/* ====== Toast and Utilities ======*/
 .toast {
-    background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
-    color: white;
+  background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.btn-group .btn-sm {
+  padding: 0.25rem 0.75rem;
+  font-size: 0.875rem;
+}
+
+/* ====== Responsive Design ======*/
+/* Mobile - Stack on small screens */
+@media (max-width: 768px) {
+  .header-controls {
+    gap: 0.5rem;
+  }
+
+  .period-text {
+    font-size: 1rem;
+  }
+
+  .view-dropdown-btn,
+  .add-event {
+    padding: 0.5rem 0.8rem;
+    font-size: 0.9rem;
+    height: auto;
+  }
+
+  .nav-btn {
+    padding: 0.4rem 0.6rem;
+  }
+
+  .nav-btn-group {
+    height: auto;
+  }
+
+  .ios-switch-container {
+    padding: 0.4rem 0.8rem;
+    gap: 0.2rem;
+  }
+
+  .ios-switch-label {
+    font-size: 0.8rem;
+  }
+
+  .form-check-label {
+    font-size: 0.8rem;
+  }
+}
+
+/* Desktop - Single row, no wrap */
+@media (min-width: 1025px) {
+  .header-controls {
+    flex-wrap: nowrap;
+  }
 }
 </style>
