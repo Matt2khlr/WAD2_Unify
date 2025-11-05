@@ -1222,7 +1222,8 @@ export default {
           examId: exam.firebaseId, // Reference to the exam document
           location: null,
           locationName: '',
-          gEventId: ''
+          gEventId: '',
+          category: 'Exam',
         });
         console.log('Exam added to calendar:', exam.module, startDateTime);
       } catch (error) {
