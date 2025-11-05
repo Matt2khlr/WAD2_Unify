@@ -216,7 +216,7 @@ watch(fetchedFactors, (newFactors) => {
 
       <div class="mb-5 text-center">
         <h1 class="display-4 fw-bold d-flex justify-content-center align-items-center gap-3">
-          <i class="bi bi-journal-text"></i> Wellbeing Tracker
+          Wellbeing Tracker
         </h1>
         <p class="text-muted fs-5">Monitor your sleep and mental health.</p>
       </div>
@@ -242,7 +242,7 @@ watch(fetchedFactors, (newFactors) => {
                   <div class="text-secondary" style="width: 45px;">{{ day.hours }}h</div>
                 </div>
               </div>
-              <button class="btn btn-info w-100 mt-3" @click="logSleep">Log Sleep</button>
+              <button class="btn w-100 mt-3" @click="logSleep">Log Sleep</button>
             </div>
           </div>
         </div>
@@ -277,7 +277,7 @@ watch(fetchedFactors, (newFactors) => {
                   </span>
                 </div>
               </div>
-              <button class="btn btn-secondary w-100" @click="[logMood()]">Update Stress Level</button>
+              <button class="btn w-100" @click="[logMood()]">Update Stress Level</button>
             </div>
           </div>
         </div>
@@ -296,12 +296,45 @@ watch(fetchedFactors, (newFactors) => {
 </template>
 
 <style scoped>
+h1 {
+  background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.btn {
+  background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 25px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  padding: 0.5rem 1.5rem;
+}
+
+.btn:hover {
+  background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  box-shadow: 0 8px 16px rgba(118, 75, 162, 0.4);
+  transform: translateY(-3px);
+  transition: all 0.3s ease;
+}
+
 .card {
-  border-radius: 15px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-  margin-bottom: 2rem;
+  border: none;
+  border-radius: 0.75rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+  background-color: #f5f5f5;
   overflow: hidden;
-  position: relative;
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.05);
 }
 
 .card-header {

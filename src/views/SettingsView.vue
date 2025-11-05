@@ -290,6 +290,7 @@ function showToast(message) {
 
 .general-btn {
   background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
+  color: white;
   border: none;
   border-radius: 20px;
   padding: 5px 10px;

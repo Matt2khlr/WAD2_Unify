@@ -640,7 +640,7 @@ watch([schedules, selectedDate], () => {
 <template>
   <section class="container py-3">
     <div class="d-flex align-items-center justify-content-between mb-3">
-      <h1 class="h4 mb-0 fw-bold text-gradient">Fuel &amp; Move</h1>
+      <h1 class="mb-0 fw-bold text-gradient">Fuel &amp; Move</h1>
       <div class="nav-btn-group d-flex align-items-center">
         <button class="btn btn-sm nav-btn" @click="changeDate(-1)">
           <ChevronLeft :size="18" />
@@ -1133,18 +1133,19 @@ watch([schedules, selectedDate], () => {
 }
 
 .text-gradient {
-  background: linear-gradient(90deg, var(--bs-primary), #6c63ff);
+  background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
   -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
   background-clip: text;
-  color: transparent;
 }
 
 .card {
+  border: none;
   border-radius: 0.75rem;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
   background-color: #f5f5f5;
-  border: 0;
+  overflow: hidden;
 }
 
 .card:hover {

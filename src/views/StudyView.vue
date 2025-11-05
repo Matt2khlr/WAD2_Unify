@@ -261,6 +261,7 @@ export default {
             const docRef = doc(db, 'studydata', topicToDelete.firebaseId);
             await deleteDoc(docRef);
             console.log('Topic deleted from Firebase');
+            this.showToast('Topic deleted successfully');
           } catch (error) {
             console.error('Error deleting topic from Firebase:', error);
           }
@@ -567,6 +568,24 @@ export default {
       this.newCard = { question: '', answer: '', module: '', topic: '' };
       this.showAddCard = false;
       this.saveData();
+
+      this.showToast('Flashcard added successfully!');
+    },
+    toggleAddCard() {
+      this.showAddCard = !this.showAddCard;
+      
+      // Auto-scroll to form when opening
+      if (this.showAddCard) {
+        this.$nextTick(() => {
+          const formElement = document.querySelector('.add-flashcard');
+          if (formElement) {
+            formElement.scrollIntoView({ 
+              behavior: 'smooth', 
+              block: 'nearest' 
+            });
+          }
+        });
+      }
     },
     flipCard(card) {
       card.flipped = !card.flipped;
@@ -800,7 +819,7 @@ export default {
         try {
           await deleteDoc(doc(db, 'exams', exam.firebaseId));
           console.log('Exam deleted from Firebase');
-
+          this.showToast('Exam deleted successfully');
           // Remove from calendar if it was added
           await this.removeExamFromCalendar(exam);
         } catch (error) {
@@ -835,6 +854,7 @@ export default {
           }
           await Promise.all(deletePromises);
           console.log('All exams deleted from Firebase');
+          this.showToast('All exams deleted successfully');
         } catch (error) {
           console.error('Error deleting exams from Firebase:', error);
           this.showToast('Error deleting some exams. Please try again.');
@@ -1357,7 +1377,7 @@ export default {
 </script>
 
 <template>
-  <div class="study-app">
+  <div class="study-app py-5">
     <div class="container main-container">
       <div class="mb-5 text-center">
         <h1 class="display-4 fw-bold d-flex justify-content-center align-items-center gap-3">
@@ -1627,12 +1647,12 @@ export default {
         <div class="card-body">
           <!-- Add Flashcard Form -->
           <div class="mb-4">
-            <button class="btn btn-primary" @click="showAddCard = !showAddCard">
+            <button class="btn btn-primary" @click="toggleAddCard()">
               <i class="fas fa-plus"></i> Add New Flashcard
             </button>
           </div>
 
-          <div v-if="showAddCard" class="mb-4 p-3 border rounded">
+          <div v-if="showAddCard" class="add-flashcard mb-4 p-3 border rounded">
             <div class="row g-3">
               <div class="col-md-6">
                 <label class="form-label">Module:</label>
@@ -2011,33 +2031,29 @@ export default {
 </template>
 
 <style scoped>
+h1 {
+  background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
 .study-app {
   min-height: 100vh;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-}
-
-.main-container {
-  padding: 2rem 1rem;
-  padding-bottom: 20rem;
-}
-
-@media (min-width: 768px) {
-  .main-container {
-    padding: 2rem 0;
-    padding-bottom: 20rem;
-  }
-}
-
-.study-app h1 {
-  color: black;
 }
 
 .card {
-  border-radius: 30px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+  border: none;
+  border-radius: 0.75rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+  background-color: #f5f5f5;
   margin-bottom: 2rem;
-  overflow: visible;
-  position: relative;
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.05);
 }
 
 .card-body {
@@ -2047,7 +2063,7 @@ export default {
 .card-header {
   background: #667eea;
   color: white;
-  border-radius: 30px 30px 0 0;
+  border-radius: 15px 15px 0 0;
   padding: 1.5rem;
   font-weight: 600;
   font-size: 1.3rem;
