@@ -11,6 +11,7 @@ node_modules
 .DS_Store
 dist
 dist-ssr
+dist/
 coverage
 *.local
 .env
@@ -30,3 +31,8 @@ coverage
 *.sw?
 
 *.tsbuildinfo
+
+# Firebase
+.firebase/
+firebase-debug.log
+.firebaserc
