@@ -387,8 +387,9 @@ onMounted(() => {
 }
 
 .mood-btn {
-  min-width: 70px;
-  flex: 0 1 auto;
+  min-width: 100px;
+  width: 100px;
+  flex: 0 0 100px;
   transition: all 0.3s ease;
 }
 
