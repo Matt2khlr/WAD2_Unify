@@ -1,6 +1,7 @@
 <script>
 import { collection, addDoc, updateDoc, deleteDoc, doc, setDoc, query, where, onSnapshot, GeoPoint } from 'firebase/firestore';
 import { db, auth } from '@/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
 import { loadGoogleMaps } from '@/plugins/googleMaps';
 
 export default {
@@ -49,6 +50,8 @@ export default {
       syncInterval: null,
       placeAutocomplete: null,
       showAutocomplete: false,
+      unsubscribeAuth: null,
+      unsubscribeEvents: null,
       weekDays: [
         { label: 'Sun', value: 'SU' },
         { label: 'Mon', value: 'MO' },
@@ -1424,14 +1427,25 @@ export default {
 
         // Listen to Cloud Firestore and Get Events
         listenToEvents() {
+            if (!this.userId) {
+                console.log('No userId available, skipping events listener');
+                return;
+            }
+
+            // Unsubscribe from previous listener if it exists
+            if (this.unsubscribeEvents) {
+                this.unsubscribeEvents();
+            }
+
             const q = query(collection(db, 'events'), where('userId', '==', this.userId));
-            onSnapshot(q, (snapshot) => {
+            this.unsubscribeEvents = onSnapshot(q, (snapshot) => {
                 this.events = snapshot.docs.map(doc => ({
                     id: doc.id,
                     ...doc.data(),
                     start: doc.data().start.toDate(),
                     end: doc.data().end.toDate(),
                 }))
+                console.log('Events loaded:', this.events.length);
             });
         },
     },
@@ -1455,7 +1469,20 @@ export default {
 
     async mounted() {
         await loadGoogleMaps();
-        this.listenToEvents();
+
+        // Set up auth state listener to ensure userId is available
+        this.unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+            if (user) {
+                this.userId = user.uid;
+                console.log('User authenticated:', this.userId);
+                // Now that userId is set, listen to events
+                this.listenToEvents();
+            } else {
+                this.userId = null;
+                console.log('No user authenticated');
+            }
+        });
+
         await this.initGoogle();
 
         const savedToken = sessionStorage.getItem('google_token');
@@ -1481,6 +1508,16 @@ export default {
     beforeUnmount() {
         if (this.syncInterval) {
             clearInterval(this.syncInterval);
+        }
+
+        // Clean up auth listener
+        if (this.unsubscribeAuth) {
+            this.unsubscribeAuth();
+        }
+
+        // Clean up events listener
+        if (this.unsubscribeEvents) {
+            this.unsubscribeEvents();
         }
     }
 }

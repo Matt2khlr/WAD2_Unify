@@ -766,9 +766,6 @@ export default {
           // Add to local array
           this.exams.push(exam);
 
-          // Add to calendar
-          await this.addExamToCalendar(exam);
-
           this.closeExamModal();
           this.saveExamsToLocalStorage();
         } catch (error) {
@@ -925,10 +922,10 @@ export default {
         }
 
         // Look for course code pattern at the start of the line
-        // Handle OCR errors: 1S -> IS, 15 -> IS, 1s -> IS (lowercase)
-        let codeMatch = line.match(/^([A-Z]{2,3}\d{3,4})/);
+        // Matches: "IS216", "COR-MGMT1302", "15211", etc.
+        let codeMatch = line.match(/^([A-Z]{2,3}(?:-[A-Z]+)?\d{3,4})/);
 
-        // If no match, try to fix OCR errors (1 -> I, lowercase -> uppercase)
+        // If no match, try to fix OCR errors (1S -> IS, 15 -> IS, 1s -> IS (lowercase))
         if (!codeMatch) {
           // Try replacing leading 1 or 15 with I, or 1S/1s with IS
           let fixedLine = line;
@@ -942,8 +939,8 @@ export default {
           // Handle patterns like "1S215" or "1s215" -> "IS215" (first digit is wrong)
           fixedLine = fixedLine.replace(/^1([A-Z])/, 'I$1');
 
-          // Try to match again
-          codeMatch = fixedLine.match(/^([A-Z]{2,3}\d{3,4})/);
+          // Try to match again with hyphen support
+          codeMatch = fixedLine.match(/^([A-Z]{2,3}(?:-[A-Z]+)?\d{3,4})/);
 
           if (codeMatch) {
             // Use the fixed code
@@ -959,10 +956,10 @@ export default {
               exam.date = this.normalizeDate(dateMatch[0]);
             }
 
-            // Extract time from the line (first time is start time)
-            const timeMatches = fixedLine.match(/(\d{1,2}):(\d{2})/g);
-            if (timeMatches && timeMatches.length > 0) {
-              exam.time = timeMatches[0];
+            // Extract time - handles both "HH:MM" and "HHMM" formats
+            const timeMatch = fixedLine.match(/(\d{2}):?(\d{2})/);
+            if (timeMatch) {
+              exam.time = `${timeMatch[1]}:${timeMatch[2]}`;
             }
 
             // Add exam if we have at least module
@@ -984,10 +981,10 @@ export default {
             exam.date = this.normalizeDate(dateMatch[0]);
           }
 
-          // Extract time from the line (first time is start time)
-          const timeMatches = line.match(/(\d{1,2}):(\d{2})/g);
-          if (timeMatches && timeMatches.length > 0) {
-            exam.time = timeMatches[0];
+          // Extract time - handles both "HH:MM" and "HHMM" formats
+          const timeMatch = line.match(/(\d{2}):?(\d{2})/);
+          if (timeMatch) {
+            exam.time = `${timeMatch[1]}:${timeMatch[2]}`;
           }
 
           // Add exam if we have at least module
@@ -1042,6 +1039,10 @@ export default {
           };
 
           this.exams.push(newExam);
+
+          // Add to calendar events
+          await this.addExamToCalendar(newExam);
+
           this.showToast(`Added exam for ${exam.module}`);
 
           // Remove from parsed exams list
@@ -1050,7 +1051,7 @@ export default {
             this.parsedExams.splice(index, 1);
           }
 
-          // If no more parsed exams, clear the image
+          // If no more parsed exams, clear the image and close modal
           if (this.parsedExams.length === 0) {
             this.uploadedImage = null;
             this.ocrDebugText = '';
@@ -1058,6 +1059,7 @@ export default {
             if (this.$refs.examImageInput) {
               this.$refs.examImageInput.value = '';
             }
+            this.closeExamModal();
           }
         } else {
           // Local storage fallback
@@ -1078,7 +1080,7 @@ export default {
             this.parsedExams.splice(index, 1);
           }
 
-          // If no more parsed exams, clear the image
+          // If no more parsed exams, clear the image and close modal
           if (this.parsedExams.length === 0) {
             this.uploadedImage = null;
             this.ocrDebugText = '';
@@ -1086,6 +1088,7 @@ export default {
             if (this.$refs.examImageInput) {
               this.$refs.examImageInput.value = '';
             }
+            this.closeExamModal();
           }
         }
       } catch (error) {
@@ -1103,6 +1106,10 @@ export default {
       for (const exam of examsToAdd) {
         await this.addSingleParsedExam(exam);
       }
+
+      // Close modal after all exams have been added
+      // (it may have been closed by the last exam in addSingleParsedExam, but this ensures it)
+      this.closeExamModal();
     },
     closeExamModal() {
       this.showExamModal = false;
@@ -1172,11 +1179,28 @@ export default {
       // Add the exam to the calendar events collection
       // Using the exact format as CalendarView
       try {
+        // Skip if no date is provided
+        if (!exam.date) {
+          console.log('No date provided for exam, skipping calendar event');
+          return;
+        }
+
         const eventsRef = collection(db, 'events');
 
         // Create Date object from exam date and time
         const [year, month, day] = exam.date.split('-').map(Number);
-        const [hours, minutes] = exam.time.split(':').map(Number);
+
+        // Default to 9:00 AM if no time is provided
+        let hours = 9;
+        let minutes = 0;
+
+        if (exam.time && exam.time.trim()) {
+          const timeParts = exam.time.split(':');
+          if (timeParts.length >= 2) {
+            hours = parseInt(timeParts[0]);
+            minutes = parseInt(timeParts[1]);
+          }
+        }
 
         const startDateTime = new Date(year, month - 1, day, hours, minutes, 0);
         // End time is 2 hours after start (typical exam duration)
@@ -1186,18 +1210,21 @@ export default {
           userId: this.userId,
           name: `${exam.module} Exam`,
           description: `Exam for ${exam.module}`,
+          category: 'Exam',
           start: Timestamp.fromDate(startDateTime),
           end: Timestamp.fromDate(endDateTime),
           colour: '#dc3545', // Red color for exams
           priority: 'High',
           source: 'firestore',
           synced: false,
+          isRecurring: false,
+          recurrenceRule: null,
           examId: exam.firebaseId, // Reference to the exam document
           location: null,
           locationName: '',
           gEventId: ''
         });
-        console.log('Exam added to calendar');
+        console.log('Exam added to calendar:', exam.module, startDateTime);
       } catch (error) {
         console.error('Error adding exam to calendar:', error);
       }
@@ -1990,8 +2017,15 @@ export default {
 }
 
 .main-container {
-  padding: 2rem 0;
+  padding: 2rem 1rem;
   padding-bottom: 20rem;
+}
+
+@media (min-width: 768px) {
+  .main-container {
+    padding: 2rem 0;
+    padding-bottom: 20rem;
+  }
 }
 
 .study-app h1 {
