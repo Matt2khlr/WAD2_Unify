@@ -603,32 +603,30 @@ export default {
     //     console.error('Error Initialising Google Calendar API:', error)
     //   }
     // },
+
     async initGoogle() {
       try {
         // Load Google API client
         await new Promise((resolve) => gapi.load('client', resolve));
 
-        // Initialize only with discoveryDocs to load Calendar API surface
         await gapi.client.init({
           discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest'],
-          // no apiKey here to prevent key-based fallback
         });
 
-        // If a token exists (e.g., after refresh), bind it to gapi now
         const saved = sessionStorage.getItem('google_token');
         if (saved) {
           gapi.client.setToken({ access_token: saved });
         }
 
-        console.log('Google Calendar API initialized');
+        console.log('Google Calendar API Initialised');
       } catch (error) {
-        console.error('Error initializing Google Calendar API:', error);
+        console.error('Error Initialising Google Calendar API:', error);
       }
     },
 
     async syncWithGoogle() {
       if (!window.gapi?.client?.calendar) {
-        console.log('Google Calendar API not initialised yet.');
+        console.log('Google Calendar API Not Initialised Yet.');
         return;
       }
 
@@ -638,7 +636,7 @@ export default {
         gapi.client.setToken({ access_token: this.accessToken });
       }
       if (!gapi.client.getToken?.()?.access_token) {
-        console.log('No OAuth access token bound; skipping sync.');
+        console.log('No OAuth Access Token Bound; Skipping Sync.');
         return;
       }
 
@@ -1086,7 +1084,7 @@ export default {
         isRecurring: this.currentEvent.isRecurring
       }
 
-      // Add recurrence rule if recurring
+      // Add Recurrence Rule for Recurring Events
       if (this.currentEvent.isRecurring) {
         eventData.recurrenceRule = this.buildRRule();
       } else {
@@ -1465,7 +1463,6 @@ export default {
             this.syncEnabled = true;
             this.accessToken = savedToken;
 
-            // Bind the token first, then wait for API, then sync
             if (window.gapi?.client) {
                 gapi.client.setToken({ access_token: savedToken });
             }
