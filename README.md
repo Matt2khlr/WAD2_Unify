@@ -22,7 +22,7 @@ Before setting up the application, ensure you have [Node.js](https://nodejs.org/
 ### Clone the Repository
 
 ```sh
-git clone https://github.com/yourusername/WAD2_Unify.git
+git clone https://github.com/Matt2khlr/WAD2_Unify.git
 cd WAD2_Unify
 ```
 
