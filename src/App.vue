@@ -29,7 +29,7 @@ const hideNavbar = computed(() => {
 }
 
 #app {
-  background: linear-gradient(135deg, #ebebf5 0%, #e0def5 100%);
+  background: linear-gradient(120deg, #ebebf5 0%, #e0def5 100%);
   min-height: 100vh;
 }
 </style>

@@ -1510,10 +1510,10 @@ export default {
 </script>
 
 <template>
-  <div class="container h-100">
+  <div class="container h-100 py-3">
 
-    <div class="mt-2 mb-2 text-center">
-      <h1 class="display-4 fw-bold d-flex align-items-center gap-3">
+    <div class="mb-3 text-center">
+      <h1 class="fw-bold d-flex align-items-center gap-3">
         Calendar
       </h1>
     </div>
@@ -2122,12 +2122,20 @@ export default {
 </template>
 
 <style scoped>
+/* ====== Header ======*/
+h1 {
+  background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
 /* ====== Card Header and Controls ======*/
 .card-header {
   display: flex;
   flex-direction: column;
   padding: 0.75rem 1rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
 }
 
 .header-controls {

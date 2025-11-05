@@ -197,7 +197,6 @@ async function loadStressLevel() {
     const stressFactors = latestStressLog.stressFactors || [];
 
     if (!Array.isArray(stressFactors)) {
-      console.log('No stress factors array found');
       return;
     }
 
@@ -226,7 +225,6 @@ async function loadSleepQuality() {
 
     const sleepSnapshot = await getDocs(sleepQuery);
     if (sleepSnapshot.empty) {
-      console.log('No sleep logs found');
       return;
     }
 
@@ -235,7 +233,6 @@ async function loadSleepQuality() {
     const sleepDataArray = sleepLogs.sleepData || [];
 
     if (!Array.isArray(sleepDataArray) || sleepDataArray.length === 0) {
-      console.log('No sleep data array found');
       return;
     }
 
@@ -394,7 +391,6 @@ function generateSuggestionsFromData() {
   }
 
   suggestions.value = suggestionsList;
-  console.log('Suggestions generated:', suggestions.value);
 }
 
 // Gradient colour for status cards
@@ -563,7 +559,6 @@ async function initGoogle() {
 // Sync events with Google Calendar
 async function syncWithGoogle() {
   if (!accessToken.value) {
-    console.log('No Access Token.');
     return;
   }
 
@@ -712,7 +707,6 @@ async function waitForGoogleAPI() {
         console.error('Google Calendar API failed to load');
         reject(new Error('Google Calendar API timeout'));
       } else {
-        console.log('Waiting for Google Calendar API...');
         attempts++;
         setTimeout(checkAPI, 1000);
       }
@@ -966,7 +960,6 @@ onMounted(async () => {
   onAuthStateChanged(auth, async (user) => {
     if (user) {
       userId.value = user.uid;
-      console.log('User authenticated:', userId.value);
       isLoading.value = true;
 
       await Promise.all([
@@ -997,7 +990,6 @@ onMounted(async () => {
       avgSleepQuality.value = 0;
       isLoading.value = false;
       cleanupAllListeners();
-      console.log('No user authenticated');
     }
   });
 
@@ -1020,7 +1012,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="min-vh-100 container-color">
+  <div class="main-container">
     <!-- Loading in progress -->
     <div v-if="isLoading" class="loading-state d-flex align-items-center justify-content-center min-vh-100">
       <div class="text-center">
@@ -1033,7 +1025,7 @@ onBeforeUnmount(() => {
     <div v-else>
       <header>
         <div class="container pt-3 pt-md-4 px-3 px-md-4">
-          <h1 class="display-6 fw-bold mb-2">Welcome back, {{ auth.currentUser.displayName }}!</h1>
+          <h1 class="display-6 fw-bold mb-2">Welcome back, <span class="username">{{ auth.currentUser.displayName }}</span>!</h1>
           <p class="fs-5 mb-0">
             Here's an overview of your recent wellbeing and activities.
           </p>
@@ -1303,8 +1295,25 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.min-vh-100 {
+/* Text padding */
+h1,
+h2,
+.container>p,
+.dashboard-header p {
+  padding-left: 0.25rem;
+}
+
+/* Viewport scrolling */
+.main-container {
   overflow: auto;
+}
+
+/* Gradient text for username */
+.username {
+  background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 /* Cards */
@@ -1314,15 +1323,16 @@ onBeforeUnmount(() => {
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
   background-color: #f5f5f5;
+  overflow: hidden;
 }
 
-/* Card Hover Effect */
+/* Card hover effect */
 .card:hover {
   transform: translateY(-4px);
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.05);
 }
 
-/* Badge Text */
+/* Badge text */
 .badge {
   text-transform: capitalize;
 }
@@ -1332,18 +1342,7 @@ onBeforeUnmount(() => {
   padding-bottom: 2rem;
 }
 
-h1,
-h2,
-.container>p,
-.dashboard-header p {
-  padding-left: 0.25rem;
-}
-
-/* Container Background */
-.container-color {
-  background: linear-gradient(135deg, #e5e5f2 0%, #d8d6f0 100%);
-}
-
+/* Dashboard header Spacing */
 .dashboard-header {
   margin-top: 2.5rem;
 }
@@ -1364,24 +1363,24 @@ h2,
   transform: translate(4px, 0);
 }
 
-/* Gradient Backgrounds */
+/* Gradient backgrounds */
 .gradient-primary {
-  background: linear-gradient(135deg, #d4e5ff 0%, #e8f4ff 100%);
+  background: linear-gradient(120deg, #d4e5ff 0%, #e8f4ff 100%);
 }
 
 .gradient-wellness {
-  background: linear-gradient(135deg, #d0f5e8 0%, #e8fdf5 100%);
+  background: linear-gradient(120deg, #d0f5e8 0%, #e8fdf5 100%);
 }
 
 .gradient-energy {
-  background: linear-gradient(135deg, #ffe0cc 0%, #fff3e0 100%);
+  background: linear-gradient(120deg, #ffe0cc 0%, #fff3e0 100%);
 }
 
 .gradient-study {
-  background: linear-gradient(135deg, #fff3cc 0%, #fff9e6 100%);
+  background: linear-gradient(120deg, #fff3cc 0%, #fff9e6 100%);
 }
 
-/* Event Cards*/
+/* Event cards*/
 .event-card {
   background: #fafafa;
   transition: all 0.2s ease;
@@ -1393,7 +1392,7 @@ h2,
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
 }
 
-/* Custom Scrollbar for Event Card */
+/* Custom scrollbar for event card */
 .card-body>div {
   padding-right: 8px;
 }
@@ -1415,8 +1414,8 @@ h2,
   background: rgba(0, 0, 0, 0.25);
 }
 
-/* CSS for Toggle Switch */
-/* iOS Toggle Switch Container */
+/* CSS for toggle switch */
+/* iOS toggle switch container */
 .ios-switch-container {
   display: flex;
   align-items: center;
@@ -1428,7 +1427,7 @@ h2,
   display: none;
 }
 
-/* Switch Label/Track */
+/* Switch label/track */
 .ios-switch-label {
   position: relative;
   display: inline-block;
@@ -1438,7 +1437,7 @@ h2,
   margin: 0;
 }
 
-/* Switch Track (background) */
+/* Switch track (background) */
 .ios-switch-slider {
   position: absolute;
   inset: 0;
@@ -1448,7 +1447,7 @@ h2,
   box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-/* Switch Knob */
+/* Switch knob */
 .ios-switch-slider::before {
   content: '';
   position: absolute;
@@ -1462,41 +1461,41 @@ h2,
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
-/* Checked State - Gradient Background */
+/* Checked state - gradient background */
 .ios-switch-input:checked+.ios-switch-label .ios-switch-slider {
   background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
   box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
 }
 
-/* Checked State - Move Knob */
+/* Checked state - move knob */
 .ios-switch-input:checked+.ios-switch-label .ios-switch-slider::before {
   transform: translateX(18px);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
 }
 
-/* Hover Effect */
+/* Hover effect */
 .ios-switch-label:hover .ios-switch-slider {
   box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
 }
 
-/* Active/Pressed Effect */
+/* Active/pressed effect */
 .ios-switch-input:active+.ios-switch-label .ios-switch-slider::before {
   width: 24px;
 }
 
-/* Focus State */
+/* Focus state */
 .ios-switch-input:focus+.ios-switch-label .ios-switch-slider {
   outline: 2px solid #667eea;
   outline-offset: 2px;
 }
 
-/* Disabled State */
+/* Disabled state */
 .ios-switch-input:disabled+.ios-switch-label {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-/* CSS for Map Button */
+/* CSS for map button */
 .map-button {
   width: 32px;
   height: 32px;

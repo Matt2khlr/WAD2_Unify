@@ -217,20 +217,20 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="min-vh-100 bg-gradient p-3 p-md-5">
+  <div class="min-vh-100 p-3 p-md-5">
     <div class="container">
-      <div class="mb-4 mb-md-5 text-center">
+      <div class="mb-5 text-center">
         <h1 class="display-4 fw-bold d-flex justify-content-center align-items-center gap-3">
           <i class="bi bi-journal-text"></i> Journal
         </h1>
         <p class="text-muted fs-5">Log your thoughts and reflections to manage your wellness.</p>
       </div>
 
-      <div class="card mood-card text-white shadow mb-5 p-4">
+      <div class="card mood-card text-white shadow mb-4 p-4">
         <h2 class="mb-4">How are you feeling today?</h2>
         <div class="d-flex justify-content-center gap-4 mb-3">
           <button v-for="option in moodOptions" :key="option.label"
-            :class="['d-flex flex-column align-items-center p-3 rounded mood-btn', option.color, { 'opacity-75': selectedMood !== option.label }]"
+            :class="['d-flex flex-column align-items-center p-3 mood-btn', option.color, { 'opacity-75': selectedMood !== option.label }]"
             @click="selectMood(option.label)">
             <span class="fs-1">{{ option.icon }}</span>
             <span class="mt-2 fw-semibold">{{ option.label }}</span>
@@ -240,7 +240,7 @@ onMounted(() => {
         </p>
       </div>
 
-      <div class="card journal-card mb-5">
+      <div class="card journal-card mb-4">
         <div class="card-header card-header-style">
           <h5 class="mb-0">
             <i class="mdi mdi-clock-outline me-2"></i> New Journal Entry
@@ -250,7 +250,7 @@ onMounted(() => {
           <textarea class="form-control" rows="6"
             placeholder="Write about your day, your focus, or any stress you're feeling..." v-model="journalEntry"
             @keyup.enter="saveEntry"></textarea>
-          <button class="btn btn-primary mt-3" @click="saveEntry">Save Journal Entry</button>
+          <button class="btn btn-save text-white mt-3" @click="saveEntry">Save Journal Entry</button>
         </div>
       </div>
 
@@ -284,14 +284,14 @@ onMounted(() => {
                 </div>
 
                 <div class="d-flex justify-content-end">
-                  <button class="btn btn-sm btn-secondary me-2" @click="editingEntry = null">Cancel</button>
-                  <button class="btn btn-sm btn-success" @click="saveEditedEntry(editingEntry)">Save
+                  <button class="btn cancel-button me-2" @click="editingEntry = null">Cancel</button>
+                  <button class="btn save-button" @click="saveEditedEntry(editingEntry)">Save
                     Changes</button>
                 </div>
               </div>
 
               <div v-else>
-                <div class="d-flex justify-content-between align-items-start mb-2">
+                <div class="d-flex justify-content-between align-items-start">
                   <span class="small text-muted d-block fw-semibold">
                     <span v-if="entry.moodIcon" class="me-2">{{ entry.moodIcon }}</span>
                     {{ entry.date }}
@@ -338,7 +338,6 @@ onMounted(() => {
         <div class="modal-content">
           <div class="modal-header">
             <h5 class="modal-title">
-              <i class="bi bi-exclamation-triangle-fill me-2"></i>
               Confirmation
             </h5>
             <button type="button" class="btn-close btn-close-white" @click="closeGeneralDialog"></button>
@@ -363,23 +362,34 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.bg-gradient {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+h1 {
+  background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .toast {
-  background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
-  color: white;
   border: none;
-  border-radius: 10px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  border-radius: 0.75rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+  background-color: #f5f5f5;
+  overflow: hidden;
 }
 
 .card {
-  border-radius: 15px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
   border: none;
+  border-radius: 0.75rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+  background-color: #f5f5f5;
   overflow: hidden;
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.05);
 }
 
 .mood-card {
@@ -387,10 +397,11 @@ onMounted(() => {
 }
 
 .mood-btn {
-  min-width: 100px;
+  min-width: 70px;
   width: 100px;
-  flex: 0 0 100px;
+  flex: 0 1 auto;
   transition: all 0.3s ease;
+  border-radius: 0.75rem;
 }
 
 .journal-card .card-header {
@@ -432,7 +443,6 @@ onMounted(() => {
 .save-button:hover {
   background: #fff;
   color: #667eea;
-  border: 1px solid #667eea;
   box-shadow: 0 8px 16px rgba(102, 126, 234, 0.4);
   transform: translateY(-3px);
 }
@@ -452,6 +462,25 @@ onMounted(() => {
   transform: translateY(-3px);
 }
 
+.btn-save {
+  background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 20px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  padding: 0.5rem 1.5rem;
+}
+
+.btn-save:hover {
+  background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  box-shadow: 0 8px 16px rgba(102, 126, 234, 0.4);
+  transform: translateY(-3px);
+  transition: all 0.3s ease;
+}
 
 .action-buttons {
   display: flex;
@@ -461,32 +490,34 @@ onMounted(() => {
 .action-edit {
   background-color: #e3f2fd;
   color: #0d47a1;
-  border: 1px solid #bbdefb;
-  border-radius: 8px;
+  border: none;
+  border-radius: 20px;
   font-weight: 500;
-  transition: all 0.2s ease-in-out;
+  transition: all 0.3s ease;
+  padding: 0.25rem 0.5rem;
 }
 
 .action-edit:hover {
   background-color: #bbdefb;
   color: #0d47a1;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(13, 71, 161, 0.2);
+  box-shadow: 0 8px 16px rgba(102, 126, 234, 0.4);
+  transform: translateY(-3px);
 }
 
 .action-delete {
   background-color: #ffebee;
   color: #b71c1c;
-  border: 1px solid #ffcdd2;
-  border-radius: 8px;
+  border: none;
+  border-radius: 20px;
   font-weight: 500;
-  transition: all 0.2s ease-in-out;
+  transition: all 0.3s ease;
+  padding: 0.25rem 0.5rem;
 }
 
 .action-delete:hover {
   background-color: #ffcdd2;
   color: #b71c1c;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(183, 28, 28, 0.2);
+  box-shadow: 0 8px 16px rgba(255, 107, 107, 0.4);
+  transform: translateY(-3px);
 }
 </style>

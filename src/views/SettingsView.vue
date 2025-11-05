@@ -288,13 +288,29 @@ function showToast(message) {
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.05);
 }
 
+.btn {
+  border-radius: 25px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  padding: 0.5rem 1.5rem;
+}
+
 .btn-sm,
 .btn-primary {
   background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
-  border: none;
-  border-radius: 0.75rem;
-  padding: 5px 10px;
   color: white;
+  border: none;
+}
+
+.btn-sm:hover,
+.btn-primary:hover {
+  background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  box-shadow: 0 8px 16px rgba(118, 75, 162, 0.4);
+  transform: translateY(-3px);
+  transition: all 0.3s ease;
 }
 
 .toast {

@@ -221,18 +221,6 @@ body {
 </style>
 
 <style scoped>
-/* Auth card */
-/* .auth-card {
-    border-radius: 1rem;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-} */
-
-/* Auth card hover */
-/* .auth-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.05);
-} */
-
 /* Container with gradient background */
 .auth-container {
   min-height: 100vh;
