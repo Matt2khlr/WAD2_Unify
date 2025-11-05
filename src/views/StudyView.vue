@@ -1425,7 +1425,7 @@ export default {
                     {{ formatExamDate(exam.date) }} at {{ exam.time }}
                   </small>
                 </div>
-                <button class="cancel-button" @click="deleteExam(exam.id)" title="Delete this exam">
+                <button class="delete-button" @click="deleteExam(exam.id)" title="Delete this exam">
                   Delete
                 </button>
               </div>
@@ -1464,7 +1464,7 @@ export default {
                   <i class="fas fa-folder"></i> {{ module.name }}
                   <span class="badge bg-secondary ms-2">{{ module.topics.length }}</span>
                 </h6>
-                <button class="cancel-button" @click="deleteModule(module.name)"
+                <button class="delete-button" @click="deleteModule(module.name)"
                   title="Delete this module and all its topics">
                   Delete
                 </button>
@@ -1872,7 +1872,7 @@ export default {
         <div class="modal-content">
           <div class="modal-header">
             <h5 class="modal-title">Add Exam Date</h5>
-            <button type="button" class="btn-close" @click="closeExamModal"></button>
+            <button type="button" class="btn-close btn-close-white" @click="closeExamModal"></button>
           </div>
           <div class="modal-body">
             <!-- Image Upload Section -->
@@ -1989,10 +1989,10 @@ export default {
             </div>
           </div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" @click="closeExamModal">
+            <button type="button" class="btn cancel-button" @click="closeExamModal">
               Cancel
             </button>
-            <button type="button" class="btn btn-primary" @click="addExam">
+            <button type="button" class="btn save-button" @click="addExam">
               Add Exam
             </button>
           </div>
@@ -2012,7 +2012,6 @@ export default {
 
 <style scoped>
 .study-app {
-  background: white;
   min-height: 100vh;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
@@ -2035,7 +2034,7 @@ export default {
 
 .card {
   border-radius: 30px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
   margin-bottom: 2rem;
   overflow: visible;
   position: relative;
@@ -2357,6 +2356,11 @@ export default {
   opacity: 0.5;
 }
 
+.modal-header {
+  background-color: #667eea;
+  color: white;
+}
+
 /* Help Button and Tooltip Styles */
 .feature-help-section {
   position: relative;
@@ -2528,13 +2532,31 @@ export default {
   color: white;
   border-radius: 20px;
   transition: all 0.3s ease;
+}
+
+.cancel-button:hover {
+  background: linear-gradient(120deg, #ff6b6b 0%, #ee5a6f 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  border: 1px solid lightgray;
+  box-shadow: 0 8px 16px rgba(102, 126, 234, 0.4);
+  transform: translateY(-3px);
+  transition: all 0.3s ease;
+}
+
+.delete-button {
+  background: linear-gradient(120deg, #ff6b6b 0%, #ee5a6f 100%);
+  color: white;
+  border-radius: 20px;
+  transition: all 0.3s ease;
   border: none;
   padding: 0.2rem 0.2rem;
   font-size: 0.9rem;
   min-width: 70px;
 }
 
-.cancel-button:hover {
+.delete-button:hover {
   background: linear-gradient(120deg, #ff6b6b 0%, #ee5a6f 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;

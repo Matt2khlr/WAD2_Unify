@@ -190,18 +190,18 @@ function showToast(message) {
 
               <div v-if="!isEditingName" class="d-flex justify-content-between align-items-center">
                 <div class="fw-semibold">{{ user?.displayName || 'Not set' }}</div>
-                <button type="button" class="btn btn-sm btn-outline-primary" @click="isEditingName = true">
+                <button type="button" class="btn btn-sm general-btn" @click="isEditingName = true">
                   Edit
                 </button>
               </div>
               <div v-else class="d-flex gap-2">
                 <input v-model="userName" type="text" class="form-control form-control-sm"
                   placeholder="Enter your username" />
-                <button type="button" class="btn btn-sm btn-primary" @click="updateUserName"
+                <button type="button" class="btn btn-sm general-btn" @click="updateUserName"
                   :disabled="userNameLoading">
                   Save
                 </button>
-                <button type="button" class="btn btn-sm btn-outline-secondary" @click="cancelEditName"
+                <button type="button" class="btn btn-sm red-btn" @click="cancelEditName"
                   :disabled="userNameLoading">
                   Cancel
                 </button>
@@ -243,7 +243,7 @@ function showToast(message) {
                   placeholder="Confirm your new password" autocomplete="new-password" required />
               </div>
               <!-- Update Password Button -->
-              <button type="submit" class="btn btn-primary w-100" :disabled="passwordLoading">
+              <button type="submit" class="btn general-btn w-100" :disabled="passwordLoading">
                 <span v-if="passwordLoading" class="spinner-border spinner-border-sm me-2"></span>
                 Update Password
               </button>
@@ -254,7 +254,7 @@ function showToast(message) {
         <!-- Logout Section -->
         <div class="card">
           <div class="card-body p-4">
-            <button class="btn btn-outline-danger w-100" :disabled="logoutLoading" @click="handleLogout">
+            <button class="btn red-btn w-100" :disabled="logoutLoading" @click="handleLogout">
               <span v-if="logoutLoading" class="spinner-border spinner-border-sm me-2"></span>
               Logout
             </button>
@@ -288,13 +288,41 @@ function showToast(message) {
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.05);
 }
 
-.btn-sm,
-.btn-primary {
+.general-btn {
   background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
   border: none;
-  border-radius: 0.75rem;
+  border-radius: 20px;
   padding: 5px 10px;
   color: white;
+}
+
+.general-btn:hover {
+  background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  border: 1px solid lightgray;
+  box-shadow: 0 8px 16px rgba(102, 126, 234, 0.4);
+  transform: translateY(-3px);
+  transition: all 0.3s ease;
+}
+
+.red-btn {
+  background: linear-gradient(120deg, #ff6b6b 0%, #ee5a6f 100%);
+  color: white;
+  border-radius: 20px;
+  transition: all 0.3s ease;
+}
+
+.red-btn:hover {
+  background: linear-gradient(120deg, #ff6b6b 0%, #ee5a6f 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  border: 1px solid lightgray;
+  box-shadow: 0 8px 16px rgba(255, 107, 107, 0.4);
+  transform: translateY(-3px);
+  transition: all 0.3s ease;
 }
 
 .toast {

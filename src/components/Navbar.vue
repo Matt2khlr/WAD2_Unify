@@ -7,6 +7,7 @@ import logo from '@/assets/logo.png';
 
 const collapseMenu = ref(null);
 const userName = ref('Profile');
+const isOpen = ref(false);
 
 // Bootstrap collapse instance
 let bsCollapse = null;
@@ -65,10 +66,14 @@ function cleanupAuthListener() {
   window.removeEventListener('profile-updated', handleProfileUpdate);
 }
 
+function toggleNav() {
+  bsCollapse?.toggle();
+  requestAnimationFrame(() => { isOpen.value = collapseMenu.value?.classList.contains('show'); });
+}
+
 function closeNav() {
-  if (bsCollapse && collapseMenu.value?.classList.contains('show')) {
-    bsCollapse.hide();
-  }
+  bsCollapse?.hide();
+  isOpen.value = false;
 }
 </script>
 
@@ -79,8 +84,8 @@ function closeNav() {
         <img :src="logo" class="navbar-logo" alt="Logo" />
       </RouterLink>
 
-      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav"
-        aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
+      <button class="navbar-toggler" type="button" aria-controls="mainNav"
+      :aria-expanded="isOpen" aria-label="Toggle navigation" @click="toggleNav">
         <span class="navbar-toggler-icon"></span>
       </button>
 
@@ -102,7 +107,8 @@ function closeNav() {
             <RouterLink class="nav-link" to="/calendar" @click="closeNav">Calendar</RouterLink>
           </li>
           <li class="nav-item">
-            <RouterLink class="nav-link user-name" to="/settings" @click="closeNav">{{ userName }}
+            <RouterLink class="nav-link user-name user-name-pill" to="/settings" @click="closeNav">
+              &nbsp;<i class="mdi mdi-account me-2"></i>{{ userName }}&nbsp;
             </RouterLink>
           </li>
         </ul>
@@ -148,7 +154,7 @@ nav {
 }
 
 .user-name {
-  background: linear-gradient(120deg, #ffd700 0%, #ffed4e 100%);
+  background: #F0E68C;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -158,9 +164,15 @@ nav {
 }
 
 .user-name:hover {
-  background: linear-gradient(120deg, #ffed4e 0%, #ffd700 100%);
+  background: #bababa;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
+
+.user-name-pill {
+  border: 2px solid wheat;
+  border-radius: 10px;
+}
+
 </style>

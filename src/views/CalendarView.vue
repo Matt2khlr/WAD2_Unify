@@ -1513,7 +1513,7 @@ export default {
   <div class="container h-100">
 
     <div class="mt-2 mb-2 text-center">
-      <h1 class="display-4 fw-bold d-flex align-items-center gap-3">
+      <h1 class="display-4 fw-bold d-flex justify-content-center align-items-center gap-3">
         Calendar
       </h1>
     </div>
@@ -1705,7 +1705,6 @@ export default {
         <div class="modal-content">
           <div class="modal-header">
             <h5 class="modal-title">
-              <i class="mdi mdi-calendar-plus me-2"></i>
               Create Event
             </h5>
             <button type="button" class="btn-close btn-close-white" @click="closeCreateDialog"></button>
@@ -2413,8 +2412,14 @@ export default {
 }
 
 .save-button:hover {
+  background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  border: 1px solid lightgray;
   box-shadow: 0 8px 16px rgba(102, 126, 234, 0.4);
   transform: translateY(-3px);
+  transition: all 0.3s ease;
 }
 
 /* Cancel Button */
@@ -2426,8 +2431,14 @@ export default {
 }
 
 .cancel-button:hover {
-  box-shadow: 0 8px 16px rgba(102, 126, 234, 0.4);
+  background: linear-gradient(120deg, #ff6b6b 0%, #ee5a6f 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  border: 1px solid lightgray;
+  box-shadow: 0 8px 16px rgba(255, 107, 107, 0.4);
   transform: translateY(-3px);
+  transition: all 0.3s ease;
 }
 
 /* Close Button */
@@ -2440,8 +2451,14 @@ export default {
 }
 
 .close-button:hover {
+  background: linear-gradient(120deg, #ff6b6b 0%, #ee5a6f 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  border: 1px solid black;
   box-shadow: 0 8px 16px rgba(102, 126, 234, 0.4);
   transform: translateY(-3px);
+  transition: all 0.3s ease;
 }
 
 /* ====== Map Button ======*/
