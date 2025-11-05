@@ -2177,6 +2177,7 @@ export default {
 /* Cards */
 .card {
   border-radius: 1rem;
+  overflow: hidden;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -2184,6 +2185,14 @@ export default {
 .card:hover {
   transform: translateY(-4px);
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.05);
+}
+
+/* Card Header Border */
+.card > .card-header {
+  border-top-left-radius: inherit;
+  border-top-right-radius: inherit;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
 }
 
 /* CSS for Toggle Switch */
