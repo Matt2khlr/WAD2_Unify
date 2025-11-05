@@ -217,9 +217,9 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="min-vh-100 bg-gradient p-5">
+  <div class="min-vh-100 bg-gradient p-3 p-md-5">
     <div class="container">
-      <div class="mb-5 text-center">
+      <div class="mb-4 mb-md-5 text-center">
         <h1 class="display-4 fw-bold d-flex justify-content-center align-items-center gap-3">
           <i class="bi bi-journal-text"></i> Journal
         </h1>
@@ -230,9 +230,8 @@ onMounted(() => {
         <h2 class="mb-4">How are you feeling today?</h2>
         <div class="d-flex justify-content-center gap-4 mb-3">
           <button v-for="option in moodOptions" :key="option.label"
-            :class="['d-flex flex-column align-items-center p-3 rounded', option.color, { 'opacity-75': selectedMood !== option.label }]"
-            style="width: 100px; transition: transform 0.3s;" @click="selectMood(option.label)"
-            :style="{ transform: selectedMood === option.label ? 'scale(1.05)' : 'scale(1)' }">
+            :class="['d-flex flex-column align-items-center p-3 rounded mood-btn', option.color, { 'opacity-75': selectedMood !== option.label }]"
+            @click="selectMood(option.label)">
             <span class="fs-1">{{ option.icon }}</span>
             <span class="mt-2 fw-semibold">{{ option.label }}</span>
           </button>
@@ -243,9 +242,9 @@ onMounted(() => {
 
       <div class="card journal-card mb-5">
         <div class="card-header card-header-style">
-          <h3 class="h5 mb-0">
+          <h5 class="mb-0">
             <i class="mdi mdi-clock-outline me-2"></i> New Journal Entry
-          </h3>
+          </h5>
         </div>
         <div class="card-body">
           <textarea class="form-control" rows="6"
@@ -257,9 +256,9 @@ onMounted(() => {
 
       <div class="card journal-card mb-4">
         <div class="card-header card-header-style">
-          <h3 class="h5 mb-0">
+          <h5 class="mb-0">
             <i class="mdi mdi-book-open-variant me-2"></i> Recent Entries
-          </h3>
+          </h5>
         </div>
         <div class="card-body">
 
@@ -385,6 +384,12 @@ onMounted(() => {
 
 .mood-card {
   background: linear-gradient(120deg, #667eea 0%, #764ba2 100%) !important;
+}
+
+.mood-btn {
+  min-width: 70px;
+  flex: 0 1 auto;
+  transition: all 0.3s ease;
 }
 
 .journal-card .card-header {

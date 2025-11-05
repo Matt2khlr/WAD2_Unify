@@ -1032,7 +1032,7 @@ onBeforeUnmount(() => {
     <!-- Main content loaded-->
     <div v-else>
       <header>
-        <div class="container pt-4">
+        <div class="container pt-3 pt-md-4 px-3 px-md-4">
           <h1 class="display-6 fw-bold mb-2">Welcome back, {{ auth.currentUser.displayName }}!</h1>
           <p class="fs-5 mb-0">
             Here's an overview of your recent wellbeing and activities.
@@ -1041,14 +1041,14 @@ onBeforeUnmount(() => {
       </header>
 
       <!-- Recommendation section -->
-      <div class="container">
+      <div class="container px-3 px-md-4">
         <!-- Header -->
         <h2>Personalised recommendations</h2>
         <p>Suggestions tailored to your current schedule and wellbeing</p>
 
         <!-- Status cards -->
-        <div class="row g-3 mb-4 justify-content-center">
-          <div class="col-6 col-md-3" v-for="(status, index) in statusList" :key="status.key">
+        <div class="row g-2 g-md-3 mb-4 justify-content-center">
+          <div class="col-12 col-sm-6 col-md-3" v-for="(status, index) in statusList" :key="status.key">
             <div class="card h-100" :class="getStatusCardGradient(index)">
               <div class="card-body d-flex">
                 <div class="icon-wrap icon-status me-3">
@@ -1068,7 +1068,7 @@ onBeforeUnmount(() => {
         </div>
 
         <!-- Suggestions list -->
-        <div class="row g-3">
+        <div class="row g-2 g-md-3">
           <div class="col-12 col-md-6 col-lg-4" v-for="suggestion in suggestions" :key="suggestion.title">
             <div class="card h-100">
               <div class="card-body d-flex flex-column">
@@ -1097,7 +1097,7 @@ onBeforeUnmount(() => {
         </div>
 
         <!-- Dashboard content -->
-        <div class="row g-4 mb-2">
+        <div class="row g-2 g-md-3 mb-2">
           <div class="col-12 col-lg-6">
             <div class="card h-100">
               <div class="card-body d-flex flex-column">
@@ -1120,7 +1120,7 @@ onBeforeUnmount(() => {
                 </div>
 
                 <!-- Events List -->
-                <div class="flex-grow-1" style="overflow-y: auto; max-height: 300px;">
+                <div class="flex-grow-1 overflow-auto" style="max-height: 400px;">
                   <div v-if="weekEvents.length > 0" class="d-flex flex-column gap-3">
                     <div v-for="(dayGroup, index) in weekEvents" :key="index">
                       <!-- Day Header -->
@@ -1253,7 +1253,7 @@ onBeforeUnmount(() => {
                     </div>
 
                     <p class="mb-0" style="font-size: 0.95rem; line-height: 1.4;">
-                      {{ entry.text.length > 100 ? entry.text.substring(0, 100) + '...' :
+                      {{ entry.text.length > 80 ? entry.text.substring(0, 80) + '...' :
                         entry.text
                       }}
                     </p>
@@ -1303,6 +1303,10 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+.min-vh-100 {
+  overflow: auto;
+}
+
 /* Cards */
 .card {
   border: none;
@@ -1381,6 +1385,7 @@ h2,
 .event-card {
   background: #fafafa;
   transition: all 0.2s ease;
+  word-break: break-word;
 }
 
 .event-card:hover {
