@@ -2037,8 +2037,12 @@ export default {
   border-radius: 30px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
   margin-bottom: 2rem;
-  overflow: hidden;
+  overflow: visible;
   position: relative;
+}
+
+.card-body {
+  overflow: hidden;
 }
 
 .card-header {
@@ -2394,8 +2398,6 @@ export default {
 
 .help-tooltip-header {
   position: absolute;
-  top: calc(100% + 10px);
-  right: -10px;
   background: white;
   border: 2px solid #667eea;
   border-radius: 15px;
@@ -2405,6 +2407,9 @@ export default {
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
   z-index: 1000;
   animation: fadeIn 0.3s;
+  bottom: calc(100% + 10px);
+  right: -10px;
+  transform: translateY(0);
 }
 
 @media (max-width: 768px) {
@@ -2413,19 +2418,20 @@ export default {
     left: 50%;
     transform: translateX(-50%);
     width: 90vw;
+    bottom: calc(100% + 10px);
   }
 }
 
 .help-tooltip-header::before {
   content: '';
   position: absolute;
-  top: -10px;
+  bottom: -12px;
   right: 20px;
   width: 0;
   height: 0;
   border-left: 10px solid transparent;
   border-right: 10px solid transparent;
-  border-bottom: 10px solid #667eea;
+  border-top: 10px solid #667eea;
 }
 
 .help-tooltip-header h6 {
