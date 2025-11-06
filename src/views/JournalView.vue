@@ -480,7 +480,6 @@ h1 {
   background-clip: text;
   box-shadow: 0 8px 16px rgba(102, 126, 234, 0.4);
   transform: translateY(-3px);
-  transition: all 0.3s ease;
   border: 1px solid #667eea;
 }
 

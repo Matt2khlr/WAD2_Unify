@@ -107,8 +107,8 @@ function closeNav() {
             <RouterLink class="nav-link" to="/calendar" @click="closeNav">Calendar</RouterLink>
           </li>
           <li class="nav-item">
-            <RouterLink class="nav-link user-name user-name-pill" to="/settings" @click="closeNav">
-              &nbsp;<i class="mdi mdi-account me-2"></i>{{ userName }}&nbsp;
+            <RouterLink class="nav-link username-pill" to="/settings" @click="closeNav">
+              <i class="mdi mdi-account me-2"></i>{{ userName }}&nbsp;
             </RouterLink>
           </li>
         </ul>
@@ -153,26 +153,49 @@ nav {
   color: wheat !important;
 }
 
-.user-name {
-  background: #F0E68C;
+.username-pill {
+  background: white;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  background-clip: text;
+  background-clip: text !important;
+  border: 1px solid white;
+  border-radius: 20px;
   font-weight: bold;
   display: inline-block;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease !important;
 }
 
-.user-name:hover {
-  background: #bababa;
+.username-pill:hover {
+  background: #fff !important;
+  -webkit-background-clip: unset !important;
+  -webkit-text-fill-color: unset !important;
+  background-clip: unset !important;
+  color: #667eea !important;
+  border: 1px solid #667eea;
+  box-shadow: 0 8px 16px rgba(102, 126, 234, 0.4);
+  transform: translateY(-3px);
+}
+
+
+.username-pill.router-link-active {
+  background: wheat;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  background-clip: text;
+  background-clip: text !important;
+  border: 1px solid wheat;
+  border-radius: 20px;
+  font-weight: bold;
+  transition: all 0.3s ease !important;
 }
 
-.user-name-pill {
-  border: 2px solid wheat;
-  border-radius: 10px;
+.username-pill.router-link-active:hover {
+  background: wheat !important;
+  color: #667eea !important;
+  border: 1px solid #667eea;
+  box-shadow: 0 8px 16px rgba(102, 126, 234, 0.4);
+  transform: translateY(-3px);
+  -webkit-background-clip: unset !important;
+  -webkit-text-fill-color: unset !important;
+  background-clip: unset !important;
 }
-
 </style>

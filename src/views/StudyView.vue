@@ -1831,7 +1831,7 @@ export default {
                       <button class="edit-button" @click="startEditCard(card)">
                         Edit
                       </button>
-                      <button class="cancel-button" @click="deleteCard(card.id)" title="Delete this flashcard">
+                      <button class="delete-button" @click="deleteCard(card.id)" title="Delete this flashcard">
                         Delete
                       </button>
                     </div>
@@ -2684,6 +2684,40 @@ h1 {
   box-shadow: 0 8px 16px rgba(102, 126, 234, 0.4);
   transform: translateY(-3px);
   transition: all 0.3s ease;
+}
+
+.btn-success, .btn-primary, .btn-secondary, .btn-danger, .btn-warning {
+  border-radius: 20px;
+  transition: all 0.3s ease;
+}
+
+.btn-success:hover, .btn-primary:hover, .btn-secondary:hover, .btn-danger:hover, .btn-warning:hover {
+  background: white;
+  -webkit-background-clip: unset;
+  -webkit-text-fill-color: unset;
+  background-clip: unset;
+  box-shadow: 0 8px 16px rgba(102, 126, 234, 0.4);
+  transform: translateY(-3px);
+}
+
+.btn-success:hover {
+  color: #28a745;
+}
+
+.btn-primary:hover {
+  color: #0d6efd;
+}
+
+.btn-secondary:hover {
+  color: #6c757d;
+}
+
+.btn-danger:hover {
+  color: #dc3545;
+}
+
+.btn-warning:hover {
+  color: #ffc107;
 }
 
 /* Toast Notification Styles */
