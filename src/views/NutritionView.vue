@@ -931,6 +931,33 @@ watch([schedules, selectedDate], () => {
         </div>
       </div>
 
+      <div class="card shadow-soft mb-4">
+        <div class="card-body">
+          <h6 class="mb-3 d-flex align-items-center gap-2">
+            <Utensils class="text-info" :size="18" />
+            Today's Meals
+          </h6>
+          <div v-if="!userId" class="text-muted">Sign in to log meals.</div>
+          <div v-else-if="mealsSorted.length === 0" class="text-muted">No meals yet.</div>
+          <ul class="list-group">
+            <li v-for="m in mealsSorted" :key="m.id"
+              class="list-group-item d-flex justify-content-between align-items-center">
+              <div>
+                <div class="fw-semibold">{{ m.name }}</div>
+                <div class="small text-secondary">
+                  {{ m.type }} • {{ m.kcal }} kcal • P{{ m.protein }}g C{{ m.carbs }}g F{{ m.fat }}g
+                </div>
+              </div>
+              <button class="btn btn-sm cancel-button" @click="removeMeal(m.id)">Delete</button>
+            </li>
+          </ul>
+          <div class="mt-3 small">
+            <strong>Totals:</strong>
+            {{ totalsMeals.kcal }} kcal • P{{ totalsMeals.protein }}g • C{{ totalsMeals.carbs }}g • F{{ totalsMeals.fat }}g
+          </div>
+        </div>
+      </div>
+
       <div class="row g-3 mb-3">
         <div class="col-12 col-lg-6">
           <div class="card h-100 shadow-soft">
