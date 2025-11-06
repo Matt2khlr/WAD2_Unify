@@ -19,6 +19,7 @@ export default {
       // User authentication
       userId: null,
       unsubscribeTopics: null,
+      unsubscribeFlashcards: null,
 
       // Topics Management
       topics: [],
@@ -439,6 +440,74 @@ export default {
       }
     },
 
+    async loadFlashcards() {
+      // First try to load from Firebase if user is authenticated
+      if (this.userId) {
+        try {
+          const q = query(collection(db, 'flashcards'), where('userId', '==', this.userId));
+          const querySnapshot = await getDocs(q);
+
+          this.flashcards = [];
+          querySnapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+            this.flashcards.push({
+              id: docSnap.id,
+              firebaseId: docSnap.id,
+              question: data.question,
+              answer: data.answer,
+              module: data.module || '',
+              topic: data.topic || '',
+              nextReview: data.nextReview || new Date().toISOString().split('T')[0],
+              interval: data.interval || 1,
+              flipped: false,
+              showAnswer: false,
+              isFlipping: false
+            });
+          });
+
+          console.log('Flashcards loaded from Firebase:', this.flashcards.length);
+          this.saveData(); // Save to localStorage as backup
+          return;
+        } catch (error) {
+          console.error('Error loading flashcards from Firebase:', error);
+        }
+      }
+
+      // Fallback to localStorage
+      this.loadData();
+    },
+
+    setupFlashcardsListener() {
+      if (this.userId) {
+        const q = query(collection(db, 'flashcards'), where('userId', '==', this.userId));
+        this.unsubscribeFlashcards = onSnapshot(q, (querySnapshot) => {
+          this.flashcards = [];
+
+          querySnapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+            this.flashcards.push({
+              id: docSnap.id,
+              firebaseId: docSnap.id,
+              question: data.question,
+              answer: data.answer,
+              module: data.module || '',
+              topic: data.topic || '',
+              nextReview: data.nextReview || new Date().toISOString().split('T')[0],
+              interval: data.interval || 1,
+              flipped: false,
+              showAnswer: false,
+              isFlipping: false
+            });
+          });
+
+          console.log('Flashcards updated from Firebase realtime listener:', this.flashcards.length);
+          this.saveData(); // Save to localStorage as backup
+        }, (error) => {
+          console.error('Error listening to flashcards:', error);
+        });
+      }
+    },
+
     // Timer methods
     setPreset(type) {
       this.selectedPreset = type;
@@ -545,43 +614,81 @@ export default {
       if (!moduleName) return [];
       return this.topics.filter(topic => topic.module === moduleName);
     },
-    addFlashcard() {
+    async addFlashcard() {
       if (!this.newCard.question || !this.newCard.answer) {
         this.showToast('Please fill in both question and answer');
         return;
       }
 
-      const card = {
-        id: this.cardIdCounter++,
-        question: this.newCard.question,
-        answer: this.newCard.answer,
-        module: this.newCard.module || '',
-        topic: this.newCard.topic || '',
-        nextReview: new Date().toISOString().split('T')[0],
-        interval: 1,
-        flipped: false,
-        showAnswer: false,
-        isFlipping: false
-      };
+      try {
+        if (this.userId) {
+          // Save to Firebase
+          const flashcardsRef = collection(db, 'flashcards');
+          const cardData = {
+            userId: this.userId,
+            question: this.newCard.question,
+            answer: this.newCard.answer,
+            module: this.newCard.module || '',
+            topic: this.newCard.topic || '',
+            nextReview: new Date().toISOString().split('T')[0],
+            interval: 1,
+            createdAt: new Date().toISOString()
+          };
 
-      this.flashcards.push(card);
-      this.newCard = { question: '', answer: '', module: '', topic: '' };
-      this.showAddCard = false;
-      this.saveData();
+          console.log('Adding flashcard to Firebase:', cardData);
+          const docRef = await addDoc(flashcardsRef, cardData);
+          console.log('Flashcard added with ID:', docRef.id);
 
-      this.showToast('Flashcard added successfully!');
+          // Immediately add to local array while waiting for listener
+          const card = {
+            id: docRef.id,
+            firebaseId: docRef.id,
+            ...cardData,
+            flipped: false,
+            showAnswer: false,
+            isFlipping: false
+          };
+          this.flashcards.push(card);
+
+          this.showToast('Flashcard added successfully');
+        } else {
+          // Fallback to localStorage if not authenticated
+          const card = {
+            id: this.cardIdCounter++,
+            question: this.newCard.question,
+            answer: this.newCard.answer,
+            module: this.newCard.module || '',
+            topic: this.newCard.topic || '',
+            nextReview: new Date().toISOString().split('T')[0],
+            interval: 1,
+            flipped: false,
+            showAnswer: false,
+            isFlipping: false
+          };
+
+          this.flashcards.push(card);
+          this.saveData();
+          this.showToast('Flashcard added (local storage)');
+        }
+
+        this.newCard = { question: '', answer: '', module: '', topic: '' };
+        this.showAddCard = false;
+      } catch (error) {
+        console.error('Error adding flashcard:', error);
+        this.showToast('Error adding flashcard: ' + error.message);
+      }
     },
     toggleAddCard() {
       this.showAddCard = !this.showAddCard;
-      
+
       // Auto-scroll to form when opening
       if (this.showAddCard) {
         this.$nextTick(() => {
           const formElement = document.querySelector('.add-flashcard');
           if (formElement) {
-            formElement.scrollIntoView({ 
-              behavior: 'smooth', 
-              block: 'nearest' 
+            formElement.scrollIntoView({
+              behavior: 'smooth',
+              block: 'nearest'
             });
           }
         });
@@ -674,7 +781,7 @@ export default {
       this.reviewCards.forEach(card => card.flipped = false);
       this.reviewCards = [];
     },
-    rateCard(cardOrId, difficulty) {
+    async rateCard(cardOrId, difficulty) {
       // Handle both card object (from review mode) and card ID (from list view)
       const card = typeof cardOrId === 'object' ? cardOrId : this.flashcards.find(c => c.id === cardOrId);
       if (!card) return;
@@ -705,12 +812,43 @@ export default {
       card.nextReview = nextDate.toISOString().split('T')[0];
       card.flipped = false;
       card.showAnswer = false; // Collapse the answer after rating
-      this.saveData();
-    },
-    deleteCard(id) {
-      if (confirm('Delete this flashcard?')) {
-        this.flashcards = this.flashcards.filter(c => c.id !== id);
+
+      // Save to Firebase if authenticated
+      if (this.userId && card.id) {
+        try {
+          await updateDoc(doc(db, 'flashcards', card.id), {
+            nextReview: card.nextReview,
+            interval: card.interval
+          });
+        } catch (error) {
+          console.error('Error updating flashcard in Firebase:', error);
+        }
+      } else {
+        // Save to localStorage as backup
         this.saveData();
+      }
+    },
+    async deleteCard(id) {
+      if (confirm('Delete this flashcard?')) {
+        try {
+          if (this.userId) {
+            // Delete from Firebase
+            await deleteDoc(doc(db, 'flashcards', id));
+          }
+
+          // Delete from local array
+          this.flashcards = this.flashcards.filter(c => c.id !== id);
+
+          // Save to localStorage as backup if not authenticated
+          if (!this.userId) {
+            this.saveData();
+          }
+
+          this.showToast('Flashcard deleted');
+        } catch (error) {
+          console.error('Error deleting flashcard:', error);
+          this.showToast('Error deleting flashcard: ' + error.message);
+        }
       }
     },
     formatDate(dateStr) {
@@ -1283,14 +1421,28 @@ export default {
         this.cardIdCounter = data.cardIdCounter || 1;
       }
     },
-    clearAllFlashcards() {
+    async clearAllFlashcards() {
       if (confirm('Are you sure you want to delete ALL flashcards? This cannot be undone.')) {
-        this.flashcards = [];
-        this.cardIdCounter = 1;
-        this.reviewMode = false;
-        this.currentCardIndex = 0;
-        this.saveData();
-        this.showToast('All flashcards have been cleared.');
+        try {
+          if (this.userId) {
+            // Delete all flashcards from Firebase
+            for (const card of this.flashcards) {
+              await deleteDoc(doc(db, 'flashcards', card.id));
+            }
+          }
+
+          this.flashcards = [];
+          this.cardIdCounter = 1;
+          this.reviewMode = false;
+          this.currentCardIndex = 0;
+
+          // Save to localStorage as backup
+          this.saveData();
+          this.showToast('All flashcards have been cleared.');
+        } catch (error) {
+          console.error('Error clearing flashcards:', error);
+          this.showToast('Error clearing flashcards: ' + error.message);
+        }
       }
     },
     startEditCard(card) {
@@ -1306,19 +1458,39 @@ export default {
       this.editingCardId = null;
       this.editForm = { question: '', answer: '', module: '', topic: '' };
     },
-    saveEditCard() {
+    async saveEditCard() {
       const card = this.flashcards.find(c => c.id === this.editingCardId);
       if (card) {
         if (!this.editForm.question || !this.editForm.answer) {
           this.showToast('Please fill in both question and answer');
           return;
         }
-        card.question = this.editForm.question;
-        card.answer = this.editForm.answer;
-        card.module = this.editForm.module;
-        card.topic = this.editForm.topic;
-        this.saveData();
-        this.cancelEditCard();
+
+        try {
+          card.question = this.editForm.question;
+          card.answer = this.editForm.answer;
+          card.module = this.editForm.module;
+          card.topic = this.editForm.topic;
+
+          // Save to Firebase if authenticated
+          if (this.userId && card.id) {
+            await updateDoc(doc(db, 'flashcards', card.id), {
+              question: card.question,
+              answer: card.answer,
+              module: card.module,
+              topic: card.topic
+            });
+          } else {
+            // Save to localStorage as backup
+            this.saveData();
+          }
+
+          this.showToast('Flashcard updated');
+          this.cancelEditCard();
+        } catch (error) {
+          console.error('Error saving flashcard:', error);
+          this.showToast('Error saving flashcard: ' + error.message);
+        }
       }
     },
     // Show Toast
@@ -1350,6 +1522,9 @@ export default {
 
         // Set up real-time listener for topics
         this.setupTopicsListener();
+
+        // Set up real-time listener for flashcards (this will load flashcards automatically)
+        this.setupFlashcardsListener();
       } else {
         this.userId = null;
         console.log('No user authenticated, using localStorage');
@@ -1357,10 +1532,9 @@ export default {
         // Load from localStorage if no user
         this.loadTopics();
         this.loadExams();
+        this.loadFlashcards();
       }
     });
-
-    this.loadData();
 
     // Initialize Bootstrap tooltips
     this.$nextTick(() => {
@@ -1378,14 +1552,19 @@ export default {
     if (this.unsubscribeTopics) {
       this.unsubscribeTopics();
     }
+
+    // Clean up flashcards listener
+    if (this.unsubscribeFlashcards) {
+      this.unsubscribeFlashcards();
+    }
   }
 };
 </script>
 
 <template>
-  <div class="study-app py-5">
+  <div class="study-app py-4 py-md-5">
     <div class="container main-container">
-      <div class="mb-5 text-center">
+      <div class="mb-4 mb-md-5 text-center">
         <h1 class="display-4 fw-bold d-flex justify-content-center align-items-center gap-3">
           <i class="fas fa-graduation-cap"></i> Study Tools
         </h1>
@@ -1400,8 +1579,8 @@ export default {
         <div class="card-body">
           <!-- Add New Topic Bar -->
           <div class="add-topic-section mb-4">
-            <div class="row align-items-end">
-              <div class="col-md-3">
+            <div class="row g-3 align-items-end">
+              <div class="col-12 col-md-3">
                 <label class="form-label">Module:</label>
                 <select class="form-select" v-model="newTopic.module">
                   <option value="">Select Module</option>
@@ -1420,12 +1599,12 @@ export default {
                 <input type="text" class="form-control" v-model="newTopic.name" placeholder="Enter topic to study..."
                   @keyup.enter="addTopic">
               </div>
-              <div class="col-md-2" v-if="newTopic.module === 'custom'">
+              <div class="col-lg-2 col-md-3" v-if="newTopic.module === 'custom'">
                 <button class="btn add-button w-100 mt-3" @click="addTopic">
                   <i class="fas fa-plus"></i> Add Topic
                 </button>
               </div>
-              <div class="col-md-2" v-else>
+              <div class="col-lg-2 col-md-3" v-else>
                 <button class="btn add-button w-100" @click="addTopic">
                   <i class="fas fa-plus"></i> Add Topic
                 </button>
@@ -1706,6 +1885,7 @@ export default {
               <h5 class="mb-3">
                 <span class="badge bg-primary">{{ allCards.length }}</span> Total Flashcards
                 <span v-if="dueCards.length > 0" class="ms-2">
+                  <br class="d-inline d-sm-none my-2">
                   <span class="badge bg-danger">{{ dueCards.length }}</span> Due for Review
                 </span>
               </h5>
@@ -2693,12 +2873,20 @@ h1 {
   transition: all 0.3s ease;
 }
 
-.btn-success, .btn-primary, .btn-secondary, .btn-danger, .btn-warning {
+.btn-success,
+.btn-primary,
+.btn-secondary,
+.btn-danger,
+.btn-warning {
   border-radius: 20px;
   transition: all 0.3s ease;
 }
 
-.btn-success:hover, .btn-primary:hover, .btn-secondary:hover, .btn-danger:hover, .btn-warning:hover {
+.btn-success:hover,
+.btn-primary:hover,
+.btn-secondary:hover,
+.btn-danger:hover,
+.btn-warning:hover {
   background: white;
   -webkit-background-clip: unset;
   -webkit-text-fill-color: unset;

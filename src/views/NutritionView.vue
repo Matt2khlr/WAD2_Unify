@@ -56,20 +56,20 @@ const dateInputValue = computed(() => {
 function selectDate(event) {
   const dateStr = event.target.value;
   errorMessage.value = "";
-  
+
   if (!dateStr) return;
-  
+
   const [year, month, day] = dateStr.split('-');
   const selectedDateObj = new Date(year, month - 1, day);
-  
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  
+
   if (selectedDateObj > today) {
     errorMessage.value = "Cannot select a future date";
     return;
   }
-  
+
   selectedDate.value = dateStr;
   showDatePicker.value = false;
 }
@@ -575,15 +575,15 @@ function changeDate(days) {
   const d = new Date(selectedDate.value);
   d.setDate(d.getDate() + days);
   d.setHours(0, 0, 0, 0);
-  
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  
+
   if (d > today) {
     showToast("Cannot select a future date");
     return;
   }
-  
+
   selectedDate.value = toISO(d);
 }
 
@@ -684,8 +684,8 @@ watch([schedules, selectedDate], () => {
 
 <template>
   <section class="container">
-    <div class="min-vh-100 p-3 p-md-5">
-      <div class="mb-5 text-center">
+    <div class="min-vh-100 py-4 py-md-5">
+      <div class="mb-4 mb-md-5 text-center">
         <h1 class="display-4 fw-bold d-flex justify-content-center align-items-center gap-3">
           Nutrition Tracker
         </h1>
@@ -708,21 +708,17 @@ watch([schedules, selectedDate], () => {
       </div>
 
       <!-- Date Picker Modal -->
-      <div class="modal fade" :class="{ show: showDatePicker, 'd-block': showDatePicker }" 
-        tabindex="-1" style="background-color: rgba(0,0,0,0.5);" v-show="showDatePicker">
+      <div class="modal fade" :class="{ show: showDatePicker, 'd-block': showDatePicker }" tabindex="-1"
+        style="background-color: rgba(0,0,0,0.5);" v-show="showDatePicker">
         <div class="modal-dialog modal-dialog-centered">
           <div class="modal-content">
             <div class="modal-header">
               <h5 class="modal-title">Select Date</h5>
-              <button type="button" class="btn-close btn-close-white" @click="showDatePicker = false; errorMessage = ''"></button>
+              <button type="button" class="btn-close btn-close-white"
+                @click="showDatePicker = false; errorMessage = ''"></button>
             </div>
             <div class="modal-body">
-              <input 
-                type="date" 
-                class="form-control" 
-                :value="dateInputValue"
-                @change="selectDate"
-              />
+              <input type="date" class="form-control" :value="dateInputValue" @change="selectDate" />
               <span style="color: red;">{{ errorMessage }}</span>
             </div>
             <div class="modal-footer">
@@ -812,22 +808,13 @@ watch([schedules, selectedDate], () => {
             <div class="col-12">
               <label class="form-label fw-bold">Goal</label>
               <div class="goal-btn-group">
-                <button 
-                  class="goal-btn" 
-                  :class="{ active: goal === 'weight-loss' }"
-                  @click="goal = 'weight-loss'">
+                <button class="goal-btn" :class="{ active: goal === 'weight-loss' }" @click="goal = 'weight-loss'">
                   <i class="mdi mdi-minus-circle me-2"></i>Weight loss
                 </button>
-                <button 
-                  class="goal-btn" 
-                  :class="{ active: goal === 'maintenance' }"
-                  @click="goal = 'maintenance'">
+                <button class="goal-btn" :class="{ active: goal === 'maintenance' }" @click="goal = 'maintenance'">
                   <i class="mdi mdi-equal-box me-2"></i>Maintenance
                 </button>
-                <button 
-                  class="goal-btn" 
-                  :class="{ active: goal === 'muscle-gain' }"
-                  @click="goal = 'muscle-gain'">
+                <button class="goal-btn" :class="{ active: goal === 'muscle-gain' }" @click="goal = 'muscle-gain'">
                   <i class="mdi mdi-plus-circle me-2"></i>Muscle gain
                 </button>
               </div>
@@ -961,15 +948,18 @@ watch([schedules, selectedDate], () => {
                 </div>
                 <div class="col-3 col-md-2">
                   <label class="form-label small text-muted mb-1">Protein (g)</label>
-                  <input class="form-control" type="number" min="0" placeholder="0" v-model.number="newMealTemplate.p" />
+                  <input class="form-control" type="number" min="0" placeholder="0"
+                    v-model.number="newMealTemplate.p" />
                 </div>
                 <div class="col-3 col-md-2">
                   <label class="form-label small text-muted mb-1">Carbs (g)</label>
-                  <input class="form-control" type="number" min="0" placeholder="0" v-model.number="newMealTemplate.c" />
+                  <input class="form-control" type="number" min="0" placeholder="0"
+                    v-model.number="newMealTemplate.c" />
                 </div>
                 <div class="col-3 col-md-2">
                   <label class="form-label small text-muted mb-1">Fat (g)</label>
-                  <input class="form-control" type="number" min="0" placeholder="0" v-model.number="newMealTemplate.f" />
+                  <input class="form-control" type="number" min="0" placeholder="0"
+                    v-model.number="newMealTemplate.f" />
                 </div>
               </div>
               <button class="btn save-button mb-2" @click="addMealTemplate">
@@ -1089,8 +1079,8 @@ watch([schedules, selectedDate], () => {
               ≈
               <span class="fw-bold text-success">{{ previewKcal }} kcal</span>
             </div>
-            <button class="btn save-button ms-auto" :disabled="!workoutForm.activity || !(previewMinutes || hasOverride)"
-              @click="addWorkout">
+            <button class="btn save-button ms-auto"
+              :disabled="!workoutForm.activity || !(previewMinutes || hasOverride)" @click="addWorkout">
               <i class="mdi mdi-plus"></i>
               Add
             </button>
@@ -1545,7 +1535,7 @@ h1 {
     padding: 0.6rem 0.5rem;
     font-size: 0.85rem;
   }
-  
+
   .goal-btn i {
     display: none;
   }
