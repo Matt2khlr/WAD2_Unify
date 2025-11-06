@@ -201,8 +201,7 @@ function showToast(message) {
                   :disabled="userNameLoading">
                   Save
                 </button>
-                <button type="button" class="btn btn-sm red-btn" @click="cancelEditName"
-                  :disabled="userNameLoading">
+                <button type="button" class="btn btn-sm red-btn" @click="cancelEditName" :disabled="userNameLoading">
                   Cancel
                 </button>
               </div>

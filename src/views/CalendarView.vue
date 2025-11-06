@@ -831,7 +831,7 @@ export default {
             const disp = place.displayName?.text;
             const addr = place.formattedAddress;
             displayName = disp ? `${disp}, ${addr ?? ''}`.trim().replace(/,\s*$/, '') : (addr ?? address);
-          } 
+          }
           catch (error) {
             displayName = address;
           }
@@ -841,7 +841,7 @@ export default {
           geopoint: new GeoPoint(loc.lat(), loc.lng()),
           name: displayName,
         };
-      } 
+      }
       catch (error) {
         return null;
       }
@@ -1199,304 +1199,304 @@ export default {
         })
 
         console.log('Event Added to Google Calendar:', response.result.id)
-                return response.result.id
-            }
-            catch (error) {
-                console.error('Error Adding Event to Google Calendar:', error)
-                return null
-            }
-        },
-
-        // Delete Event Confirmation
-        async deleteEvent() {
-            if (this.currentEvent.isRecurring) {
-                // Recurring Event
-                if (!confirm('This is a recurring event. Deleting it will remove all instances. Are you sure?')) {
-                    return;
-                };
-            } else {
-                // Single Event
-                if (!confirm('Are you sure you want to delete this event?')) {
-                    return;
-                }
-            }
-
-            await this.performDelete();
-        },
-
-        // Close General Dialog
-        closeGeneralDialog() {
-            this.generalDialog = false;
-            this.dialogMessage = '';
-        },
-
-        // Show Delete Confirmation Dialog
-        async deleteEvent() {
-            this.deleteConfirmDialog = true;
-        },
-
-        // Close Delete Confirmation Dialog
-        closeDeleteConfirm() {
-            this.deleteConfirmDialog = false;
-        },
-
-        // Confirm and Perform Delete
-        async confirmDelete() {
-            this.closeDeleteConfirm();
-            await this.performDelete();
-        },
-
-        // Backend Deletion
-        async performDelete() {
-            try {
-                // Delete from Google Calendar
-                if (this.syncEnabled && this.currentEvent.gEventId) {
-                    try {
-                        await gapi.client.calendar.events.delete({
-                            calendarId: 'primary',
-                            eventId: this.currentEvent.gEventId
-                        });
-                        console.log('Event deleted from Google Calendar.');
-                    } catch (error) {
-                        console.error('Error deleting event from Google Calendar:', error);
-                    }
-                }
-
-                // Delete from Cloud Firestore
-                await deleteDoc(doc(db, 'events', this.currentEvent.id));
-                console.log('Event deleted from Firestore.');
-
-                this.closeEventDialog();
-                this.showToast('Event deleted successfully', 'success'); // Optional: Add toast notification
-            } catch (error) {
-                this.showToast('Error deleting event: ' + error.message, 'error'); // Optional: Add toast notification
-                console.error('Error deleting event:', error);
-            }
-        },
-
-        // Clear Current Event Location in Event Dialog
-        clearLocation() {
-            this.currentEvent.location = null
-            this.currentEvent.locationName = ''
-            this.showAutocomplete = true
-
-            this.$nextTick(() => {
-                this.setupPlacesAutocomplete()
-            })
-        },
-
-        // Initialise Google Places API
-        async setupPlacesAutocomplete() {
-            if (!window.google?.maps || this.currentEvent.location) {
-                return
-            }
-
-            try {
-                const { PlaceAutocompleteElement } = await google.maps.importLibrary("places")
-
-                if (this.placeAutocomplete) {
-                    this.placeAutocomplete.remove()
-                }
-
-                this.placeAutocomplete = new PlaceAutocompleteElement()
-
-                const container = this.$refs.placeAutocompleteContainer
-                if (container) {
-                    container.innerText = ''
-                    container.appendChild(this.placeAutocomplete)
-                }
-
-                this.placeAutocomplete.addEventListener('gmp-select', async (event) => {
-                    const place = event.placePrediction.toPlace()
-
-                    await place.fetchFields({
-                        fields: ['displayName', 'formattedAddress', 'location']
-                    })
-
-                    if (place.location) {
-                        this.currentEvent.location = new GeoPoint(
-                            place.location.lat(),
-                            place.location.lng()
-                        )
-                        this.currentEvent.locationName = place.displayName + ", " + place.formattedAddress
-                        this.showAutocomplete = false
-
-                        if (this.placeAutocomplete) {
-                            this.placeAutocomplete.remove()
-                            this.placeAutocomplete = null
-                        }
-                    }
-                })
-            } catch (err) {
-                console.error('Error Retrieving Places:', err)
-            }
-        },
-
-        // Open Google Maps
-        openMap(event) {
-            if (!event.location) return
-
-            const lat = event.location.latitude
-            const lng = event.location.longitude
-            window.open(`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`, '_blank');
-        },
-
-        // Format Date for Display
-        formatDateTime(date) {
-            return new Date(date).toLocaleString('en-UK', {
-                month: 'short',
-                day: 'numeric',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-            });
-        },
-
-        // Format Time for Display
-        formatTime(date) {
-            return new Date(date).toLocaleTimeString('en-UK', {
-                hour: '2-digit',
-                minute: '2-digit'
-            })
-        },
-
-        formatShortDate(dateTime) {
-            const date = new Date(dateTime)
-            return date.toLocaleDateString('en-UK', {
-                day: 'numeric',
-                month: 'short'
-            })
-        },
-
-        // Format Event Time
-        formatEventTime(dateTime) {
-            const date = new Date(dateTime)
-            return date.toLocaleTimeString('en-UK', {
-                hour: '2-digit',
-                minute: '2-digit',
-            })
-        },
-
-        getContrastColor(hexColor) {
-            const color = hexColor.replace('#', '')
-            const r = parseInt(color.substr(0, 2), 16)
-            const g = parseInt(color.substr(2, 2), 16)
-            const b = parseInt(color.substr(4, 2), 16)
-            const brightness = (r * 299 + g * 587 + b * 114) / 1000
-            return brightness > 120 ? '#000000' : '#ffffff'
-        },
-
-        // Format Date for Cloud Firestore
-        formatForInput(date) {
-            const d = new Date(date);
-            const year = d.getFullYear();
-            const month = String(d.getMonth() + 1).padStart(2, '0');
-            const day = String(d.getDate()).padStart(2, '0');
-            const hours = String(d.getHours()).padStart(2, '0');
-            const minutes = String(d.getMinutes()).padStart(2, '0');
-            return `${year}-${month}-${day}T${hours}:${minutes}`;
-        },
-
-        formatDayLabel(date) {
-            const today = new Date()
-            const tomorrow = new Date(today)
-            tomorrow.setDate(tomorrow.getDate() + 1)
-
-            const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate())
-            const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate())
-            const tomorrowOnly = new Date(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate())
-
-            if (dateOnly.getTime() === todayOnly.getTime()) {
-                return 'Today'
-            } else if (dateOnly.getTime() === tomorrowOnly.getTime()) {
-                return 'Tomorrow'
-            } else {
-                return date.toLocaleDateString('en-US', {
-                    weekday: 'short',
-                    month: 'short',
-                    day: 'numeric'
-                })
-            }
-        },
-
-        // Listen to Cloud Firestore and Get Events
-        listenToEvents() {
-            if (!this.userId) {
-                console.log('No userId available, skipping events listener');
-                return;
-            }
-
-            // Unsubscribe from previous listener if it exists
-            if (this.unsubscribeEvents) {
-                this.unsubscribeEvents();
-            }
-
-            const q = query(collection(db, 'events'), where('userId', '==', this.userId));
-            this.unsubscribeEvents = onSnapshot(q, (snapshot) => {
-                this.events = snapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data(),
-                    start: doc.data().start.toDate(),
-                    end: doc.data().end.toDate(),
-                }))
-                console.log('Events loaded:', this.events.length);
-            });
-        },
+        return response.result.id
+      }
+      catch (error) {
+        console.error('Error Adding Event to Google Calendar:', error)
+        return null
+      }
     },
 
-    async mounted() {
-        await loadGoogleMaps();
-
-        // Set up auth state listener to ensure userId is available
-        this.unsubscribeAuth = onAuthStateChanged(auth, (user) => {
-            if (user) {
-                this.userId = user.uid;
-                console.log('User authenticated:', this.userId);
-                // Now that userId is set, listen to events
-                this.listenToEvents();
-            } else {
-                this.userId = null;
-                console.log('No user authenticated');
-            }
-        });
-
-        await this.initGoogle();
-
-        const savedToken = sessionStorage.getItem('google_token');
-        if (savedToken) {
-            this.syncEnabled = true;
-            this.accessToken = savedToken;
-
-            if (window.gapi?.client) {
-                gapi.client.setToken({ access_token: savedToken });
-            }
-
-            await this.waitForGoogleAPI();
-            try {
-                await this.syncWithGoogle();
-                this.startAutoSync();
-            } catch (e) {
-                console.error('Initial sync failed:', e);
-                this.syncEnabled = false;
-            }
+    // Delete Event Confirmation
+    async deleteEvent() {
+      if (this.currentEvent.isRecurring) {
+        // Recurring Event
+        if (!confirm('This is a recurring event. Deleting it will remove all instances. Are you sure?')) {
+          return;
+        };
+      } else {
+        // Single Event
+        if (!confirm('Are you sure you want to delete this event?')) {
+          return;
         }
+      }
+
+      await this.performDelete();
     },
 
-    beforeUnmount() {
-        if (this.syncInterval) {
-            clearInterval(this.syncInterval);
+    // Close General Dialog
+    closeGeneralDialog() {
+      this.generalDialog = false;
+      this.dialogMessage = '';
+    },
+
+    // Show Delete Confirmation Dialog
+    async deleteEvent() {
+      this.deleteConfirmDialog = true;
+    },
+
+    // Close Delete Confirmation Dialog
+    closeDeleteConfirm() {
+      this.deleteConfirmDialog = false;
+    },
+
+    // Confirm and Perform Delete
+    async confirmDelete() {
+      this.closeDeleteConfirm();
+      await this.performDelete();
+    },
+
+    // Backend Deletion
+    async performDelete() {
+      try {
+        // Delete from Google Calendar
+        if (this.syncEnabled && this.currentEvent.gEventId) {
+          try {
+            await gapi.client.calendar.events.delete({
+              calendarId: 'primary',
+              eventId: this.currentEvent.gEventId
+            });
+            console.log('Event deleted from Google Calendar.');
+          } catch (error) {
+            console.error('Error deleting event from Google Calendar:', error);
+          }
         }
 
-        // Clean up auth listener
-        if (this.unsubscribeAuth) {
-            this.unsubscribeAuth();
+        // Delete from Cloud Firestore
+        await deleteDoc(doc(db, 'events', this.currentEvent.id));
+        console.log('Event deleted from Firestore.');
+
+        this.closeEventDialog();
+        this.showToast('Event deleted successfully', 'success'); // Optional: Add toast notification
+      } catch (error) {
+        this.showToast('Error deleting event: ' + error.message, 'error'); // Optional: Add toast notification
+        console.error('Error deleting event:', error);
+      }
+    },
+
+    // Clear Current Event Location in Event Dialog
+    clearLocation() {
+      this.currentEvent.location = null
+      this.currentEvent.locationName = ''
+      this.showAutocomplete = true
+
+      this.$nextTick(() => {
+        this.setupPlacesAutocomplete()
+      })
+    },
+
+    // Initialise Google Places API
+    async setupPlacesAutocomplete() {
+      if (!window.google?.maps || this.currentEvent.location) {
+        return
+      }
+
+      try {
+        const { PlaceAutocompleteElement } = await google.maps.importLibrary("places")
+
+        if (this.placeAutocomplete) {
+          this.placeAutocomplete.remove()
         }
 
-        // Clean up events listener
-        if (this.unsubscribeEvents) {
-            this.unsubscribeEvents();
+        this.placeAutocomplete = new PlaceAutocompleteElement()
+
+        const container = this.$refs.placeAutocompleteContainer
+        if (container) {
+          container.innerText = ''
+          container.appendChild(this.placeAutocomplete)
         }
+
+        this.placeAutocomplete.addEventListener('gmp-select', async (event) => {
+          const place = event.placePrediction.toPlace()
+
+          await place.fetchFields({
+            fields: ['displayName', 'formattedAddress', 'location']
+          })
+
+          if (place.location) {
+            this.currentEvent.location = new GeoPoint(
+              place.location.lat(),
+              place.location.lng()
+            )
+            this.currentEvent.locationName = place.displayName + ", " + place.formattedAddress
+            this.showAutocomplete = false
+
+            if (this.placeAutocomplete) {
+              this.placeAutocomplete.remove()
+              this.placeAutocomplete = null
+            }
+          }
+        })
+      } catch (err) {
+        console.error('Error Retrieving Places:', err)
+      }
+    },
+
+    // Open Google Maps
+    openMap(event) {
+      if (!event.location) return
+
+      const lat = event.location.latitude
+      const lng = event.location.longitude
+      window.open(`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`, '_blank');
+    },
+
+    // Format Date for Display
+    formatDateTime(date) {
+      return new Date(date).toLocaleString('en-UK', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    },
+
+    // Format Time for Display
+    formatTime(date) {
+      return new Date(date).toLocaleTimeString('en-UK', {
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+    },
+
+    formatShortDate(dateTime) {
+      const date = new Date(dateTime)
+      return date.toLocaleDateString('en-UK', {
+        day: 'numeric',
+        month: 'short'
+      })
+    },
+
+    // Format Event Time
+    formatEventTime(dateTime) {
+      const date = new Date(dateTime)
+      return date.toLocaleTimeString('en-UK', {
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    },
+
+    getContrastColor(hexColor) {
+      const color = hexColor.replace('#', '')
+      const r = parseInt(color.substr(0, 2), 16)
+      const g = parseInt(color.substr(2, 2), 16)
+      const b = parseInt(color.substr(4, 2), 16)
+      const brightness = (r * 299 + g * 587 + b * 114) / 1000
+      return brightness > 120 ? '#000000' : '#ffffff'
+    },
+
+    // Format Date for Cloud Firestore
+    formatForInput(date) {
+      const d = new Date(date);
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      const hours = String(d.getHours()).padStart(2, '0');
+      const minutes = String(d.getMinutes()).padStart(2, '0');
+      return `${year}-${month}-${day}T${hours}:${minutes}`;
+    },
+
+    formatDayLabel(date) {
+      const today = new Date()
+      const tomorrow = new Date(today)
+      tomorrow.setDate(tomorrow.getDate() + 1)
+
+      const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+      const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+      const tomorrowOnly = new Date(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate())
+
+      if (dateOnly.getTime() === todayOnly.getTime()) {
+        return 'Today'
+      } else if (dateOnly.getTime() === tomorrowOnly.getTime()) {
+        return 'Tomorrow'
+      } else {
+        return date.toLocaleDateString('en-US', {
+          weekday: 'short',
+          month: 'short',
+          day: 'numeric'
+        })
+      }
+    },
+
+    // Listen to Cloud Firestore and Get Events
+    listenToEvents() {
+      if (!this.userId) {
+        console.log('No userId available, skipping events listener');
+        return;
+      }
+
+      // Unsubscribe from previous listener if it exists
+      if (this.unsubscribeEvents) {
+        this.unsubscribeEvents();
+      }
+
+      const q = query(collection(db, 'events'), where('userId', '==', this.userId));
+      this.unsubscribeEvents = onSnapshot(q, (snapshot) => {
+        this.events = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+          start: doc.data().start.toDate(),
+          end: doc.data().end.toDate(),
+        }))
+        console.log('Events loaded:', this.events.length);
+      });
+    },
+  },
+
+  async mounted() {
+    await loadGoogleMaps();
+
+    // Set up auth state listener to ensure userId is available
+    this.unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        this.userId = user.uid;
+        console.log('User authenticated:', this.userId);
+        // Now that userId is set, listen to events
+        this.listenToEvents();
+      } else {
+        this.userId = null;
+        console.log('No user authenticated');
+      }
+    });
+
+    await this.initGoogle();
+
+    const savedToken = sessionStorage.getItem('google_token');
+    if (savedToken) {
+      this.syncEnabled = true;
+      this.accessToken = savedToken;
+
+      if (window.gapi?.client) {
+        gapi.client.setToken({ access_token: savedToken });
+      }
+
+      await this.waitForGoogleAPI();
+      try {
+        await this.syncWithGoogle();
+        this.startAutoSync();
+      } catch (e) {
+        console.error('Initial sync failed:', e);
+        this.syncEnabled = false;
+      }
     }
+  },
+
+  beforeUnmount() {
+    if (this.syncInterval) {
+      clearInterval(this.syncInterval);
+    }
+
+    // Clean up auth listener
+    if (this.unsubscribeAuth) {
+      this.unsubscribeAuth();
+    }
+
+    // Clean up events listener
+    if (this.unsubscribeEvents) {
+      this.unsubscribeEvents();
+    }
+  }
 }
 </script>
 
@@ -1660,8 +1660,8 @@ export default {
                             <span v-if="event.priority" class="badge" :class="{
                               'bg-danger': event.priority === 'High',
                               'bg-warning text-dark': event.priority === 'Medium',
-                                                            'bg-success': event.priority === 'Low'
-                                                        }" style="font-size: 0.8rem; padding: 2px 6px;">
+                              'bg-success': event.priority === 'Low'
+                            }" style="font-size: 0.8rem; padding: 2px 6px;">
                               {{ event.priority }}
                             </span>
                           </div>
@@ -1753,7 +1753,7 @@ export default {
               <div v-if="currentEvent.recurrence.frequency === 'WEEKLY'" class="mb-3">
                 <label class="form-label">Repeats Every</label>
                 <div class="d-flex gap-2 flex-wrap">
-                  <button v-for="day in weekDays" :key="day.value" type="button" 
+                  <button v-for="day in weekDays" :key="day.value" type="button"
                     :class="currentEvent.recurrence.byWeekDay.includes(day.value) ? 'day-btn-selected' : 'day-btn'"
                     @click="toggleWeekDay(day.value)">
                     {{ day.label }}
@@ -1921,7 +1921,7 @@ export default {
               <div v-if="currentEvent.recurrence.frequency === 'WEEKLY'" class="mb-3">
                 <label class="form-label">Repeats Every</label>
                 <div class="d-flex gap-2 flex-wrap">
-                  <button v-for="day in weekDays" :key="day.value" type="button" 
+                  <button v-for="day in weekDays" :key="day.value" type="button"
                     :class="currentEvent.recurrence.byWeekDay.includes(day.value) ? 'day-btn-selected' : 'day-btn'"
                     @click="toggleWeekDay(day.value)">
                     {{ day.label }}
@@ -2014,7 +2014,8 @@ export default {
                 <label class="form-label" v-if="currentEvent.location">Event Location</label>
                 <div v-if="currentEvent.location" class="text">
                   📍 {{ currentEvent.locationName }}&nbsp;&nbsp;
-                  <button @click.stop="openMap(currentEvent)" class="map-button" title="Open in Google Maps" style="display: inline;">
+                  <button @click.stop="openMap(currentEvent)" class="map-button" title="Open in Google Maps"
+                    style="display: inline;">
                     <i class="mdi mdi-map-marker map-icon"></i>
                   </button>
                 </div>
@@ -2294,12 +2295,12 @@ h1 {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
-.ios-switch-input:checked ~ .ios-switch-label .ios-switch-slider {
+.ios-switch-input:checked~.ios-switch-label .ios-switch-slider {
   background: #5BC236;
   box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
 }
 
-.ios-switch-input:checked ~ .ios-switch-label .ios-switch-slider::before {
+.ios-switch-input:checked~.ios-switch-label .ios-switch-slider::before {
   transform: translateX(18px);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
 }
@@ -2308,16 +2309,16 @@ h1 {
   box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
 }
 
-.ios-switch-input:active ~ .ios-switch-label .ios-switch-slider::before {
+.ios-switch-input:active~.ios-switch-label .ios-switch-slider::before {
   width: 24px;
 }
 
-.ios-switch-input:focus ~ .ios-switch-label .ios-switch-slider {
+.ios-switch-input:focus~.ios-switch-label .ios-switch-slider {
   outline: 2px solid #667eea;
   outline-offset: 2px;
 }
 
-.ios-switch-input:disabled ~ .ios-switch-label {
+.ios-switch-input:disabled~.ios-switch-label {
   opacity: 0.5;
   cursor: not-allowed;
 }

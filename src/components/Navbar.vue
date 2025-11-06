@@ -84,8 +84,8 @@ function closeNav() {
         <img :src="logo" class="navbar-logo" alt="Logo" />
       </RouterLink>
 
-      <button class="navbar-toggler" type="button" aria-controls="mainNav"
-      :aria-expanded="isOpen" aria-label="Toggle navigation" @click="toggleNav">
+      <button class="navbar-toggler" type="button" aria-controls="mainNav" :aria-expanded="isOpen"
+        aria-label="Toggle navigation" @click="toggleNav">
         <span class="navbar-toggler-icon"></span>
       </button>
 
