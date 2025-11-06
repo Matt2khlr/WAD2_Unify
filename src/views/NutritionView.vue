@@ -568,6 +568,7 @@ const QUICK_DURATIONS = [15, 30, 45, 60];
 function changeDate(days) {
   const d = new Date(selectedDate.value);
   d.setDate(d.getDate() + days);
+  d.setHours(0, 0, 0, 0);
   
   const today = new Date();
   today.setHours(0, 0, 0, 0);
