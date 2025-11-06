@@ -873,6 +873,14 @@ function getMoodIcon(moodLabel) {
   return moodIcons[moodLabel] || '';
 };
 
+// Helper to get today's date in local YYYY-MM-DD format (matches NutritionView)
+function getTodayISO() {
+  const d = new Date();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${m}-${day}`;
+}
+
 // Bind nutrition data
 async function bindNutritionData() {
   if (!userId.value) {
@@ -884,7 +892,7 @@ async function bindNutritionData() {
   }
 
   try {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getTodayISO();
 
     if (unsubscribeMeals.value) {
       unsubscribeMeals.value();
