@@ -5,7 +5,6 @@ import { db, auth } from '@/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { loadGoogleMaps } from "@/plugins/googleMaps";
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
-import { Toast } from 'bootstrap';
 // ==================== Reactive State ====================
 // Loading state
 const isLoading = ref(true);

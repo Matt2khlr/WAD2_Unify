@@ -4,7 +4,6 @@ import WordCloud from 'wordcloud';
 import { collection, where, addDoc, query, orderBy, limit, onSnapshot, getDocs } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import { db, auth } from '@/firebase';
-import { Toast } from 'bootstrap';
 
 // Default sleep data
 const sleepData = ref([

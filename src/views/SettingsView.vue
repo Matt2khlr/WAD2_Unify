@@ -4,7 +4,6 @@ import { updatePassword, reauthenticateWithCredential, EmailAuthProvider, update
 import { auth } from '@/firebase';
 import { useRouter } from 'vue-router';
 import { performLogout } from '@/utils/auth';
-import { Toast } from 'bootstrap';
 
 const router = useRouter();
 

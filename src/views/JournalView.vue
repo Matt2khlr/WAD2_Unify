@@ -3,7 +3,6 @@ import { ref, onMounted } from 'vue';
 import { db, auth } from '@/firebase';
 import { collection, addDoc, query, orderBy, onSnapshot, where, doc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
-import { Toast } from 'bootstrap';
 
 const userId = ref(null);
 const journalEntry = ref('');

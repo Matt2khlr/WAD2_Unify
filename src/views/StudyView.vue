@@ -2,7 +2,7 @@
 import { db, auth } from '../firebase';
 import { collection, doc, addDoc, getDocs, updateDoc, deleteDoc, query, where, onSnapshot, Timestamp } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
-import { Toast, Tooltip } from 'bootstrap';
+// Toast and Tooltip are available globally from bootstrap in main.js
 import Tesseract from 'tesseract.js';
 import exampleTimetableImage from '@/assets/example exam schedule.jpeg';
 
