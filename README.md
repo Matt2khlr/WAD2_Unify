@@ -32,6 +32,20 @@ cd WAD2_Unify
 npm install
 ```
 
+### Environment Setup
+
+Create a `.env` file in the root directory with the following variables:
+
+```sh
+VITE_GOOGLE_API_KEY=your_api_key_here
+VITE_GOOGLE_AUTH_DOMAIN=your_project.firebaseapp.com
+VITE_GOOGLE_PROJECT_ID=your_project_id
+VITE_GOOGLE_CLIENT_ID=123456789-abcdef123.apps.googleusercontent.com
+VITE_GOOGLE_STORAGE_BUCKET=your_project.firebasestorage.app
+VITE_MESSAGING_SENDER_ID=123456789
+VITE_APP_ID=1:123456789:web:abcdef
+```
+
 ### Compile and Hot-Reload for Development
 
 ```sh
@@ -52,6 +66,6 @@ npm run build
 
 **Note:** You can also create your own account via the registration page.
 
-## 👥 Contributors
+## Contributors
 
 The Unify Team
