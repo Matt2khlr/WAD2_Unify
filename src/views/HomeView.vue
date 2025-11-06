@@ -44,8 +44,8 @@ const unsubscribeMeals = ref(null);
 const unsubscribeWorkouts = ref(null);
 
 // Toast notification
-const toast = ref(null);
 const toastMessage = ref('');
+const toastRef = ref(null);
 
 // ==================== Computed Properties ====================
 // Status card information
@@ -928,12 +928,16 @@ async function bindNutritionData() {
 // Show toast message
 function showToast(message) {
   toastMessage.value = message;
-
-  if (toast.value) {
-    const bsToast = new Toast(toast.value);
-    bsToast.show();
-  }
-};
+  const el = toastRef.value;
+  if (!el) return;
+  
+  const t = Toast.getOrCreateInstance(el);
+  t.show();
+  
+  setTimeout(() => {
+    toastMessage.value = '';
+  }, 3000);
+}
 
 // Cleanup all listeners and data
 function cleanupAllListeners() {

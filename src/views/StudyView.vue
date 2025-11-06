@@ -1321,13 +1321,19 @@ export default {
         this.cancelEditCard();
       }
     },
+    // Show Toast
     showToast(message) {
       this.toastMessage = message;
-      const toastEl = this.$refs.toast;
-      const toastBs = new Toast(toastEl);
-      toastBs.show();
-    }
-
+      const el = this.$refs.toastRef;
+      if (!el) return;
+      
+      const t = bootstrap.Toast.getOrCreateInstance(el);
+      t.show();
+      
+      setTimeout(() => {
+        this.toastMessage = "";
+      }, 3000);
+    },
   },
   mounted() {
     // Set up authentication listener
@@ -2025,13 +2031,14 @@ export default {
       </div>
     </div>
 
-    <!-- Toast Notification -->
-    <div ref="toast" class="toast position-fixed bottom-0 start-50 translate-middle-x m-3" role="alert"
+    <!-- Toast -->
+    <div v-show="toastMessage" ref="toastRef" class="toast-custom" role="alert"
       aria-live="assertive" aria-atomic="true" data-bs-delay="3000">
       <div class="toast-body">
         {{ toastMessage }}
       </div>
     </div>
+
   </div>
 </template>
 
@@ -2721,17 +2728,53 @@ h1 {
 }
 
 /* Toast Notification Styles */
-.toast {
+.toast-custom {
+  position: fixed;
+  bottom: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
   background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
   color: white;
-  border: none;
-  border-radius: 10px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  z-index: 9999;
+  padding: 0.75rem 1.25rem; 
+  border-radius: 8px;
+  box-shadow: 0 8px 16px rgba(102, 126, 234, 0.3);
+  min-width: 300px;
+  max-width: 90vw;
+  animation: slideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  will-change: opacity, transform;
+  backface-visibility: hidden;
+  perspective: 1000px;
 }
 
-.toast-body {
-  padding: 1rem;
-  font-weight: 500;
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+@media (max-width: 576px) {
+  .toast-custom {
+    bottom: 0.5rem;
+    left: 0.5rem;
+    right: 0.5rem;
+    transform: none;
+    min-width: unset;
+    max-width: 100%;
+    width: calc(100% - 1rem);
+    border-radius: 6px;
+    padding: 0.6rem 1rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .toast-custom {
+    min-width: 350px;
+  }
 }
 </style>

@@ -108,7 +108,7 @@ function closeNav() {
           </li>
           <li class="nav-item">
             <RouterLink class="nav-link username-pill" to="/settings" @click="closeNav">
-              <i class="mdi mdi-account me-2"></i>{{ userName }}&nbsp;
+              &nbsp;<i class="mdi mdi-account me-2"></i>{{ userName }}&nbsp;
             </RouterLink>
           </li>
         </ul>

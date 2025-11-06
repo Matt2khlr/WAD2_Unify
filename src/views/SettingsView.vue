@@ -4,6 +4,7 @@ import { updatePassword, reauthenticateWithCredential, EmailAuthProvider, update
 import { auth } from '@/firebase';
 import { useRouter } from 'vue-router';
 import { performLogout } from '@/utils/auth';
+import { Toast } from 'bootstrap';
 
 const router = useRouter();
 
@@ -11,8 +12,8 @@ const router = useRouter();
 const user = ref(null);
 
 // Toast notification
-const toast = ref(null);
 const toastMessage = ref('');
+const toastRef = ref(null);
 
 // Username state
 const userName = ref('');
@@ -165,11 +166,15 @@ async function handleLogout() {
 
 function showToast(message) {
   toastMessage.value = message;
-
-  if (toast.value) {
-    const bsToast = new bootstrap.Toast(toast.value);
-    bsToast.show();
-  }
+  const el = toastRef.value;
+  if (!el) return;
+  
+  const t = Toast.getOrCreateInstance(el);
+  t.show();
+  
+  setTimeout(() => {
+    toastMessage.value = '';
+  }, 3000);
 }
 </script>
 
@@ -264,8 +269,8 @@ function showToast(message) {
     </div>
   </div>
 
-  <!-- Toast Notification -->
-  <div ref="toast" class="toast position-fixed bottom-0 start-50 translate-middle-x m-3" role="alert"
+  <!-- Toast -->
+  <div v-show="toastMessage" ref="toastRef" class="toast-custom" role="alert"
     aria-live="assertive" aria-atomic="true" data-bs-delay="3000">
     <div class="toast-body">
       {{ toastMessage }}
@@ -326,8 +331,53 @@ function showToast(message) {
   transition: all 0.3s ease;
 }
 
-.toast {
+.toast-custom {
+  position: fixed;
+  bottom: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
   background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
   color: white;
+  padding: 0.75rem 1.25rem; 
+  border-radius: 8px;
+  box-shadow: 0 8px 16px rgba(102, 126, 234, 0.3);
+  min-width: 300px;
+  max-width: 90vw;
+  animation: slideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  will-change: opacity, transform;
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+@media (max-width: 576px) {
+  .toast-custom {
+    bottom: 0.5rem;
+    left: 0.5rem;
+    right: 0.5rem;
+    transform: none;
+    min-width: unset;
+    max-width: 100%;
+    width: calc(100% - 1rem);
+    border-radius: 6px;
+    padding: 0.6rem 1rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .toast-custom {
+    min-width: 350px;
+  }
 }
 </style>
