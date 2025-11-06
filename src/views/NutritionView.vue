@@ -678,8 +678,8 @@ watch([schedules, selectedDate], () => {
 
 <template>
   <section class="container">
-    <div class="min-vh-100 p-3 p-md-5">
-      <div class="mb-5 text-center">
+    <div class="min-vh-100 py-4 py-md-5">
+      <div class="mb-4 mb-md-5 text-center">
         <h1 class="display-4 fw-bold d-flex justify-content-center align-items-center gap-3">
           Nutrition Tracker
         </h1>

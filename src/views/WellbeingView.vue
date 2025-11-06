@@ -163,22 +163,43 @@ function drawWordCloud(factors) {
   const canvas = canvasRef.value;
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const isMobile = window.innerWidth < 576;
+
   WordCloud(canvas, {
     list: factors.length ? factors : stressFactors,
-    gridSize: 5,
-    weightFactor: 10,
-    minFontSize: 8,
-    maxFontSize: 30,
+    gridSize: isMobile ? 2 : Math.max(3, Math.floor(window.innerWidth / 150)),
+    weightFactor: isMobile ? 10 : 15,
+    minFontSize: isMobile ? 10 : 10,
+    maxFontSize: isMobile ? 18 : 30,
     fontFamily: 'Arial, sans-serif',
     color: 'random-dark',
     rotateRatio: 0.1,
     ellipticity: 0.8,
     backgroundColor: '#f0f0f0',
     origin: [
-      canvas.getBoundingClientRect().width / 2,
-      canvas.getBoundingClientRect().height / 2
+      canvas.width / 2 / (window.devicePixelRatio || 1),
+      canvas.height / 2 / (window.devicePixelRatio || 1)
     ],
   });
+}
+
+function initializeCanvas() {
+  const canvas = canvasRef.value;
+  if (!canvas) return;
+
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  const width = Math.max(rect.width, 300);
+  const height = Math.max(rect.height, window.innerWidth < 576 ? 300 : 400);
+
+  canvas.width = width * dpr;
+  canvas.height = height * dpr;
+
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  // Redraw word cloud after resize
+  drawWordCloud(fetchedFactors.value);
 }
 
 onMounted(() => {
@@ -190,14 +211,8 @@ onMounted(() => {
     }
   });
 
-  const canvas = canvasRef.value;
-  if (!canvas) return;
-  const dpr = window.devicePixelRatio || 1;
-  const rect = canvas.getBoundingClientRect();
-  canvas.width = rect.width * dpr;
-  canvas.height = rect.height * dpr;
-  const ctx = canvas.getContext('2d');
-  ctx.scale(dpr, dpr);
+  initializeCanvas();
+  window.addEventListener('resize', initializeCanvas);
 });
 
 
@@ -207,14 +222,14 @@ watch(fetchedFactors, (newFactors) => {
 </script>
 
 <template>
-  <div class="min-vh-100 py-5">
+  <div class="min-vh-100 py-4 py-md-5">
     <div class="container">
       <div ref="toastRef" class="toast position-fixed bottom-0 start-50 translate-middle-x m-3" role="alert"
         aria-live="assertive" aria-atomic="true" data-bs-delay="3000">
         <div class="toast-body">{{ toastMessage }}</div>
       </div>
 
-      <div class="mb-5 text-center">
+      <div class="mb-4 mb-md-5 text-center">
         <h1 class="display-4 fw-bold d-flex justify-content-center align-items-center gap-3">
           Wellbeing Tracker
         </h1>
@@ -261,8 +276,7 @@ watch(fetchedFactors, (newFactors) => {
                 </div>
                 <input type="range" min="0" max="100" step="1" v-model="stressLevel" class="form-range"
                   aria-label="Stress level slider" />
-                <p :class="['text-center', 'fs-3', 'fw-bold', stressColorClass, 'mb-0']">{{ stressLabel
-                }}</p>
+                <p :class="['text-center', 'fs-3', 'fw-bold', stressColorClass, 'mb-0']">{{ stressLabel }}</p>
               </div>
               <div class="rounded p-3 mb-3 flex-grow-1 bg-light">
                 <h4 class="fw-semibold mb-2">Stress Factors Today:</h4>
@@ -288,7 +302,7 @@ watch(fetchedFactors, (newFactors) => {
           Common Stress Factors
         </div>
         <div class="card-body p-4">
-          <canvas ref="canvasRef" width="600" height="300" style="width: 100%; height: 600px;"></canvas>
+          <canvas ref="canvasRef"></canvas>
         </div>
       </div>
     </div>
@@ -301,6 +315,13 @@ h1 {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+}
+
+canvas {
+  width: 100%;
+  height: auto;
+  min-height: 300px;
+  display: block;
 }
 
 .btn {
@@ -371,5 +392,17 @@ h1 {
   color: white;
   z-index: 1055;
   position: fixed;
+}
+
+@media (min-width: 576px) {
+  canvas {
+    min-height: 400px;
+  }
+}
+
+@media (min-width: 992px) {
+  canvas {
+    min-height: 500px;
+  }
 }
 </style>

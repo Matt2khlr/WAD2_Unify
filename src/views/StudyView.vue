@@ -1556,9 +1556,9 @@ export default {
 </script>
 
 <template>
-  <div class="study-app py-5">
+  <div class="study-app py-4 py-md-5">
     <div class="container main-container">
-      <div class="mb-5 text-center">
+      <div class="mb-4 mb-md-5 text-center">
         <h1 class="display-4 fw-bold d-flex justify-content-center align-items-center gap-3">
           <i class="fas fa-graduation-cap"></i> Study Tools
         </h1>
@@ -1573,8 +1573,8 @@ export default {
         <div class="card-body">
           <!-- Add New Topic Bar -->
           <div class="add-topic-section mb-4">
-            <div class="row align-items-end">
-              <div class="col-md-3">
+            <div class="row g-3 align-items-end">
+              <div class="col-12 col-md-3">
                 <label class="form-label">Module:</label>
                 <select class="form-select" v-model="newTopic.module">
                   <option value="">Select Module</option>
@@ -1593,12 +1593,12 @@ export default {
                 <input type="text" class="form-control" v-model="newTopic.name" placeholder="Enter topic to study..."
                   @keyup.enter="addTopic">
               </div>
-              <div class="col-md-2" v-if="newTopic.module === 'custom'">
+              <div class="col-lg-2 col-md-3" v-if="newTopic.module === 'custom'">
                 <button class="btn add-button w-100 mt-3" @click="addTopic">
                   <i class="fas fa-plus"></i> Add Topic
                 </button>
               </div>
-              <div class="col-md-2" v-else>
+              <div class="col-lg-2 col-md-3" v-else>
                 <button class="btn add-button w-100" @click="addTopic">
                   <i class="fas fa-plus"></i> Add Topic
                 </button>
@@ -1879,6 +1879,7 @@ export default {
               <h5 class="mb-3">
                 <span class="badge bg-primary">{{ allCards.length }}</span> Total Flashcards
                 <span v-if="dueCards.length > 0" class="ms-2">
+                  <br class="d-inline d-sm-none my-2">
                   <span class="badge bg-danger">{{ dueCards.length }}</span> Due for Review
                 </span>
               </h5>
@@ -2865,12 +2866,20 @@ h1 {
   transition: all 0.3s ease;
 }
 
-.btn-success, .btn-primary, .btn-secondary, .btn-danger, .btn-warning {
+.btn-success,
+.btn-primary,
+.btn-secondary,
+.btn-danger,
+.btn-warning {
   border-radius: 20px;
   transition: all 0.3s ease;
 }
 
-.btn-success:hover, .btn-primary:hover, .btn-secondary:hover, .btn-danger:hover, .btn-warning:hover {
+.btn-success:hover,
+.btn-primary:hover,
+.btn-secondary:hover,
+.btn-danger:hover,
+.btn-warning:hover {
   background: white;
   -webkit-background-clip: unset;
   -webkit-text-fill-color: unset;

@@ -163,6 +163,7 @@ nav {
   font-weight: bold;
   display: inline-block;
   transition: all 0.3s ease !important;
+  padding: 0.5rem 1rem;
 }
 
 .username-pill:hover {

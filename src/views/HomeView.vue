@@ -53,7 +53,7 @@ const statusList = computed(() => {
   return [
     {
       key: 'sessions',
-      label: 'Study Sessions Today',
+      label: 'Study Sessions',
       value: studySessionsToday.value,
       subtext: `${formatStudyTime(totalStudyTimeToday.value)} focused time`
     },
@@ -1024,7 +1024,7 @@ onBeforeUnmount(() => {
     <!-- Main content loaded-->
     <div v-else>
       <header>
-        <div class="container pt-3 pt-md-4 px-3 px-md-4">
+        <div class="container pt-4 px-3 px-md-4">
           <h1 class="display-6 fw-bold mb-2">Welcome back, <span class="username">{{ auth.currentUser.displayName }}</span>!</h1>
           <p class="fs-5 mb-0">
             Here's an overview of your recent wellbeing and activities.
