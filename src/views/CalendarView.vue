@@ -1619,7 +1619,7 @@ export default {
           </div>
           <div class="card-body p-3">
             <!-- Events List Grouped by Day -->
-            <div class="flex-grow-1" style="overflow-y: auto; max-height: calc(100vh - 250px);">
+            <div class="flex-grow-1" style="overflow-y: auto; max-height: calc(100vh - 300px);">
               <div v-if="upcomingEventsByDay.length > 0" class="d-flex flex-column gap-3">
                 <div v-for="(dayGroup, index) in upcomingEventsByDay" :key="index">
                   <!-- Day Header -->
