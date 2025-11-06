@@ -4,7 +4,6 @@ import { db, auth } from "@/firebase";
 import { collection, addDoc, deleteDoc, doc, onSnapshot, query, where, serverTimestamp, setDoc, deleteField, getDoc } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import { Calendar, Flame, TrendingUp, Activity, Utensils, Clock, Plus, ChevronLeft, ChevronRight } from "lucide-vue-next";
-import { Toast } from "bootstrap";
 
 function toISO(d) {
   const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -99,10 +98,10 @@ function showToast(message) {
   toastMessage.value = message;
   const el = toastRef.value;
   if (!el) return;
-  
-  const t = Toast.getOrCreateInstance(el);
+
+  const t = bootstrap.Toast.getOrCreateInstance(el);
   t.show();
-  
+
   setTimeout(() => {
     toastMessage.value = '';
   }, 3000);
