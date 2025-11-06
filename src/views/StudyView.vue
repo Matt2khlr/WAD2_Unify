@@ -1913,10 +1913,10 @@ export default {
               </div>
 
               <div class="d-flex gap-3 flex-wrap">
-                <button class="btn btn-primary btn-lg" @click="startReview" :disabled="filteredDueCards.length === 0">
+                <button class="btn add-button btn-lg" @click="startReview" :disabled="filteredDueCards.length === 0">
                   <i class="fas fa-play"></i> Review Due Cards ({{ filteredDueCards.length }})
                 </button>
-                <button class="btn btn-secondary btn-lg" @click="startAllCardsReview">
+                <button class="btn start-button btn-lg" @click="startAllCardsReview">
                   <i class="fas fa-layer-group"></i> Review All Cards ({{ filteredAllCards.length }})
                 </button>
               </div>
