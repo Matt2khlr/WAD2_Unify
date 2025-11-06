@@ -58,14 +58,6 @@ npm run dev
 npm run build
 ```
 
-## Test Account
-
-- **Username:** `Testing` 
-- **Email:** `testing@gmail.com`
-- **Password:** `hello321`
-
-**Note:** You can also create your own account via the registration page.
-
 ## Contributors
 
 The Unify Team
