@@ -2068,7 +2068,7 @@ h1 {
 .card-header {
   background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
   color: white;
-  border-radius: 15px 15px 0 0;
+  border-radius: 0.75rem 0.75rem 0 0;
   padding: 1.5rem;
   font-weight: 600;
   font-size: 1.3rem;

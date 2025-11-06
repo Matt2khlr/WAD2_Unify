@@ -2334,13 +2334,6 @@ h1 {
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.05);
 }
 
-.card .card-header {
-  border-top-left-radius: inherit;
-  border-top-right-radius: inherit;
-  border-bottom-left-radius: 0;
-  border-bottom-right-radius: 0;
-}
-
 .shadow-soft {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
 }

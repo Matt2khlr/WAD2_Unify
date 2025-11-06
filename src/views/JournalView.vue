@@ -405,9 +405,7 @@ h1 {
 }
 
 .journal-card .card-header {
-  border-radius: 15px 15px 0 0 !important;
   border: none;
-  border-bottom: none;
   padding: 1.5rem;
 }
 
