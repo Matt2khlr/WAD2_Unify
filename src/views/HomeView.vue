@@ -4,7 +4,7 @@ import { collection, updateDoc, deleteDoc, doc, setDoc, query, where, onSnapshot
 import { db, auth } from '@/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { loadGoogleMaps } from "@/plugins/googleMaps";
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
 // ==================== Reactive State ====================
 // Loading state
 const isLoading = ref(true);
@@ -161,6 +161,16 @@ const totalWorkouts = computed(() => ({
 const netCalories = computed(() => {
   return (totalMeals.value.kcal || 0) - (totalWorkouts.value.kcal || 0);
 });
+
+// ==================== Watchers ====================
+// Watch for changes in data that affect suggestions
+watch(
+  [stress, sleepQuality, studySessionsToday, totalStudyTimeToday, totalWorkouts, totalMeals],
+  () => {
+    generateSuggestionsFromData();
+  },
+  { deep: true }
+);
 
 // ==================== Methods ====================
 // Load stress level
