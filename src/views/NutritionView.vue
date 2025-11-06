@@ -768,7 +768,7 @@ watch([schedules, selectedDate], () => {
                   <span>{{ totalsMeals.protein }} g / {{ proteinTarget }} g</span>
                 </div>
                 <div class="progress">
-                  <div class="progress-bar bg-primary"
+                  <div class="progress-bar pb-protein"
                     :style="{ width: Math.min(100, (totalsMeals.protein / proteinTarget) * 100) + '%' }">
                   </div>
                 </div>
@@ -779,7 +779,7 @@ watch([schedules, selectedDate], () => {
                   <span>{{ totalsMeals.carbs }} g / {{ carbsTarget }} g</span>
                 </div>
                 <div class="progress">
-                  <div class="progress-bar bg-info"
+                  <div class="progress-bar pb-carbs"
                     :style="{ width: Math.min(100, (totalsMeals.carbs / carbsTarget) * 100) + '%' }">
                   </div>
                 </div>
@@ -790,7 +790,7 @@ watch([schedules, selectedDate], () => {
                   <span>{{ totalsMeals.fat }} g / {{ fatTarget }} g</span>
                 </div>
                 <div class="progress">
-                  <div class="progress-bar bg-warning"
+                  <div class="progress-bar pb-fat"
                     :style="{ width: Math.min(100, (totalsMeals.fat / fatTarget) * 100) + '%' }"></div>
                 </div>
               </div>
@@ -1501,5 +1501,17 @@ h1 {
 
 .shadow-soft {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+}
+
+.pb-protein {
+  background: linear-gradient(120deg, #0d6efd 0%, #0056b3 100%);
+}
+
+.pb-carbs {
+  background: linear-gradient(120deg, #198754 0%, #145235 100%);
+}
+
+.pb-fat {
+  background: linear-gradient(120deg, #ffc107 0%, #fd7e14 100%);
 }
 </style>
