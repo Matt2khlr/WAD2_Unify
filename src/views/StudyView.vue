@@ -635,31 +635,21 @@ export default {
             createdAt: new Date().toISOString()
           };
 
-<<<<<<< Updated upstream
-      this.flashcards.push(card);
-      this.newCard = { question: '', answer: '', module: '', topic: '' };
-      this.showAddCard = false;
-      this.saveData();
+          console.log('Adding flashcard to Firebase:', cardData);
+          const docRef = await addDoc(flashcardsRef, cardData);
+          console.log('Flashcard added with ID:', docRef.id);
 
-      this.showToast('Flashcard added successfully!');
-    },
-    toggleAddCard() {
-      this.showAddCard = !this.showAddCard;
-      
-      // Auto-scroll to form when opening
-      if (this.showAddCard) {
-        this.$nextTick(() => {
-          const formElement = document.querySelector('.add-flashcard');
-          if (formElement) {
-            formElement.scrollIntoView({ 
-              behavior: 'smooth', 
-              block: 'nearest' 
-            });
-          }
-        });
-=======
-          await addDoc(flashcardsRef, cardData);
-          // Don't push to local array - the Firebase listener will handle it
+          // Immediately add to local array while waiting for listener
+          const card = {
+            id: docRef.id,
+            firebaseId: docRef.id,
+            ...cardData,
+            flipped: false,
+            showAnswer: false,
+            isFlipping: false
+          };
+          this.flashcards.push(card);
+
           this.showToast('Flashcard added successfully');
         } else {
           // Fallback to localStorage if not authenticated
@@ -686,7 +676,22 @@ export default {
       } catch (error) {
         console.error('Error adding flashcard:', error);
         this.showToast('Error adding flashcard: ' + error.message);
->>>>>>> Stashed changes
+      }
+    },
+    toggleAddCard() {
+      this.showAddCard = !this.showAddCard;
+
+      // Auto-scroll to form when opening
+      if (this.showAddCard) {
+        this.$nextTick(() => {
+          const formElement = document.querySelector('.add-flashcard');
+          if (formElement) {
+            formElement.scrollIntoView({
+              behavior: 'smooth',
+              block: 'nearest'
+            });
+          }
+        });
       }
     },
     flipCard(card) {
