@@ -295,6 +295,10 @@ export default {
       const date = new Date(dateStr);
       return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     },
+    onModuleFilterChange() {
+      // Reset topic filter when module changes
+      this.selectedTopicFilter = 'all'; 
+    },
     async deleteModule(moduleName) {
       // Check if there are any topics using this module
       const topicsUsingModule = this.topics.filter(t => t.module === moduleName);
@@ -638,18 +642,6 @@ export default {
           console.log('Adding flashcard to Firebase:', cardData);
           const docRef = await addDoc(flashcardsRef, cardData);
           console.log('Flashcard added with ID:', docRef.id);
-
-          // Immediately add to local array while waiting for listener
-          const card = {
-            id: docRef.id,
-            firebaseId: docRef.id,
-            ...cardData,
-            flipped: false,
-            showAnswer: false,
-            isFlipping: false
-          };
-          this.flashcards.push(card);
-
           this.showToast('Flashcard added successfully');
         } else {
           // Fallback to localStorage if not authenticated
@@ -1894,7 +1886,7 @@ export default {
               <div class="row g-3 mb-3">
                 <div v-if="availableModulesInFlashcards.length > 0" class="col-md-6">
                   <label class="form-label">Filter Review by Module:</label>
-                  <select class="form-select" v-model="selectedModuleFilter">
+                  <select class="form-select" v-model="selectedModuleFilter" @change="onModuleFilterChange">
                     <option value="all">All Modules</option>
                     <option v-for="module in availableModulesInFlashcards" :key="module" :value="module">
                       {{ module }}
