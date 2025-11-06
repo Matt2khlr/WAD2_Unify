@@ -929,10 +929,10 @@ function showToast(message) {
   toastMessage.value = message;
   const el = toastRef.value;
   if (!el) return;
-  
-  const t = Toast.getOrCreateInstance(el);
+
+  const t = bootstrap.Toast.getOrCreateInstance(el);
   t.show();
-  
+
   setTimeout(() => {
     toastMessage.value = '';
   }, 3000);
