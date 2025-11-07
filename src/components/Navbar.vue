@@ -120,9 +120,9 @@ function closeNav() {
 <style scoped>
 nav {
   background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
-  position: sticky;
+  position: sticky !important;
   top: 0;
-  z-index: 1000;
+  z-index: 10000;
 }
 
 .navbar-toggler {
