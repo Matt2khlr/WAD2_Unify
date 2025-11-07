@@ -2399,6 +2399,22 @@ h1 {
   margin-bottom: 0.5rem;
 }
 
+.modal-dialog {
+  margin-top: 80px;
+}
+
+@media (max-width: 768px) {
+  .modal-dialog {
+    margin-top: 60px;
+  }
+}
+
+@media (max-height: 900px) {
+  .modal-dialog {
+    margin-top: 80px;
+  }
+}
+
 /* Save Button */
 .save-button {
   background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
