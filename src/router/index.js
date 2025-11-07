@@ -26,7 +26,18 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(),
   routes,
-  scrollBehavior: () => ({ top: 0 }),
+  scrollBehavior(_to, _from, savedPosition) {
+    // Return a promise to ensure scroll happens after page loads
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        if (savedPosition) {
+          resolve(savedPosition);
+        } else {
+          resolve({ top: 0, left: 0, behavior: 'smooth' });
+        }
+      }, 100);
+    });
+  },
 });
 
 // Set document title from route meta

@@ -3,7 +3,7 @@ import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from "vue"
 import { db, auth } from "@/firebase";
 import { collection, addDoc, deleteDoc, doc, onSnapshot, query, where, serverTimestamp, setDoc, deleteField, getDoc } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
-import { Calendar, Flame, TrendingUp, Activity, Utensils, Clock, Plus, ChevronLeft, ChevronRight } from "lucide-vue-next";
+import { Calendar, Flame, TrendingUp, Activity, Utensils, Clock, ChevronLeft, ChevronRight } from "lucide-vue-next";
 
 function toISO(d) {
   const m = String(d.getMonth() + 1).padStart(2, "0");
