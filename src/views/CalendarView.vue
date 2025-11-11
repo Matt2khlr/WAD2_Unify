@@ -2680,6 +2680,33 @@ h1 {
     flex-wrap: nowrap;
   }
 }
+
+[ref="placeAutocompleteContainer"] {
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  display: block;
+}
+
+/* Force the Google Places widget inside to fit */
+[ref="placeAutocompleteContainer"] gmp-place-autocomplete,
+[ref="placeAutocompleteContainer"] gmpx-place-autocomplete-element {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box;
+}
+
+/* Mobile specific fix */
+@media (max-width: 576px) {
+  [ref="placeAutocompleteContainer"] {
+    margin: 0;
+    padding: 0;
+  }
+  
+  .modal-body [ref="placeAutocompleteContainer"] {
+    max-width: calc(100vw - 2rem); /* Account for modal padding */
+  }
+}
 </style>
 
 <style>
